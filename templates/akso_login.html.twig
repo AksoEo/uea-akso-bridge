@@ -1,0 +1,94 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+    {% if akso_login_error %}
+        <div id="akso-login-error">
+            {% if akso_login_error == 'authuea' %}
+                Nevalida UEA-kodo aŭ pasvorto
+            {% elseif akso_login_error == 'authemail' %}
+                Nevalida retpoŝtadreso aŭ pasvorto
+            {% elseif akso_login_error == 'nopw' %}
+                Via konto {{ akso_login_username }} ŝajne ne havas pasvorton
+            {% elseif akso_login_error == 'totpauth' %}
+                Nevalida sekurkodo
+            {% elseif akso_login_error == 'totpbad' %}
+                {# user cannot use totp in their current state #}
+                {# possibly already used totp, did not set up totp, etc. #}
+                Eraro
+            {% elseif akso_login_error == 'totpnosx' %}
+                {# no user session #}
+                Eraro
+            {% endif %}
+        </div>
+    {% endif %}
+    <form id="akso-login" method="POST">
+        {% if akso_login_totp %}
+            <h1 class="title">Sekurkodo</h1>
+            <p>
+                Bonvolu enmeti sekurkodon generitan de via duafaktora aplikaĵo.
+            </p>
+            <div class="form-field">
+                <input
+                    id="akso-login-totp"
+                    name="totp"
+                    type="text"
+                    placeholder="000000"
+                    {# \d* seems to be the only way to get a numpad input on iOS #}
+                    pattern="\d*"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    autofocus />
+            </div>
+            <div class="totp-remember">
+                <input type="checkbox" name="remember" id="akso-login-totp-remember" />
+                <label for="akso-login-totp-remember">
+                    Memori tiun ĉi aparaton dum 60 tagoj
+                </label>
+                <div class="totp-remember-description">
+                    Nur uzu tiun ĉi funkcion ĉe personaj komputiloj.
+                </div>
+            </div>
+            <footer class="form-footer">
+                <div class="footer-help-links">
+                    <a href="TODO">Mi ne povas generi sekurkodon</a>
+                </div>
+
+                <button type="submit" class="is-primary">
+                    Ensaluti
+                </button>
+            </footer>
+        {% else %}
+            <h1 class="title">Ensaluti</h1>
+            <div class="form-field">
+                <label for="akso-login-username">
+                    UEA-kodo aŭ retpoŝtadreso
+                </label>
+                <input
+                    id="akso-login-username"
+                    name="username"
+                    type="text"
+                    value="{{ akso_login_username }}"
+                    {% if not akso_login_username %} autofocus {% endif %} />
+            </div>
+            <div class="form-field">
+                <label for="akso-login-password">
+                    Pasvorto
+                </label>
+                <input
+                    id="akso-login-password"
+                    name="password"
+                    type="password"
+                    {% if akso_login_username %} autofocus {% endif %} />
+            </div>
+            <footer class="form-footer">
+                <div class="footer-help-links">
+                    <a href="TODO">Mi forgesis mian pasvorton</a>
+                    <a href="TODO">Mi forgesis mian UEA-kodon</a>
+                </div>
+
+                <button type="submit" class="is-primary">
+                    Daŭrigi
+                </button>
+            </footer>
+        {% endif %}
+    </form>
+{% endblock %}

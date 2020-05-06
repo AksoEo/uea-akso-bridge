@@ -1,0 +1,14 @@
+<div class="akso-bridge-login-bar {{ akso_auth ? 'is-logged-in' : 'is-logged-out' }}">
+    {% if akso_auth %}
+        <div class="akso-user">
+            {{ akso_user_fmt_name }}
+        </div>
+        <a class="link-button" href="{{ config.plugins['akso-bridge'].logout_path }}">
+            {{ config.plugins['akso-bridge'].logout_label }}
+        </a>
+    {% else %}
+        <a class="link-button" href="{{ config.plugins['akso-bridge'].login_path }}">
+            {{ config.plugins['akso-bridge'].login_label }}
+        </a>
+    {% endif %}
+</div>

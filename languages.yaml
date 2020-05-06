@@ -1,0 +1,4 @@
+en:
+  PLUGIN_AKSO_BRIDGE:
+    LOGIN_PATH: Login Page Path
+    LOGIN_PATH_HELP: Help text goes here

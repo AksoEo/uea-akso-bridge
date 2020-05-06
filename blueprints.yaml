@@ -1,0 +1,43 @@
+name: AKSO Bridge and UEA extensions
+version: 0.1.0
+description: AKSO bridge plugin
+icon: plug
+author:
+  name: Tutmonda Esperantista Junulara Organizo
+  email: helpo@akso.org
+license: MIT
+
+form:
+  validation: strict
+  fields:
+    enabled:
+      type: toggle
+      label: PLUGIN_ADMIN.PLUGIN_STATUS
+      highlight: 1
+      default: 0
+      options:
+        1: PLUGIN_ADMIN.ENABLED
+        0: PLUGIN_ADMIN.DISABLED
+      validate:
+        type: bool
+    login_path:
+      type: text
+      label: Login Path
+    login_label:
+      type: text
+      label: Login Label
+    logout_path:
+      type: text
+      label: Logout Path
+    logout_label:
+      type: text
+      label: Logout Label
+    api_host:
+      type: text
+      label: API host
+    api_key:
+      type: text
+      label: API key for markdown rendering
+    api_secret:
+      type: text
+      label: API secret

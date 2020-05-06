@@ -1,0 +1,102 @@
+#akso-login-error {
+    margin: 1em auto;
+    padding: 0.3em 0;
+    text-align: center;
+    background: var(--error-bg);
+    color: var(--error-fg);
+    border-radius: var(--radius);
+    max-width: 32ch;
+
+    animation: akso-login-error-in 0.5s cubic-bezier(.2, .3, 0, 1);
+}
+@keyframes akso-login-error-in {
+    0% {
+        opacity: 0;
+        transform: translateY(1em);
+    }
+}
+
+#akso-login {
+    /* TODO: move this into LESS and use variables */
+    margin: 1em auto;
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 1em;
+    max-width: 32ch;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+    text-align: left;
+}
+#akso-login .title {
+    margin-top: 0;
+    text-align: center;
+}
+#akso-login .form-field {
+    margin: 1em 0;
+}
+
+#akso-login .form-field label {
+    display: block;
+    padding-left: 0.6em;
+}
+#akso-login .form-field input {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+#akso-login .form-footer {
+    display: flex;
+    align-items: center;
+}
+#akso-login .footer-help-links {
+    font-size: small;
+    flex: 1;
+}
+#akso-login .footer-help-links a {
+    display: block;
+}
+#akso-login .form-footer button {
+    margin-right: 0;
+}
+#akso-login #akso-login-totp {
+    text-align: center;
+}
+
+#akso-login .totp-remember {
+    text-align: center;
+    font-size: 0.9em;
+    margin-bottom: 0.6em;
+}
+#akso-login .totp-remember label {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+}
+#akso-login .totp-remember .totp-remember-description {
+    display: none;
+}
+#akso-login .totp-remember #akso-login-totp-remember:checked ~ .totp-remember-description {
+    display: block;
+    animation: akso-login-totp-remember-description-in 0.2s cubic-bezier(.2, .3, 0, 1);
+}
+
+@keyframes akso-login-totp-remember-description-in {
+    0% {
+        opacity: 0;
+    }
+}
+
+@media (max-width: 360px) {
+    #akso-login .form-footer {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+    }
+    #akso-login .form-footer button {
+        display: block;
+        margin: 0;
+        margin-bottom: 0.5em;
+        width: 100%;
+    }
+}

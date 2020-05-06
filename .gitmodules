@@ -1,0 +1,3 @@
+[submodule "aksobridged"]
+	path = aksobridged
+	url = https://github.com/AksoEo/aksobridged
