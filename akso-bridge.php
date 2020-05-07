@@ -196,7 +196,7 @@ class AksoBridgePlugin extends Plugin {
             $result = $this->bridge->logout();
             if ($result['s']) {
                 $this->aksoUser = null;
-                $this->redirectTarget = $this->getRefererPath();
+                $this->redirectTarget = $this->getReferrerPath();
                 $this->redirectStatus = 303;
             }
         }
@@ -267,7 +267,7 @@ class AksoBridgePlugin extends Plugin {
         $twig->twig_paths[] = __DIR__ . '/templates';
     }
 
-    private function getRefererPath() {
+    private function getReferrerPath() {
         if (!isset($_SERVER['HTTP_REFERER'])) return '/';
         $ref = $_SERVER['HTTP_REFERER'];
         $refp = parse_url($ref);
@@ -301,7 +301,7 @@ class AksoBridgePlugin extends Plugin {
                 // keep return path if it already exists
                 $rpath = $post['return'];
             } else {
-                $rpath = $this->getRefererPath();
+                $rpath = $this->getReferrerPath();
             }
             $twig->twig_vars['akso_login_return_path'] = $rpath;
         }
