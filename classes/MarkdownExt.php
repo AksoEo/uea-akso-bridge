@@ -370,10 +370,13 @@ class MarkdownExt {
                             'id',
                             'name',
                             'email',
+                            'emailPublicity',
                             'address',
+                            'addressPublicity',
                             'biography',
                             'website',
-                            'profilePictureHash'
+                            'profilePictureHash',
+                            'profilePicturePublicity'
                         ],
                         'offset' => $haveItems,
                         'limit' => 100
@@ -731,6 +734,8 @@ class MarkdownExt {
     }
 
     protected function handleHTMLLists($doc) {
+        $isLoggedIn = $this->plugin->aksoUser !== null;
+
         $unhandledLists = $doc->find('.unhandled-list');
         foreach ($unhandledLists as $list) {
             $textContent = $list->text();
@@ -758,7 +763,9 @@ class MarkdownExt {
                     $img = new Element('img');
                     $img->class = 'item-picture';
 
-                    if ($codeholder->profilePictureHash) {
+                    $canSeePP = $isLoggedIn || $codeholder->profilePicturePublicity === 'public';
+
+                    if ($canSeePP && $codeholder->profilePictureHash) {
                         // codeholder has a profile picture
                         $picPrefix = $this->apiHost . '/lists/public/' . $listId . '/codeholders/' . $codeholder->id . '/profile_picture/';
                         $img->src = $picPrefix . '128px';
@@ -776,7 +783,9 @@ class MarkdownExt {
                     $nameContainer->class = 'item-name';
                     $right->appendChild($nameContainer);
 
-                    if ($codeholder->email) {
+                    $canSeeEmail = $isLoggedIn || $codeholder->emailPublicity === 'public';
+
+                    if ($canSeeEmail && $codeholder->email) {
                         $emailContainer = new Element('div');
                         $emailContainer->class = 'item-email';
                         $emailLink = new Element('a');

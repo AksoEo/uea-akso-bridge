@@ -66,7 +66,7 @@ class AksoBridgePlugin extends Plugin {
     private $bridge = null;
     // if set, will contain info on the akso user
     // an array with keys 'id', 'uea'
-    private $aksoUser = null;
+    public $aksoUser = null;
     private $aksoUserFormattedName = null;
 
     // will redirect after closing the bridge and setting cookies if not null
@@ -103,7 +103,6 @@ class AksoBridgePlugin extends Plugin {
             $this->aksoUser = $aksoUserState;
         }
 
-        // FIXME: do something about controllers or somesuch i dont know
         $this->updateAksoState();
 
         $this->updateFormattedName();
