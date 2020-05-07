@@ -58,6 +58,9 @@
 #akso-login .form-footer button {
     margin-right: 0;
 }
+#akso-login .form-aux {
+    display: none;
+}
 #akso-login #akso-login-totp {
     text-align: center;
 }

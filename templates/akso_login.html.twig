@@ -2,7 +2,9 @@
 {% block content %}
     {% if akso_login_error %}
         <div id="akso-login-error">
-            {% if akso_login_error == 'authuea' %}
+            {% if akso_login_error == 'loginbad' %}
+                Eraro
+            {% elseif akso_login_error == 'authuea' %}
                 Nevalida UEA-kodo aŭ pasvorto
             {% elseif akso_login_error == 'authemail' %}
                 Nevalida retpoŝtadreso aŭ pasvorto
@@ -78,6 +80,14 @@
                     name="password"
                     type="password"
                     {% if akso_login_username %} autofocus {% endif %} />
+            </div>
+            <div class="form-aux">
+                <input name="return" value="{{ akso_login_return_path }}" />
+                {# fake inputs to prevent bots #}
+                ne ŝaltu ĉi tiun butonon:
+                <input type="checkbox" name="termsofservice" />
+                kaj ne uzu ĉi tiun enigon:
+                <input type="email" name="email" />
             </div>
             <footer class="form-footer">
                 <div class="footer-help-links">

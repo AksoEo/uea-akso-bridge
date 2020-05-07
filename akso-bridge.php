@@ -135,12 +135,31 @@ class AksoBridgePlugin extends Plugin {
             $post = !empty($_POST) ? $_POST : [];
             // TODO: use a form nonce
 
+            $rpath = '/';
+            if (isset($post['return'])) {
+                // if return is a valid-ish path, set it as the return path
+                if (strpos($post['return'], '/') == 0) $rpath = $post['return'];
+            }
+
+            if (isset($post['termsofservice']) || (isset($post['email']) && $post['email'] !== '')) {
+                // these inputs were invisible and shouldn't've been triggered
+                // so this was probably a spam bot
+                $this->pageState = array(
+                    'state' => 'login-error',
+                    'isBad' => true,
+                    'isEmail' => false,
+                    'username' => 'roboto',
+                    'noPassword' => false,
+                );
+                return;
+            }
+
             if ($this->aksoUser !== null && $this->aksoUser['totp'] && isset($post['totp'])) {
                 $remember = isset($post['remember']);
                 $result = $this->bridge->totp($post['totp'], $remember);
 
                 if ($result['s']) {
-                    $this->redirectTarget = '/';
+                    $this->redirectTarget = $rpath;
                     $this->redirectStatus = 303;
                 } else {
                     $this->pageState = array(
@@ -160,8 +179,8 @@ class AksoBridgePlugin extends Plugin {
                     $this->aksoUser = $result;
 
                     if (!$result['totp']) {
-                        // redirect to homepage unless user still needs to use totp
-                        $this->redirectTarget = '/';
+                        // redirect to return page unless user still needs to use totp
+                        $this->redirectTarget = $rpath;
                         $this->redirectStatus = 303;
                     }
                 } else {
@@ -177,7 +196,7 @@ class AksoBridgePlugin extends Plugin {
             $result = $this->bridge->logout();
             if ($result['s']) {
                 $this->aksoUser = null;
-                $this->redirectTarget = '/';
+                $this->redirectTarget = $this->getRefererPath();
                 $this->redirectStatus = 303;
             }
         }
@@ -248,6 +267,19 @@ class AksoBridgePlugin extends Plugin {
         $twig->twig_paths[] = __DIR__ . '/templates';
     }
 
+    private function getRefererPath() {
+        if (!isset($_SERVER['HTTP_REFERER'])) return '/';
+        $ref = $_SERVER['HTTP_REFERER'];
+        $refp = parse_url($ref);
+        $rpath = '/';
+        if ($refp != false && isset($refp['path'])) {
+            $rpath = $refp['path'];
+            if (isset($refp['query'])) $rpath .= '?' . $refp['query'];
+            if (isset($refp['anchor'])) $rpath .= '#' + $refp['anchor'];
+        }
+        return $rpath;
+    }
+
     // sets twig variables for rendering
     public function onTwigSiteVariables() {
         if ($this->bridge === null) {
@@ -257,10 +289,21 @@ class AksoBridgePlugin extends Plugin {
 
         $twig = $this->grav['twig'];
         $state = $this->pageState;
+        $post = !empty($_POST) ? $_POST : [];
 
         if ($this->grav['uri']->path() === $this->loginPath) {
             // add login css
             $this->grav['assets']->add('plugin://akso-bridge/css/login.css');
+
+            // set return path
+            $rpath = '/';
+            if (isset($post['return'])) {
+                // keep return path if it already exists
+                $rpath = $post['return'];
+            } else {
+                $rpath = $this->getRefererPath();
+            }
+            $twig->twig_vars['akso_login_return_path'] = $rpath;
         }
 
         $twig->twig_vars['akso_auth'] = $this->aksoUser !== null;
@@ -276,7 +319,9 @@ class AksoBridgePlugin extends Plugin {
 
         if ($state['state'] === 'login-error') {
             $twig->twig_vars['akso_login_username'] = $state['username'];
-            if ($state['noPassword']) {
+            if (isset($state['isBad'])) {
+                $twig->twig_vars['akso_login_error'] = 'loginbad';
+            } else if ($state['noPassword']) {
                 $twig->twig_vars['akso_login_error'] = 'nopw';
             } else if ($state['isEmail']) {
                 $twig->twig_vars['akso_login_error'] = 'authemail';
