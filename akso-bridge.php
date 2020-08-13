@@ -32,11 +32,6 @@ class AksoBridgePlugin extends Plugin {
 
     // called at the beginning at some point
     public function onPluginsInitialized() {
-        // Don't proceed if we are in the admin plugin
-        if ($this->isAdmin()) {
-            return;
-        }
-
         require_once __DIR__ . '/vendor/autoload.php';
         require_once __DIR__ . '/aksobridged/php/vendor/autoload.php';
         require_once __DIR__ . '/aksobridged/php/src/AksoBridge.php';
@@ -50,8 +45,17 @@ class AksoBridgePlugin extends Plugin {
         $this->logoutPath = $this->grav['config']->get('plugins.akso-bridge.logout_path');
         $this->apiHost = $this->grav['config']->get('plugins.akso-bridge.api_host');
 
-        // initialize AKSO bridge
-        $this->initializeBridge();
+        // Don't proceed if we are in the admin plugin
+        if ($this->isAdmin()) {
+            $this->enable([
+                'onGetPageBlueprints' => ['onGetPageBlueprints', 0],
+                'onGetPageTemplates' => ['onGetPageTemplates', 0],
+            ]);
+            return;
+        }
+
+        // run AKSO bridge
+        $this->runUserBridge();
 
         if ($this->path === $this->loginPath) {
             // path matches; add the login page
@@ -60,6 +64,16 @@ class AksoBridgePlugin extends Plugin {
             ]);
             return;
         }
+    }
+
+    // add blueprints and page templates (admin page)
+    public function onGetPageBlueprints(Event $event) {
+        $types = $event->types;
+        $types->scanBlueprints('plugin://' . $this->name . '/blueprints');
+    }
+    public function onGetPageTemplates(Event $event) {
+        $types = $event->types;
+        $types->scanTemplates('plugin://' . $this->name . '/public_templates');
     }
 
     // akso bridge connection
@@ -76,7 +90,20 @@ class AksoBridgePlugin extends Plugin {
     // page state for twig variables; see impl for details
     private $pageState = null;
 
-    public function initializeBridge() {
+    private function openAppBridge() {
+        $grav = $this->grav;
+        $apiKey = $grav['config']->get('plugins.akso-bridge.api_key');
+        $apiSecret = $grav['config']->get('plugins.akso-bridge.api_secret');
+
+        $this->bridge = new \AksoBridge(__DIR__ . '/aksobridged/aksobridge');
+        $this->bridge->openApp($this->apiHost, $apiKey, $apiSecret);
+    }
+
+    private function closeAppBridge() {
+        $this->bridge->close();
+    }
+
+    private function runUserBridge() {
         $this->bridge = new \AksoBridge(__DIR__ . '/aksobridged/aksobridge');
 
         // basic default state so stuff doesn’t error
@@ -265,6 +292,7 @@ class AksoBridgePlugin extends Plugin {
     public function onTwigTemplatePaths() {
         $twig = $this->grav['twig'];
         $twig->twig_paths[] = __DIR__ . '/templates';
+        $twig->twig_paths[] = __DIR__ . '/public_templates';
     }
 
     private function getReferrerPath() {
@@ -282,6 +310,10 @@ class AksoBridgePlugin extends Plugin {
 
     // sets twig variables for rendering
     public function onTwigSiteVariables() {
+        if ($this->isAdmin()) {
+            return;
+        }
+
         if ($this->bridge === null) {
             // there is no bridge on this page; skip
             return;
@@ -290,6 +322,21 @@ class AksoBridgePlugin extends Plugin {
         $twig = $this->grav['twig'];
         $state = $this->pageState;
         $post = !empty($_POST) ? $_POST : [];
+
+        $templateId = $this->grav['page']->template();
+        if ($templateId === 'akso_congress_instance') {
+            $head = $this->grav['page']->header();
+            $congressId = null;
+            $instanceId = null;
+            if (isset($head->congress) && isset($head->instance)) {
+                $congressId = intval($head->congress, 10);
+                $instanceId = intval($head->instance, 10);
+            }
+            if ($congressId == null || $instanceId == null) {
+                $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            }
+            $this->handleCongressVariables($congressId, $instanceId);
+        }
 
         if ($this->grav['uri']->path() === $this->loginPath) {
             // add login css
@@ -337,6 +384,34 @@ class AksoBridgePlugin extends Plugin {
                 $twig->twig_vars['akso_login_error'] = 'totpauth';
             }
         }
+    }
+
+    private function handleCongressVariables($congressId, $instanceId) {
+        $this->openAppBridge();
+
+        $res = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId, array( 
+            'fields' => [
+                'name',
+                'humanId',
+                'dateFrom',
+                'dateTo',
+                'locationName',
+                'locationAddress',
+                'tz',
+            ],
+        ), 60);
+        $twig = $this->grav['twig'];
+
+        do {
+            if (!$res['k']) {
+                $twig->twig_vars['akso_congess_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
+                break;
+            }
+
+            $twig->twig_vars['akso_congress'] = $res['b'];
+        } while (false);
+
+        $this->closeAppBridge();
     }
 
     // loads MarkdownExt (see classes/MarkdownExt.php)

@@ -1,0 +1,10 @@
+title: AKSO Kongresa Okazigo
+'@extends':
+  type: default
+  context: blueprints://pages
+
+form:
+  fields:
+    instance_id:
+      type: akso_congress_instance_id
+      label: 'Kongresa okazigo'

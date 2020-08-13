@@ -1,0 +1,24 @@
+{% extends "partials/base.html.twig" %}
+
+{% block content %}
+{% if akso_congress_error %}
+    <div class="error-banner">
+        {{ akso_congress_error }}
+    </div>
+{% endif %}
+{{ akso_congress.humanId }}
+<br />
+{{ akso_congress.name }}
+<br />
+{{ akso_congress.dateFrom }}
+<br />
+{{ akso_congress.dateTo }}
+<br />
+{{ akso_congress.locationName }}
+<br />
+{{ akso_congress.locationAddress }}
+<br />
+{{ akso_congress.tz }}
+<br />
+{{ page.content }}
+{% endblock %}
