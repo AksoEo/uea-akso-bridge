@@ -1,5 +1,14 @@
 {% extends "forms/field.html.twig" %}
 
-{% block input_attributes %}
-{{ parent() }}
+{% block input %}
+<div class="akso-field-congress-instance-id">
+    <input
+        type="text"
+        class="akso-field-input"
+        name="{{ field_name }}"
+        value="{{ value|join(",") }}" />
+    <div class="akso-field-noscript">
+        Skribu 1/2 por kongresa okazigo n-ro 2 en kongreso n-ro 1. Vi povas vidi tiujn internajn numerojn en la URL de la paĝo en AKSO-Admin.
+    </div>
+</div>
 {% endblock %}

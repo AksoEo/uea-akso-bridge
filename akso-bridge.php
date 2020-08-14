@@ -50,6 +50,7 @@ class AksoBridgePlugin extends Plugin {
             $this->enable([
                 'onGetPageBlueprints' => ['onGetPageBlueprints', 0],
                 'onGetPageTemplates' => ['onGetPageTemplates', 0],
+                'onPagesInitialized' => ['onAdminPageInitialized', 0],
             ]);
             return;
         }
@@ -311,6 +312,9 @@ class AksoBridgePlugin extends Plugin {
     // sets twig variables for rendering
     public function onTwigSiteVariables() {
         if ($this->isAdmin()) {
+            // add admin js
+            $this->grav['assets']->add('plugin://akso-bridge/css/akso-bridge-admin.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/akso-bridge-admin.js');
             return;
         }
 
@@ -328,9 +332,10 @@ class AksoBridgePlugin extends Plugin {
             $head = $this->grav['page']->header();
             $congressId = null;
             $instanceId = null;
-            if (isset($head->congress) && isset($head->instance)) {
-                $congressId = intval($head->congress, 10);
-                $instanceId = intval($head->instance, 10);
+            if (isset($head->congress_instance)) {
+                $parts = explode("/", $head->congress_instance, 2);
+                $congressId = intval($parts[0], 10);
+                $instanceId = intval($parts[1], 10);
             }
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
@@ -412,6 +417,78 @@ class AksoBridgePlugin extends Plugin {
         } while (false);
 
         $this->closeAppBridge();
+    }
+
+    /**
+     * Admin page endpoint at /admin/akso_bridge, for various JS stuff.
+     */
+    public function onAdminPageInitialized() {
+        $auth = $this->grav["user"]->authorize('admin.login');
+        $uri = $this->grav["uri"];
+        $path = $uri->path();
+        if ($auth && $path === "/admin/akso_bridge") {
+            header('Content-Type: application/json;charset=utf-8');
+            $task = $uri->query('task');
+            $this->openAppBridge();
+
+            if ($task === "list_congresses") {
+                $offset = $uri->query('offset');
+                $limit = $uri->query('limit');
+
+                $res = $this->bridge->get('/congresses', array(
+                    'offset' => $offset,
+                    'limit' => $limit,
+                    'fields' => ['id', 'name', 'org'],
+                    'order' => ['name.asc'],
+                ));
+                if ($res['k']) {
+                    echo json_encode(array('result' => $res['b']));
+                } else {
+                    echo json_encode(array('error' => $res['b']));
+                }
+            } else if ($task === "list_congress_instances") {
+                $congress = $uri->query('congress');
+                $offset = $uri->query('offset');
+                $limit = $uri->query('limit');
+
+                $res = $this->bridge->get('/congresses/' . $congress . '/instances', array(
+                    'offset' => $offset,
+                    'limit' => $limit,
+                    'fields' => ['id', 'name', 'humanId'],
+                    'order' => ['humanId.desc'],
+                ));
+                if ($res['k']) {
+                    echo json_encode(array('result' => $res['b']));
+                } else {
+                    echo json_encode(array('error' => $res['b']));
+                }
+            } else if ($task === "name_congress_instance") {
+                $congress = $uri->query('congress');
+                $instance = $uri->query('instance');
+                $offset = $uri->query('offset');
+                $limit = $uri->query('limit');
+
+                $res = $this->bridge->get('/congresses/' . $congress, array('fields' => ['name']));
+                if (!$res['k']) {
+                    echo json_encode(array('error' => $res['b']));
+                } else {
+                    $congressName = $res['b']['name'];
+                    $res = $this->bridge->get('/congresses/' . $congress . '/instances/' . $instance, array('fields' => ['name']));
+                    if (!$res['k']) {
+                        echo json_encode(array('error' => $res['b']));
+                    } else {
+                        $instanceName = $res['b']['name'];
+                        echo json_encode(array('result' => array(
+                            'congress' => $congressName,
+                            'instance' => $instanceName,
+                        )));
+                    }
+                }
+            }
+
+            $this->closeAppBridge();
+            die();
+        }
     }
 
     // loads MarkdownExt (see classes/MarkdownExt.php)

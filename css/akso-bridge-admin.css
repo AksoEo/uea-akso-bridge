@@ -1,0 +1,46 @@
+.akso-field-congress-instance-id .akso-picker-list {
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+.akso-field-congress-instance-id .akso-picker-header {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    padding: 0 16px;
+    border-bottom: 1px solid #eee;
+}
+.akso-field-congress-instance-id .akso-picker-header button {
+    color: inherit;
+    background: none;
+    padding: 16px;
+    margin-right: 8px;
+}
+.akso-field-congress-instance-id .akso-picker-list-items {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+.akso-field-congress-instance-id .picker-list-item {
+    padding: 8px 16px;
+    border-bottom: 1px solid #eee;
+    cursor: default;
+    transition: background 0.3s;
+}
+.akso-field-congress-instance-id .picker-list-item:hover {
+    background: #eee;
+}
+.akso-field-congress-instance-id .picker-list-item .akso-org-badge {
+    font-size: small;
+    padding: 2px 4px;
+    border-radius: 4px;
+    border: 1px solid currentColor;
+    margin-right: 8px;
+}
+.akso-field-congress-instance-id .akso-picker-list-load-more {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background: none;
+    color: inherit;
+}

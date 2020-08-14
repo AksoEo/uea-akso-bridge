@@ -5,6 +5,9 @@ title: AKSO Kongresa Okazigo
 
 form:
   fields:
-    instance_id:
+    header.congress_instance:
       type: akso_congress_instance_id
       label: 'Kongresa okazigo'
+    header.header_url:
+      type: url
+      label: '[[header url]]'
