@@ -5,6 +5,7 @@ use Grav\Common\Plugin;
 use Grav\Common\Uri;
 use RocketTheme\Toolbox\Event\Event;
 use Grav\Common\Page\Page;
+use Grav\Common\Helpers\Excerpts;
 use Grav\Plugin\AksoBridge\MarkdownExt;
 
 // TODO: pass host to bridge as Host header
@@ -393,6 +394,7 @@ class AksoBridgePlugin extends Plugin {
 
     private function handleCongressVariables($congressId, $instanceId) {
         $this->openAppBridge();
+        $head = $this->grav['page']->header();
 
         $res = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId, array( 
             'fields' => [
@@ -409,11 +411,34 @@ class AksoBridgePlugin extends Plugin {
 
         do {
             if (!$res['k']) {
-                $twig->twig_vars['akso_congess_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
+                $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
                 break;
             }
 
             $twig->twig_vars['akso_congress'] = $res['b'];
+
+            if (isset($head->header_url)) {
+                $processed = Excerpts::processLinkExcerpt(array(
+                    'element' => array(
+                        'attributes' => array(
+                            'href' => htmlspecialchars(urlencode($head->header_url)),
+                        ),
+                    ),
+                ), $this->grav["page"], 'image');
+                $imageUrl = $processed['element']['attributes']['href'];
+                $twig->twig_vars['akso_congress_header_url'] = $imageUrl;
+            }
+            if (isset($head->logo_url)) {
+                $processed = Excerpts::processLinkExcerpt(array(
+                    'element' => array(
+                        'attributes' => array(
+                            'href' => htmlspecialchars(urlencode($head->logo_url)),
+                        ),
+                    ),
+                ), $this->grav["page"], 'image');
+                $imageUrl = $processed['element']['attributes']['href'];
+                $twig->twig_vars['akso_congress_logo_url'] = $imageUrl;
+            }
         } while (false);
 
         $this->closeAppBridge();

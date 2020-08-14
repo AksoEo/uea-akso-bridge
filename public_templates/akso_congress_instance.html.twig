@@ -6,10 +6,32 @@
         {{ akso_congress_error }}
     </div>
 {% endif %}
-{{ akso_congress.humanId }}
-<br />
-{{ akso_congress.name }}
-<br />
+
+{% macro header_contents(logo_url, congress) %}
+    {% if logo_url %}
+    <div class="congress-logo-container">
+        <img class="congress-logo" src="{{ logo_url }}" />
+    </div>
+    {% endif %}
+    <h1 class="congress-name">
+        {{ congress.name }}
+    </h1>
+{% endmacro %}
+
+{% if akso_congress_header_url %}
+<figure class="congress-cover-header full-width carousel">
+    <p>
+        <img class="congress-cover-image" src="{{ akso_congress_header_url }}" />
+    </p>
+    <p>
+        {{ _self.header_contents(akso_congress_logo_url, akso_congress) }}
+    </p>
+</figure>
+{% else %}
+<div class="congress-header">
+    {{ _self.header_contents(akso_congress_logo_url, akso_congress) }}
+</div>
+{% endif %}
 {{ akso_congress.dateFrom }}
 <br />
 {{ akso_congress.dateTo }}

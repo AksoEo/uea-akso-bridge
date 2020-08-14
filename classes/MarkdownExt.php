@@ -682,6 +682,9 @@ class MarkdownExt {
                 $pageContainer->appendChild($ntlChild['caption']);
                 $carousel->appendChild($pageContainer);
             }
+            if (sizeof($pages) === 1) {
+                $carousel->class .= ' is-single-page';
+            }
         }
     }
 

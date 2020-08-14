@@ -8,6 +8,9 @@ form:
     header.congress_instance:
       type: akso_congress_instance_id
       label: 'Kongresa okazigo'
+    header.logo_url:
+      type: text
+      label: '[[logo image url]]'
     header.header_url:
-      type: url
-      label: '[[header url]]'
+      type: text
+      label: '[[header image url]]'
