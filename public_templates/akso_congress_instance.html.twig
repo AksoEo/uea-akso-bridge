@@ -32,15 +32,22 @@
     {{ _self.header_contents(akso_congress_logo_url, akso_congress) }}
 </div>
 {% endif %}
-{{ akso_congress.dateFrom }}
-<br />
-{{ akso_congress.dateTo }}
-<br />
-{{ akso_congress.locationName }}
-<br />
-{{ akso_congress.locationAddress }}
-<br />
-{{ akso_congress.tz }}
-<br />
+<div class="congress-meta">
+    <div class="congress-countdown-container">
+        <span class="congress-countdown" data-timestamp="{{ akso_congress_start_time }}" />
+    </div>
+    <div class="congress-location-container">
+        <span class="congress-location" data-name="{{ akso_congress.locationName }}" />
+    </div>
+    <div class="congress-date-container">
+        <span class="congress-date-span" data-from="{{ akso_congress.dateFrom }}" data-to="{{ akso_congress.dateTo }}" />
+    </div>
+</div>
+<div class="congress-registration">
+    <button class="is-primary congress-registration-button">
+        Aliĝi
+        <span class="registration-icon" />
+    </button>
+</div>
 {{ page.content }}
 {% endblock %}

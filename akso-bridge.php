@@ -396,7 +396,7 @@ class AksoBridgePlugin extends Plugin {
         $this->openAppBridge();
         $head = $this->grav['page']->header();
 
-        $res = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId, array( 
+        $res = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId, array(
             'fields' => [
                 'name',
                 'humanId',
@@ -409,12 +409,35 @@ class AksoBridgePlugin extends Plugin {
         ), 60);
         $twig = $this->grav['twig'];
 
+        $firstEventRes = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/programs', array(
+            'order' => ['timeFrom.asc'],
+            'fields' => [
+                'timeFrom',
+            ],
+            'offset' => 0,
+            'limit' => 1,
+        ), 60);
+
         do {
+            $congressStartTime = null;
+            if ($firstEventRes['k'] && sizeof($firstEventRes['b']) > 0) {
+                // use the start time of the first event if available
+                $firstEvent = $firstEventRes['b'][0];
+                $congressStartTime = \DateTime::createFromFormat("U", $firstEvent['timeFrom']);
+            } else {
+                // otherwise just use noon in local time
+                $timeZone = new \DateTimeZone($res['b']['tz']);
+                $dateStr = $res['b']['dateFrom'] . ' 12:00:00';
+                $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
+            }
+
             if (!$res['k']) {
                 $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
                 break;
             }
 
+            $twig->twig_vars['akso_congress_start_time'] = $congressStartTime->getTimestamp();
+            $twig->twig_vars['akso_congress_id'] = $congressId;
             $twig->twig_vars['akso_congress'] = $res['b'];
 
             if (isset($head->header_url)) {
