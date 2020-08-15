@@ -127,16 +127,21 @@ class AksoBridgePlugin extends Plugin {
             unset($cookies['akso_session_sig']);
         }
 
-        $aksoUserState = $this->bridge->open($this->apiHost, $ip, $cookies);
-        if ($aksoUserState['auth']) {
-            $this->aksoUser = $aksoUserState;
+        $isLogin = $this->path === $this->loginPath && $_SERVER['REQUEST_METHOD'] === 'POST';
+        if (isset($cookies['akso_session']) || $isLogin) {
+            // run akso user bridge if this is the login page or if there's a session cookie
+
+            $aksoUserState = $this->bridge->open($this->apiHost, $ip, $cookies);
+            if ($aksoUserState['auth']) {
+                $this->aksoUser = $aksoUserState;
+            }
+
+            $this->updateAksoState();
+
+            $this->updateFormattedName();
+
+            $this->bridge->close();
         }
-
-        $this->updateAksoState();
-
-        $this->updateFormattedName();
-
-        $this->bridge->close();
 
         foreach ($this->bridge->setCookies as $cookie) {
             header('Set-Cookie: ' . $cookie, FALSE);
