@@ -49,7 +49,7 @@ Any text below an image will be displayed as a caption for that page.
 !### Katido
 ```
 
-Putting an exclamation mark before the three octothorpes creates an h3 that is marked as a section marker and will look different.
+Putting an exclamation mark before the three octothorpes creates an h3 that is a section marker and will look different.
 
 ### Info Boxes
 ```md
@@ -83,6 +83,49 @@ Lists can be created as follows:
 ```
 
 The number following `listo` is the list ID.
+
+### Congresses
+Individual congress fields can be output inline:
+
+```md
+Ekzemplo: [[kongreso nomo 1/2]]
+```
+
+The syntax for congress fields is `[[kongreso FIELD ID]]`.
+ID is either `1` for congress 1, or `1/2` for congress instance 2 in congress 1.
+
+Following inline fields are supported:
+
+| Field | Congresses | Instances | Description |
+|:-|:-:|:-:|:-|
+| nomo | yes | yes | Prints the name
+| mallongigo | yes | | Prints the abbreviation
+| homaID | | yes | Prints the human ID
+| komenco | | yes | prints the start date
+| fino | | yes | prints the end date
+
+Additionally, following block fields are supported using the same syntax:
+
+```md
+[[kongreso lokoj 1/2]]
+[[kongreso programaro 1/2]]
+```
+
+These will result in a map with locations or a program view, respectively.
+
+### Members-only content
+```md
+[[se membro]]
+Kato
+[[alie]]
+[[nurmembroj]]
+[[/se membro]]
+```
+
+The `[[se membro]]` block construct, with an optional `[[alie]]` clause, shows its content only to members.
+Anything in the `[[alie]]` clause will be shown only to non-members.
+
+The `[[nurmembroj]]` block construct shows an alert box saying the content is only for members and links to sign-up.
 
 ### Additional Extensions
 Probably not commonly used; mostly for the home page.

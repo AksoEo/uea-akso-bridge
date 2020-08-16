@@ -6,6 +6,7 @@ use \DiDom\Element;
 use Grav\Common\Plugin;
 use Grav\Common\Markdown\Parsedown;
 use RocketTheme\Toolbox\Event\Event;
+use Grav\Plugin\AksoBridge\CongressFields;
 
 // loaded from AKSO bridge
 class MarkdownExt {
@@ -17,12 +18,13 @@ class MarkdownExt {
 
     public function onMarkdownInitialized(Event $event) {
         $grav = $this->plugin->getGrav();
-        $this->apiHost = $grav['config']->get('plugins.akso-bridge.api_host');
-        $apiKey = $grav['config']->get('plugins.akso-bridge.api_key');
-        $apiSecret = $grav['config']->get('plugins.akso-bridge.api_secret');
 
-        $this->bridge = new \AksoBridge(realpath(__DIR__ . '/../aksobridged/aksobridge'));
-        $this->bridge->openApp($this->apiHost, $apiKey, $apiSecret);
+        $this->app = new AppBridge($grav);
+        $this->apiHost = $this->app->apiHost;
+        $this->app->open();
+        $this->bridge = $this->app->bridge;
+
+        $this->congressFields = new CongressFields($this->bridge);
 
         $markdown = $event['markdown'];
 
@@ -482,10 +484,23 @@ class MarkdownExt {
                 );
             }
         };
+
+        $markdown->addInlineType('[', 'AksoCongressField');
+        $markdown->inlineAksoCongressField = function($excerpt) use ($self) {
+            if (preg_match('/^\[\[kongreso\s+(\w+)\s+(\d+)(?:\/(\d+))?\]\]/', $excerpt['text'], $matches)) {
+                $fieldName = strtolower($matches[1]);
+                $congress = intval($matches[2]);
+                $instance = isset($matches[3]) ? intval($matches[3]) : null;
+                $extent = strlen($matches[0]);
+
+                $rendered = $self->congressFields->renderField($extent, $fieldName, $congress, $instance);
+                if ($rendered != null) return $rendered;
+            }
+        };
     }
 
     public function onPageContentProcessed(Event $event) {
-        $this->bridge->close();
+        $this->app->close();
     }
 
     public function onOutputGenerated(Event $event) {
@@ -606,7 +621,7 @@ class MarkdownExt {
         $this->handleHTMLLists($document);
         $this->handleHTMLNews($document);
         $this->handleHTMLMagazines($document);
-        $this->handleHTMLCongressStuff($document);
+        $this->congressFields->handleHTMLCongressStuff($document);
 
         return $this->cleanupTags($document->html());
     }
@@ -943,106 +958,6 @@ class MarkdownExt {
                 $magazines->replace($newMagazines);
             }
         }
-    }
-
-    protected function handleHTMLCongressStuff($doc) {
-        $countdowns = $doc->find('.congress-countdown');
-        foreach ($countdowns as $countdown) {
-            $ts = $countdown->getAttribute('data-timestamp');
-            $tsTime = new \DateTime();
-            $tsTime->setTimestamp($ts);
-            $now = new \DateTime();
-            $deltaInterval = $now->diff($tsTime);
-
-            $contents = new Element('span', $this->formatDuration($deltaInterval));
-            $countdown->appendChild($contents);
-        }
-
-        $locations = $doc->find('.congress-location');
-        foreach ($locations as $location) {
-            $contents = new Element('span', $location->getAttribute('data-name'));
-            $location->appendChild($contents);
-        }
-
-        $dateSpans = $doc->find('.congress-date-span');
-        foreach ($dateSpans as $dateSpan) {
-            $startDate = \DateTime::createFromFormat('Y-m-d', $dateSpan->getAttribute('data-from'));
-            $endDate = \DateTime::createFromFormat('Y-m-d', $dateSpan->getAttribute('data-to'));
-
-            $startYear = $startDate->format('Y');
-            $endYear = $endDate->format('Y');
-            $startMonth = $startDate->format('m');
-            $endMonth = $endDate->format('m');
-            $startDate = $startDate->format('d');
-            $endDate = $endDate->format('d');
-
-            $span = '';
-            if ($startYear === $endYear) {
-                if ($startMonth === $endMonth) {
-                    $span = $startDate . '–' . $endDate . ' ' . $this->formatMonth($startMonth) . ' ' . $startYear;
-                } else {
-                    $span = $startDate . ' ' . $this->formatMonth($startMonth);
-                    $span .= '–' . $endDate . ' ' . $this->formatMonth($endMonth);
-                    $span .= ' ' . $startYear;
-                }
-            } else {
-                $span = $startDate . ' ' . $this->formatMonth($startMonth) . ' ' . $startYear;
-                $span .= '–' . $endDate . ' ' . $this->formatMonth($endMonth) . ' ' . $endYear;
-            }
-
-            $contents = new Element('span', $span);
-            $dateSpan->appendChild($contents);
-        }
-    }
-
-    private function formatDuration($interval) {
-        $prefix = $interval->invert ? 'antaŭ ' : 'post ';
-
-        $years = $interval->y;
-        $months = $interval->m;
-        $days = $interval->d;
-        $hours = $interval->h;
-        $minutes = $interval->i;
-        $seconds = $interval->s;
-
-        $out = '';
-        $space = "\xE2";
-
-        if ($years > 0) {
-            return $prefix . $years . ' jaro' . (($years > 1) ? 'j' : '');
-        }
-        if ($months > 0) {
-            return $prefix . $months . ' monato' . (($months > 1) ? 'j' : '');
-        }
-
-        if ($days >= 7) {
-            return $prefix . $days . ' tagoj';
-        } else if ($days > 0) {
-            $out .= $days . $space . 't ';
-        }
-        if ($days > 0 || $hours > 0) $out .= $hours . $space . 'h ';
-        if ($days > 0 || $hours > 0 || $minutes > 0) $out .= $minutes . $space . 'm ';
-        $out .= $seconds . $space . 's';
-        return $prefix . $out;
-    }
-
-    private function formatMonth($number) {
-        $months = [
-            '???',
-            'januaro',
-            'februaro',
-            'marto',
-            'aprilo',
-            'majo',
-            'junio',
-            'julio',
-            'aŭgusto',
-            'septembro',
-            'oktobro',
-            'novembro',
-            'decembro',
-        ];
-        return $months[(int) $number];
     }
 
     /**

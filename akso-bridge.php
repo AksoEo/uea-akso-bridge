@@ -7,6 +7,7 @@ use RocketTheme\Toolbox\Event\Event;
 use Grav\Common\Page\Page;
 use Grav\Common\Helpers\Excerpts;
 use Grav\Plugin\AksoBridge\MarkdownExt;
+use Grav\Plugin\AksoBridge\AppBridge;
 
 // TODO: pass host to bridge as Host header
 
@@ -91,19 +92,6 @@ class AksoBridgePlugin extends Plugin {
 
     // page state for twig variables; see impl for details
     private $pageState = null;
-
-    private function openAppBridge() {
-        $grav = $this->grav;
-        $apiKey = $grav['config']->get('plugins.akso-bridge.api_key');
-        $apiSecret = $grav['config']->get('plugins.akso-bridge.api_secret');
-
-        $this->bridge = new \AksoBridge(__DIR__ . '/aksobridged/aksobridge');
-        $this->bridge->openApp($this->apiHost, $apiKey, $apiSecret);
-    }
-
-    private function closeAppBridge() {
-        $this->bridge->close();
-    }
 
     private function runUserBridge() {
         $this->bridge = new \AksoBridge(__DIR__ . '/aksobridged/aksobridge');
@@ -398,10 +386,11 @@ class AksoBridgePlugin extends Plugin {
     }
 
     private function handleCongressVariables($congressId, $instanceId) {
-        $this->openAppBridge();
+        $app = new AppBridge($this->grav);
+        $app->open();
         $head = $this->grav['page']->header();
 
-        $res = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId, array(
+        $res = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId, array(
             'fields' => [
                 'name',
                 'humanId',
@@ -414,7 +403,7 @@ class AksoBridgePlugin extends Plugin {
         ), 60);
         $twig = $this->grav['twig'];
 
-        $firstEventRes = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/programs', array(
+        $firstEventRes = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/programs', array(
             'order' => ['timeFrom.asc'],
             'fields' => [
                 'timeFrom',
@@ -469,7 +458,7 @@ class AksoBridgePlugin extends Plugin {
             }
         } while (false);
 
-        $this->closeAppBridge();
+        $app->close();
     }
 
     /**
@@ -482,13 +471,14 @@ class AksoBridgePlugin extends Plugin {
         if ($auth && $path === "/admin/akso_bridge") {
             header('Content-Type: application/json;charset=utf-8');
             $task = $uri->query('task');
-            $this->openAppBridge();
+            $app = new AppBridge($this->grav);
+            $app->open();
 
             if ($task === "list_congresses") {
                 $offset = $uri->query('offset');
                 $limit = $uri->query('limit');
 
-                $res = $this->bridge->get('/congresses', array(
+                $res = $app->bridge->get('/congresses', array(
                     'offset' => $offset,
                     'limit' => $limit,
                     'fields' => ['id', 'name', 'org'],
@@ -504,7 +494,7 @@ class AksoBridgePlugin extends Plugin {
                 $offset = $uri->query('offset');
                 $limit = $uri->query('limit');
 
-                $res = $this->bridge->get('/congresses/' . $congress . '/instances', array(
+                $res = $app->bridge->get('/congresses/' . $congress . '/instances', array(
                     'offset' => $offset,
                     'limit' => $limit,
                     'fields' => ['id', 'name', 'humanId'],
@@ -521,12 +511,12 @@ class AksoBridgePlugin extends Plugin {
                 $offset = $uri->query('offset');
                 $limit = $uri->query('limit');
 
-                $res = $this->bridge->get('/congresses/' . $congress, array('fields' => ['name']));
+                $res = $app->bridge->get('/congresses/' . $congress, array('fields' => ['name']));
                 if (!$res['k']) {
                     echo json_encode(array('error' => $res['b']));
                 } else {
                     $congressName = $res['b']['name'];
-                    $res = $this->bridge->get('/congresses/' . $congress . '/instances/' . $instance, array('fields' => ['name']));
+                    $res = $app->bridge->get('/congresses/' . $congress . '/instances/' . $instance, array('fields' => ['name']));
                     if (!$res['k']) {
                         echo json_encode(array('error' => $res['b']));
                     } else {
@@ -539,7 +529,7 @@ class AksoBridgePlugin extends Plugin {
                 }
             }
 
-            $this->closeAppBridge();
+            $app->close();
             die();
         }
     }
