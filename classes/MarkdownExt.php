@@ -353,6 +353,87 @@ class MarkdownExt {
 
         $self = $this;
 
+        $markdown->addBlockType('[', 'IfAksoMember', true, true);
+        $markdown->blockIfAksoMember = function($line, $block) {
+            if (preg_match('/^\[\[se membro\]\]/', $line['text'], $matches)) {
+                return array(
+                    'char' => $line['text'][0],
+                    'element' => array(
+                        'name' => 'div',
+                        'attributes' => array(
+                            'class' => 'akso-members-only-content',
+                        ),
+                        'handler' => 'elements',
+                        'text' => [
+                            array(
+                                'name' => 'div',
+                                'attributes' => array(
+                                    'class' => 'akso-members-only-content-if-clause',
+                                ),
+                                'handler' => 'lines',
+                                'text' => [],
+                            ),
+                            array(
+                                'name' => 'div',
+                                'attributes' => array(
+                                    'class' => 'akso-members-only-content-else-clause',
+                                ),
+                                'handler' => 'lines',
+                                'text' => [],
+                            ),
+                        ],
+                    ),
+                );
+            }
+        };
+        $markdown->blockIfAksoMemberContinue = function($line, $block) {
+            if (isset($block['complete'])) {
+                return;
+            }
+            // A blank newline has occurred.
+            if (isset($block['interrupted'])) {
+                array_push($block['element']['text'], "\n");
+                unset($block['interrupted']);
+            }
+            // Check for end of the block.
+            if (preg_match('/\[\[\/se membro\]\]/', $line['text'])) {
+                $block['complete'] = true;
+                return $block;
+            } else if (preg_match('/\[\[alie\]\]/', $line['text'])) {
+                $block['in_else_clause'] = true;
+                return $block;
+            }
+
+            if (isset($block['in_else_clause'])) {
+                array_push($block['element']['text'][1]['text'], $line['body']);
+            } else {
+                array_push($block['element']['text'][0]['text'], $line['body']);
+            }
+            return $block;
+        };
+        $markdown->blockIfAksoMemberComplete = function($block) {
+            return $block;
+        };
+
+        $markdown->addBlockType('[', 'AksoOnlyMembers');
+        $markdown->blockAksoOnlyMembers = function($line, $block) use ($self) {
+            if (preg_match('/^\[\[nurmembroj\]\]/', $line['text'], $matches)) {
+                $error = null;
+                $codeholders = [];
+
+                return array(
+                    'element' => array(
+                        'name' => 'div',
+                        'attributes' => array(
+                            'class' => 'akso-members-only-box',
+                        ),
+                        'text' => '',
+                    ),
+                );
+            }
+        };
+
+
         // A MILDLY CURSED SOLUTION
         // due to grav's markdown handling being rather limited, this will not immediately
         // render the list html after fetching the data. Instead, it will write it as a JSON
@@ -621,6 +702,7 @@ class MarkdownExt {
         $this->handleHTMLLists($document);
         $this->handleHTMLNews($document);
         $this->handleHTMLMagazines($document);
+        $this->handleHTMLIfMembers($document);
         $this->congressFields->handleHTMLCongressStuff($document);
 
         return $this->cleanupTags($document->html());
@@ -753,7 +835,10 @@ class MarkdownExt {
     }
 
     protected function handleHTMLLists($doc) {
-        $isLoggedIn = $this->plugin->aksoUser !== null;
+        $isMember = false;
+        if ($this->plugin->aksoUser !== null) {
+            $isMember = $this->plugin->aksoUser['member'];
+        }
 
         $unhandledLists = $doc->find('.unhandled-list');
         foreach ($unhandledLists as $list) {
@@ -782,7 +867,7 @@ class MarkdownExt {
                     $img = new Element('img');
                     $img->class = 'item-picture';
 
-                    $canSeePP = $isLoggedIn || $codeholder->profilePicturePublicity === 'public';
+                    $canSeePP = $isMember || $codeholder->profilePicturePublicity === 'public';
 
                     if ($canSeePP && $codeholder->profilePictureHash) {
                         // codeholder has a profile picture
@@ -802,7 +887,7 @@ class MarkdownExt {
                     $nameContainer->class = 'item-name';
                     $right->appendChild($nameContainer);
 
-                    $canSeeEmail = $isLoggedIn || $codeholder->emailPublicity === 'public';
+                    $canSeeEmail = $isMember || $codeholder->emailPublicity === 'public';
 
                     if ($canSeeEmail && $codeholder->email) {
                         $emailContainer = new Element('div');
@@ -956,6 +1041,53 @@ class MarkdownExt {
                 // oh no
                 $newMagazines->class .= ' is-error';
                 $magazines->replace($newMagazines);
+            }
+        }
+    }
+
+    protected function handleHTMLIfMembers($doc) {
+        $isLoggedIn = false;
+        $isMember = false;
+        if ($this->plugin->aksoUser !== null) {
+            $isLoggedIn = true;
+            $isMember = $this->plugin->aksoUser['member'];
+        }
+
+        $ifMembers = $doc->find('.akso-members-only-content');
+        foreach ($ifMembers as $ifMember) {
+            $contents = null;
+            if ($isMember) {
+                $contents = $ifMember->find('.akso-members-only-content-if-clause')[0];
+            } else {
+                $contents = $ifMember->find('.akso-members-only-content-else-clause')[0];
+            }
+            $contents->class = 'akso-members-only-content';
+            $ifMember->replace($contents);
+        }
+
+        $membersOnlyBoxes = $doc->find('.akso-members-only-box');
+        foreach ($membersOnlyBoxes as $membersOnlyBox) {
+            if ($isMember) {
+                $membersOnlyBox->class .= ' user-is-member';
+                continue;
+            }
+
+            $membersOnlyBox->appendChild(new Element('div', 'Tiu ĉi enhavo estas nur videbla por membroj.'));
+
+            $loginLink = new Element('a', 'Ensalutu');
+            $signUpLink = new Element('a', $isLoggedIn ? 'Al la aliĝilo' : 'al la aliĝilo');
+
+            $loginLink->href = $this->plugin->loginPath;
+            $signUpLink->href = 'TODO'; // TODO: this link
+
+            if ($isLoggedIn) {
+                $signUpLink->class = 'link-button';
+                $membersOnlyBox->appendChild($signUpLink);
+            } else {
+                $membersOnlyBox->appendChild($loginLink);
+                $membersOnlyBox->appendChild(new Element('span', ' se vi jam havas konton ĉe UEA. Alie, iru '));
+                $membersOnlyBox->appendChild($signUpLink);
+                $membersOnlyBox->appendChild(new Element('span', '.'));
             }
         }
     }

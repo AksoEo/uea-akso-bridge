@@ -113,6 +113,19 @@ Additionally, following block fields are supported using the same syntax:
 
 These will result in a map with locations or a program view, respectively.
 
+#### Countdown component
+```md
+[[kongreso tempokalkulo 1/2]]
+```
+
+This inline component will show a live countdown to the beginning of a congress.
+
+```md
+[[kongreso tempokalkulo! 1/2]]
+```
+
+This block component will show a large countdown to the beginning of a congress.
+
 ### Members-only content
 ```md
 [[se membro]]
