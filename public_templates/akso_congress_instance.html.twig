@@ -3,25 +3,25 @@
 {% block content %}
 {% if akso_congress_error %}
     <div class="error-banner">
-        {{ akso_congress_error }}
+        {{ akso_congress_error|e }}
     </div>
 {% endif %}
 
 {% macro header_contents(logo_url, congress) %}
     {% if logo_url %}
     <div class="congress-logo-container">
-        <img class="congress-logo" src="{{ logo_url }}" />
+        <img class="congress-logo" src="{{ logo_url|e('html_attr') }}" />
     </div>
     {% endif %}
     <h1 class="congress-name">
-        {{ congress.name }}
+        {{ congress.name|e }}
     </h1>
 {% endmacro %}
 
 {% if akso_congress_header_url %}
 <figure class="congress-cover-header full-width carousel">
     <p>
-        <img class="congress-cover-image" src="{{ akso_congress_header_url }}" />
+        <img class="congress-cover-image" src="{{ akso_congress_header_url|e('html_attr') }}" />
     </p>
     <p>
         {{ _self.header_contents(akso_congress_logo_url, akso_congress) }}
@@ -34,13 +34,13 @@
 {% endif %}
 <div class="congress-meta">
     <div class="congress-countdown-container">
-        <span class="congress-countdown live-countdown" data-timestamp="{{ akso_congress_start_time }}" />
+        <span class="congress-countdown live-countdown" data-timestamp="{{ akso_congress_start_time|e('html_attr') }}" />
     </div>
     <div class="congress-location-container">
-        <span class="congress-location" data-name="{{ akso_congress.locationName }}" />
+        <span class="congress-location" data-name="{{ akso_congress.locationName|e('html_attr') }}" />
     </div>
     <div class="congress-date-container">
-        <span class="congress-date-span" data-from="{{ akso_congress.dateFrom }}" data-to="{{ akso_congress.dateTo }}" />
+        <span class="congress-date-span" data-from="{{ akso_congress.dateFrom|e('html_attr') }}" data-to="{{ akso_congress.dateTo|e('html_attr') }}" />
     </div>
 </div>
 <div class="congress-registration">

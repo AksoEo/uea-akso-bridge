@@ -420,7 +420,7 @@ class AksoBridgePlugin extends Plugin {
                 $congressStartTime = \DateTime::createFromFormat("U", $firstEvent['timeFrom']);
             } else {
                 // otherwise just use noon in local time
-                $timeZone = new \DateTimeZone($res['b']['tz']);
+                $timeZone = $res['b']['tz'] ? new \DateTimeZone($res['b']['tz']) : new \DateTimeZone('+00:00');
                 $dateStr = $res['b']['dateFrom'] . ' 12:00:00';
                 $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
             }
@@ -555,7 +555,24 @@ class AksoBridgePlugin extends Plugin {
     public function onOutputGenerated(Event $event) {
         if ($this->isAdmin()) return;
         $markdownExt = $this->loadMarkdownExt();
-        $markdownExt->onOutputGenerated($event);
+        $nonces = $markdownExt->onOutputGenerated($event);
+
+        $scriptNonces = '';
+        foreach ($nonces['scripts'] as $sn) {
+            $scriptNonces .= " 'nonce-" . $sn . "'";
+        }
+        $styleNonces = '';
+        foreach ($nonces['styles'] as $sn) {
+            $styleNonces .= " 'nonce-" . $sn . "'";
+        }
+
+        $csp = [
+            "default-src 'self'",
+            "img-src 'self' " . $this->apiHost,
+            "script-src 'self' " . $scriptNonces,
+            "style-src 'self' 'unsafe-inline' " . $styleNonces,
+        ];
+        header('Content-Security-Policy: ' . implode($csp, ';'), FALSE);
     }
 
 }

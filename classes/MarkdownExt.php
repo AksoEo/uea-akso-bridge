@@ -590,6 +590,7 @@ class MarkdownExt {
         }
         $grav = $this->plugin->getGrav();
         $grav->output = $this->performHTMLPostProcessingTasks($grav->output);
+        return $this->nonces;
     }
 
     // Separates full-width figures from the rest of the content.
@@ -704,6 +705,8 @@ class MarkdownExt {
         $this->handleHTMLMagazines($document);
         $this->handleHTMLIfMembers($document);
         $this->congressFields->handleHTMLCongressStuff($document);
+
+        $this->nonces = $this->removeXSS($document);
 
         return $this->cleanupTags($document->html());
     }
@@ -1090,6 +1093,50 @@ class MarkdownExt {
                 $membersOnlyBox->appendChild(new Element('span', '.'));
             }
         }
+    }
+
+    /** Handles XSS and returns a list of nonces. */
+    protected function removeXSS($doc) {
+        // apparently, Grav allows script tags in the document body
+
+        // remove all scripts in the page content
+        $scripts = $doc->find('.page-container script');
+        foreach ($scripts as $script) {
+            $replacement = new Element('div', '<script>' . $script->text() . '</script>');
+            $replacement->class = 'illegal-script-tag';
+            $script->replace($replacement);
+        }
+
+        // make note of all other scripts
+        $scripts = $doc->find('script');
+        $snonces = [];
+        foreach ($scripts as $script) {
+            if (isset($script->src)) continue;
+            $nonce = hash('md5', random_bytes(32));
+            $script->nonce = $nonce;
+            $snonces[]= $nonce;
+        }
+
+        // styles, too
+        $styles = $doc->find('.page-container style');
+        foreach ($styles as $style) {
+            $replacement = new Element('div', '<style>' . $style->text() . '</style>');
+            $replacement->class = 'illegal-style-tag';
+            $style->replace($replacement);
+        }
+
+        $styles = $doc->find('style');
+        $cnonces = [];
+        foreach ($styles as $style) {
+            $nonce = hash('md5', random_bytes(32));
+            $style->nonce = $nonce;
+            $cnonces[] = $nonce;
+        }
+
+        return array(
+            'scripts' => $snonces,
+            'styles' => $cnonces,
+        );
     }
 
     /**

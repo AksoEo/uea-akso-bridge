@@ -169,7 +169,8 @@ class CongressFields {
         $seconds = $interval->s;
 
         $out = '';
-        $space = "\xE2";
+        $space = "⁠"; // u+2060 word joiner
+        $zspace = " "; // figure space
 
         if ($years > 0) {
             return $prefix . $years . ' jaro' . (($years > 1) ? 'j' : '');
@@ -181,11 +182,10 @@ class CongressFields {
         if ($days >= 7) {
             return $prefix . $days . ' tagoj';
         } else if ($days > 0) {
-            $out .= $days . $space . 't ';
+            $out .= $days . $space . 't' . $zspace;
         }
-        if ($days > 0 || $hours > 0) $out .= $hours . $space . 'h ';
-        if ($days > 0 || $hours > 0 || $minutes > 0) $out .= $minutes . $space . 'm ';
-        $out .= $seconds . $space . 's';
+        if ($days > 0 || $hours > 0) $out .= $hours . $space . 'h' . $zspace;
+        $out .= $minutes . $space . 'm';
         return $prefix . $out;
     }
 
