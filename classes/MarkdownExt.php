@@ -712,6 +712,7 @@ class MarkdownExt {
     }
 
     protected function handleHTMLCarousels($doc) {
+        $carouselIdCounter = 0;
         $carousels = $doc->find('figure.carousel');
         $didPassImg = false;
         foreach ($carousels as $carousel) {
@@ -776,13 +777,33 @@ class MarkdownExt {
                 $currentCaption = array();
             }
 
+            $carouselId = 'figure-carousel-pages-' . $carouselIdCounter;
+            $carouselIdCounter++;
+
+            $pagesContainer = new Element('div');
+            $pagesContainer->class = 'carousel-pages';
+            $isFirst = true;
             foreach ($pages as $ntlChild) {
                 $pageContainer = new Element('div');
                 $pageContainer->class = 'carousel-page';
                 $pageContainer->appendChild($ntlChild['img']);
                 $pageContainer->appendChild($ntlChild['caption']);
-                $carousel->appendChild($pageContainer);
+                if (trim($ntlChild['caption']->text())) {
+                    $pageContainer->class .= ' page-has-caption';
+                }
+                $pagesContainer->appendChild($pageContainer);
+
+                $radio = new Element('input');
+                $radio->class = 'carousel-page-button';
+                $radio->type = 'radio';
+                $radio->name = $carouselId;
+                if ($isFirst) {
+                    $isFirst = false;
+                    $radio->checked = '';
+                }
+                $carousel->appendChild($radio);
             }
+            $carousel->appendChild($pagesContainer);
             if (sizeof($pages) === 1) {
                 $carousel->class .= ' is-single-page';
             }
