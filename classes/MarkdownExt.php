@@ -568,7 +568,7 @@ class MarkdownExt {
 
         $markdown->addInlineType('[', 'AksoCongressField');
         $markdown->inlineAksoCongressField = function($excerpt) use ($self) {
-            if (preg_match('/^\[\[kongreso\s+(\w+)\s+(\d+)(?:\/(\d+))?\]\]/', $excerpt['text'], $matches)) {
+            if (preg_match('/^\[\[kongreso\s+([\w!]+)\s+(\d+)(?:\/(\d+))?\]\]/', $excerpt['text'], $matches)) {
                 $fieldName = strtolower($matches[1]);
                 $congress = intval($matches[2]);
                 $instance = isset($matches[3]) ? intval($matches[3]) : null;

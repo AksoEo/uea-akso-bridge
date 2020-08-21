@@ -69,6 +69,37 @@ class CongressFields {
         if ($field === 'homaid') return [array('name' => 'span', 'text' => $data['humanId'])];
         if ($field === 'komenco') return [array('name' => 'span', 'text' => $this->formatDate($data['dateFrom']))];
         if ($field === 'fino') return [array('name' => 'span', 'text' => $this->formatDate($data['dateTo']))];
+        if ($field === 'tempokalkulo' || $field === 'tempokalkulo!') {
+            $firstEventRes = $this->bridge->get('/congresses/' . $congress . '/instances/' . $instance . '/programs', array(
+                'order' => ['timeFrom.asc'],
+                'fields' => [
+                    'timeFrom',
+                ],
+                'offset' => 0,
+                'limit' => 1,
+            ), 60);
+            $congressStartTime = null;
+            if ($firstEventRes['k'] && sizeof($firstEventRes['b']) > 0) {
+                // use the start time of the first event if available
+                $firstEvent = $firstEventRes['b'][0];
+                $congressStartTime = \DateTime::createFromFormat("U", $firstEvent['timeFrom']);
+            } else {
+                // otherwise just use noon in local time
+                $timeZone = $data['tz'] ? new \DateTimeZone($data['tz']) : new \DateTimeZone('+00:00');
+                $dateStr = $data['dateFrom'] . ' 12:00:00';
+                $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
+            }
+
+            $isLarge = $field === 'tempokalkulo!';
+
+            return [array(
+                'name' => 'span',
+                'attributes' => array(
+                    'class' => 'congress-countdown live-countdown' . ($isLarge ? ' is-large' : ''),
+                    'data-timestamp' => $congressStartTime->getTimestamp(),
+                ),
+            )];
+        }
         return [array(
             'name' => 'span',
             'attributes' => array(
