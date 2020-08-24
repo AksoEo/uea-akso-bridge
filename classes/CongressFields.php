@@ -24,7 +24,8 @@ class CongressFields {
                     'name' => 'span',
                     'attributes' => array(
                         'class' => 'akso-congress-field-error',
-                        'title' => '' . $res['b'],
+                        // you would think this would be escaped but it isn't!
+                        'title' => htmlspecialchars('' . $res['b']),
                     ),
                     'text' => '[Eraro]',
                 )];
@@ -39,7 +40,8 @@ class CongressFields {
             'name' => 'span',
             'attributes' => array(
                 'class' => 'akso-congress-field-error',
-                'title' => 'nekonata kampo “' . $field . '”',
+                // you would think this would be escaped but it isn't!
+                'title' => htmlspecialchars('nekonata kampo “' . $field . '”'),
             ),
             'text' => '[Eraro]',
         )];
@@ -56,7 +58,8 @@ class CongressFields {
                     'name' => 'span',
                     'attributes' => array(
                         'class' => 'akso-congress-field-error',
-                        'title' => '' . $res['b'],
+                        // you would think this would be escaped but it isn't!
+                        'title' => htmlspecialchars('' . $res['b']),
                     ),
                     'text' => '[Eraro]',
                 )];
@@ -104,7 +107,8 @@ class CongressFields {
             'name' => 'span',
             'attributes' => array(
                 'class' => 'akso-congress-field-error',
-                'title' => 'nekonata kampo “' . $field . '”',
+                // you would think this would be escaped but it isn't!
+                'title' => htmlspecialchars('nekonata kampo “' . $field . '”'),
             ),
             'text' => '[Eraro]',
         )];
