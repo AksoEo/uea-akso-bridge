@@ -413,6 +413,11 @@ class AksoBridgePlugin extends Plugin {
         ), 60);
 
         do {
+            if (!$res['k']) {
+                $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
+                break;
+            }
+
             $congressStartTime = null;
             if ($firstEventRes['k'] && sizeof($firstEventRes['b']) > 0) {
                 // use the start time of the first event if available
@@ -423,11 +428,6 @@ class AksoBridgePlugin extends Plugin {
                 $timeZone = $res['b']['tz'] ? new \DateTimeZone($res['b']['tz']) : new \DateTimeZone('+00:00');
                 $dateStr = $res['b']['dateFrom'] . ' 12:00:00';
                 $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
-            }
-
-            if (!$res['k']) {
-                $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
-                break;
             }
 
             $twig->twig_vars['akso_congress_start_time'] = $congressStartTime->getTimestamp();

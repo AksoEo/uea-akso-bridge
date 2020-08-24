@@ -138,7 +138,7 @@ class CongressFields {
         foreach ($countdowns as $countdown) {
             $ts = $countdown->getAttribute('data-timestamp');
             $tsTime = new \DateTime();
-            $tsTime->setTimestamp($ts);
+            $tsTime->setTimestamp((int) $ts);
             $now = new \DateTime();
             $deltaInterval = $now->diff($tsTime);
 
@@ -156,6 +156,8 @@ class CongressFields {
         foreach ($dateSpans as $dateSpan) {
             $startDate = \DateTime::createFromFormat('Y-m-d', $dateSpan->getAttribute('data-from'));
             $endDate = \DateTime::createFromFormat('Y-m-d', $dateSpan->getAttribute('data-to'));
+
+            if (!$startDate || !$endDate) continue;
 
             $startYear = $startDate->format('Y');
             $endYear = $endDate->format('Y');
