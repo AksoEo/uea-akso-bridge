@@ -88,7 +88,7 @@ class CongressFields {
                 $congressStartTime = \DateTime::createFromFormat("U", $firstEvent['timeFrom']);
             } else {
                 // otherwise just use noon in local time
-                $timeZone = $data['tz'] ? new \DateTimeZone($data['tz']) : new \DateTimeZone('+00:00');
+                $timeZone = isset($data['tz']) ? new \DateTimeZone($data['tz']) : new \DateTimeZone('+00:00');
                 $dateStr = $data['dateFrom'] . ' 12:00:00';
                 $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
             }

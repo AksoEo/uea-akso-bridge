@@ -425,7 +425,7 @@ class AksoBridgePlugin extends Plugin {
                 $congressStartTime = \DateTime::createFromFormat("U", $firstEvent['timeFrom']);
             } else {
                 // otherwise just use noon in local time
-                $timeZone = $res['b']['tz'] ? new \DateTimeZone($res['b']['tz']) : new \DateTimeZone('+00:00');
+                $timeZone = isset($res['b']['tz']) ? new \DateTimeZone($res['b']['tz']) : new \DateTimeZone('+00:00');
                 $dateStr = $res['b']['dateFrom'] . ' 12:00:00';
                 $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
             }
