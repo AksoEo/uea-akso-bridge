@@ -8,6 +8,7 @@ use Grav\Common\Page\Page;
 use Grav\Common\Helpers\Excerpts;
 use Grav\Plugin\AksoBridge\MarkdownExt;
 use Grav\Plugin\AksoBridge\AppBridge;
+use Grav\Plugin\AksoBridge\CongressRegistrationForm;
 
 // TODO: pass host to bridge as Host header
 
@@ -67,6 +68,10 @@ class AksoBridgePlugin extends Plugin {
             ]);
             return;
         }
+
+        $this->enable([
+            'onPagesInitialized' => ['addPages', 0],
+        ]);
     }
 
     // add blueprints and page templates (admin page)
@@ -270,6 +275,30 @@ class AksoBridgePlugin extends Plugin {
 
     // add various pages to grav
     // i’m not sure why these work the way they do
+    public function addPages() {
+        $pages = $this->grav['pages'];
+        $currentPath = $this->grav['uri']->path();
+
+        foreach ($pages->all() as $page) {
+            if ($page->template() === 'akso_congress_instance') {
+                // you can't add more than 1 page with the same SplFileInfo, otherwise *weird*
+                // *things* will happen.
+                // so we'll only add the registration page if we're currently *on* that page
+                $regPath = $page->route() . '/alighilo';
+                if (substr($currentPath, 0, strlen($regPath)) !== $regPath) continue;
+
+                $regPage = new Page();
+                $regPage->init(new \SplFileInfo(__DIR__ . '/pages/akso_congress_registration.md'));
+                $regPage->slug(basename($regPath));
+                $regPageHeader = $regPage->header();
+                // copy congress instance id from the congress page into the sign-up page
+                $regPageHeader->congress_instance = $page->header()->congress_instance;
+                $pages->addPage($regPage, $regPath);
+                break;
+            }
+        }
+    }
+
     public function addLoginPage() {
         $pages = $this->grav['pages'];
         $page = $pages->dispatch($this->loginPath);
@@ -322,7 +351,7 @@ class AksoBridgePlugin extends Plugin {
         $post = !empty($_POST) ? $_POST : [];
 
         $templateId = $this->grav['page']->template();
-        if ($templateId === 'akso_congress_instance') {
+        if ($templateId === 'akso_congress_instance' || $templateId === 'akso_congress_registration') {
             $head = $this->grav['page']->header();
             $congressId = null;
             $instanceId = null;
@@ -334,7 +363,9 @@ class AksoBridgePlugin extends Plugin {
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
             }
-            $this->handleCongressVariables($congressId, $instanceId);
+
+            $isRegistration = $templateId === 'akso_congress_registration';
+            $this->handleCongressVariables($congressId, $instanceId, $isRegistration);
         }
 
         if ($this->grav['uri']->path() === $this->loginPath) {
@@ -385,7 +416,7 @@ class AksoBridgePlugin extends Plugin {
         }
     }
 
-    private function handleCongressVariables($congressId, $instanceId) {
+    private function handleCongressVariables($congressId, $instanceId, $isRegistration) {
         $app = new AppBridge($this->grav);
         $app->open();
         $head = $this->grav['page']->header();
@@ -417,6 +448,8 @@ class AksoBridgePlugin extends Plugin {
                 $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
                 break;
             }
+
+            $twig->twig_vars['akso_congress_registration_link'] = $this->grav['page']->route() . '/alighilo';
 
             $congressStartTime = null;
             if ($firstEventRes['k'] && sizeof($firstEventRes['b']) > 0) {
@@ -457,6 +490,41 @@ class AksoBridgePlugin extends Plugin {
                 $twig->twig_vars['akso_congress_logo_url'] = $imageUrl;
             }
         } while (false);
+
+        $regFormFields = ['allowUse', 'allowGuests'];
+        if ($isRegistration) {
+            $regFormFields []= 'price.currency';
+            $regFormFields []= 'price.var';
+            $regFormFields []= 'price.minUpfront';
+            $regFormFields []= 'form';
+        }
+        $formRes = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/registration_form', array(
+            'fields' => $regFormFields
+        ), 60);
+        if ($formRes['k']) {
+            // registration form exists
+            $twig->twig_vars['akso_congress_registration_enabled'] = true;
+            $twig->twig_vars['akso_congress_registration_allowed'] = $formRes['b']['allowUse'];
+            $twig->twig_vars['akso_congress_registration_guest_not_allowed'] = !$formRes['b']['allowGuests'] && !$this->aksoUser;
+
+            if ($isRegistration && !$formRes['b']['allowGuests'] && !$this->aksoUser) {
+                // user needs to log in to use this!
+                $this->grav->redirectLangSafe($this->loginPath, 303);
+            }
+
+            if ($isRegistration) {
+                $currency = null;
+                if ($formRes['b']['price']) {
+                    $currency = $formRes['b']['price']['currency'];
+                }
+
+                $formRenderer = new CongressRegistrationForm($formRes['b']['form'], $currency);
+                $twig->twig_vars['akso_congress_registration_form'] = $formRenderer->render();
+            }
+        } else {
+            // no registration form
+            $twig->twig_vars['akso_congress_registration_enabled'] = false;
+        }
 
         $app->close();
     }

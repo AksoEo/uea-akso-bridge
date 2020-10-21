@@ -1,0 +1,21 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+    {% if akso_congress_error %}
+        <div class="error-banner">
+            {{ akso_congress_error|e }}
+        </div>
+    {% endif %}
+    {% if akso_congress_registration_enabled %}
+    <form id="akso-congress-registration-form" method="POST">
+        <div class="registration-congress-name">
+            {{ akso_congress.name|e }}
+        </div>
+        {{ akso_congress_registration_form }}
+    </form>
+    {% else %}
+    <h2>
+        {{ akso_congress.name|e }}
+    </h2>
+    La aliĝilo ankoraŭ ne pretas
+    {% endif %}
+{% endblock %}
