@@ -513,6 +513,8 @@ class AksoBridgePlugin extends Plugin {
             }
 
             if ($isRegistration) {
+                $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
+
                 $currency = null;
                 if ($formRes['b']['price']) {
                     $currency = $formRes['b']['price']['currency'];

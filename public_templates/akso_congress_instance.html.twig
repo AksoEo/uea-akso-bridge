@@ -50,19 +50,15 @@
     {% set reg_disabled = 'disabled title="Ne plu eblas aliĝi"' %}
     {% endif %}
     {% if akso_congress_registration_guest_not_allowed %}
-    <a class="congress-registration-button-link" href="{{ akso_congress_registration_link|e('html_attr') }}">
-        <button {{ reg_disabled }} class="congress-registration-button needs-login">
-            Ensaluti aŭ registriĝi por aliĝi
-            <span class="registration-icon" />
-        </button>
+    <a {{ reg_disabled }} class="link-button congress-registration-button needs-login" href={{ akso_congress_registration_link|e('html_attr') }}>
+        Ensaluti aŭ registriĝi por aliĝi
+        <span class="registration-icon" />
     </a>
     {% else %}
-    <a class="congress-registration-button-link" href="{{ akso_congress_registration_link|e('html_attr') }}">
-        <button {{ reg_disabled }} class="is-primary congress-registration-button">
-            Aliĝi
-            {# Vidi vian aliĝon #}
-            <span class="registration-icon" />
-        </button>
+    <a {{ reg_disabled }} class="link-button is-primary congress-registration-button" href={{ akso_congress_registration_link|e('html_attr') }}>
+        Aliĝi
+        {# Vidi vian aliĝon #}
+        <span class="registration-icon" />
     </a>
     {% endif %}
 </div>

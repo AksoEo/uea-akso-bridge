@@ -6,11 +6,14 @@
         </div>
     {% endif %}
     {% if akso_congress_registration_enabled %}
-    <form id="akso-congress-registration-form" method="POST">
+    <form class="registration-form" id="akso-congress-registration-form" method="POST">
         <div class="registration-congress-name">
             {{ akso_congress.name|e }}
         </div>
         {{ akso_congress_registration_form }}
+        <div class="form-footer">
+            <button type="submit">Sendi</button>
+        </div>
     </form>
     {% else %}
     <h2>

@@ -5,17 +5,23 @@ class CongressRegistrationForm {
     private $form;
     private $currency;
     private $doc;
+    private $parsedown;
     public function __construct($form, $currency) {
         $this->form = $form;
         $this->currency = $currency;
         $this->doc = new \DOMDocument();
+        $this->parsedown = new \Parsedown();
+        // $this->parsedown->setSafeMode(true); // this does not work
     }
 
     function renderInputItem($item) {
         $root = $this->doc->createElement('div');
-        $root->setAttribute('class', 'form-item form-input-item');
+        $root->setAttribute('class', 'form-field form-item form-input-item');
         $root->setAttribute('data-name', $item['name']);
         $root->setAttribute('data-type', $item['type']);
+
+        $data = $this->doc->createElement('div');
+        $data->setAttribute('class', 'form-data');
 
         $ty = $item['type'];
         $name = $item['name'];
@@ -25,11 +31,10 @@ class CongressRegistrationForm {
         $label->textContent = $item['label'];
         $label->setAttribute('for', $inputId);
 
-        // TODO: render markdown
         $description = null;
         if ($item['description']) {
             $description = $this->doc->createElement('p');
-            $description->textContent = $item['description'];
+            $this->setInnerHTML($description, $this->parsedown->text($item['description']));
         }
 
         // only add 'required' server-side if it's guaranteed to be true
@@ -37,7 +42,7 @@ class CongressRegistrationForm {
         if ($required) {
             $req = $this->doc->createElement('span');
             $req->setAttribute('class', 'label-required');
-            $req->textContent = '*';
+            $req->textContent = ' *';
             $label->appendChild($req);
         }
         $disabled = $item['disabled'] === true;
@@ -56,8 +61,12 @@ class CongressRegistrationForm {
             $root->appendChild($label);
             if ($description) $root->appendChild($description);
         } else {
-            $root->appendChild($label);
+            $labelContainer = $this->doc->createElement('div');
+            $labelContainer->setAttribute('class', 'form-label');
+            $labelContainer->appendChild($label);
+            $root->appendChild($labelContainer);
             if ($description) $root->appendChild($description);
+            $root->appendChild($data);
         }
 
         if ($ty === 'number') {
@@ -73,7 +82,7 @@ class CongressRegistrationForm {
             } else {
                 $input->setAttribute('type', 'number');
             }
-            $root->appendChild($input);
+            $data->appendChild($input);
         } else if ($ty === 'text') {
             $input = $this->doc->createElement('input');
             $input->setAttribute('id', $inputId);
@@ -85,7 +94,7 @@ class CongressRegistrationForm {
             if ($item['minLength'] !== null) $input->setAttribute('minLength', $item['minLength']);
             if ($item['maxLength'] !== null) $input->setAttribute('maxLength', $item['maxLength']);
             // TODO: CH Autofill
-            $root->appendChild($input);
+            $data->appendChild($input);
         } else if ($ty === 'money') {
             $input = $this->doc->createElement('input');
             $input->setAttribute('id', $inputId);
@@ -96,7 +105,7 @@ class CongressRegistrationForm {
             if ($item['min'] !== null) $input->setAttribute('max', $item['min']);
             if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
-            $root->appendChild($input);
+            $data->appendChild($input);
         } else if ($ty === 'enum') {
             if ($item['variant'] === 'select') {
                 $input = $this->doc->createElement('select');
@@ -122,7 +131,7 @@ class CongressRegistrationForm {
                     $input->appendChild($node);
                 }
 
-                $root->appendChild($input);
+                $data->appendChild($input);
             } else {
                 $group = $this->doc->createElement('ul');
                 $group->setAttribute('class', 'radio-group');
@@ -150,11 +159,130 @@ class CongressRegistrationForm {
                     $group->appendChild($li);
                 }
 
-                $root->appendChild($group);
+                $data->appendChild($group);
             }
+        } else if ($ty === 'country') {
+            // TODO: this one
+        } else if ($ty === 'date') {
+            $input = $this->doc->createElement('input');
+            $input->setAttribute('id', $inputId);
+            $input->setAttribute('name', $name);
+            $input->setAttribute('type', 'date');
+            if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
+            if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            // TODO: CH autofill
+            $data->appendChild($input);
+        } else if ($ty === 'time') {
+            $input = $this->doc->createElement('input');
+            $input->setAttribute('id', $inputId);
+            $input->setAttribute('name', $name);
+            $input->setAttribute('type', 'time');
+            if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
+            if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            $data->appendChild($input);
+        } else if ($ty === 'datetime') {
+            $input = $this->doc->createElement('input');
+            $input->setAttribute('id', $inputId);
+            $input->setAttribute('name', $name);
+            $input->setAttribute('type', 'datetime-local');
+            $tz = 'UTC';
+            if ($item['tz']) $tz = $item['tz'];
+            try {
+                $tz = new \DateTimeZone($tz);
+            } catch (\Exception $e) {
+                $tz = new \DateTimeZone('UTC');
+            }
+
+            if ($item['min'] !== null) {
+                try {
+                    $epoch = $item['min'];
+                    $dateTime = new \DateTime("@$epoch");
+                    $dateTime->setTimezone($tz);
+                    $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i:s');
+
+                    $input->setAttribute('min', $formatted);
+                } catch (\Exception $e) {}
+            }
+            if ($item['max'] !== null) {
+                try {
+                    $epoch = $item['max'];
+                    $dateTime = new \DateTime("@$epoch");
+                    $dateTime->setTimezone($tz);
+                    $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i:s');
+
+                    $input->setAttribute('max', $item['max']);
+                } catch (\Exception $e) {}
+            }
+            $data->appendChild($input);
+        } else if ($ty === 'boolean_table') {
+            $table = $this->doc->createElement('table');
+            $table->setAttribute('id', $inputId);
+
+            if ($item['minSelect']) {
+                $table->setAttribute('data-min-select', $item['minSelect']);
+            }
+            if ($item['maxSelect']) {
+                $table->setAttribute('data-max-select', $item['maxSelect']);
+            }
+
+            if ($item['headerTop'] !== null) {
+                $head = $this->doc->createElement('thead');
+                $tr = $this->doc->createElement('tr');
+                if ($item['headerLeft'] !== null) {
+                    $space = $this->doc->createElement('th');
+                    $tr->appendChild($space);
+                }
+                for ($i = 0; $i < $item['cols']; $i++) {
+                    $th = $this->doc->createElement('th');
+                    $th->textContent = $item['headerTop'][$i];
+                    $tr->appendChild($th);
+                }
+                $head->appendChild($tr);
+                $table->appendChild($head);
+            }
+            $excludedCells = [];
+            if ($item['excludeCells'] !== null) {
+                foreach ($item['excludeCells'] as $xy) {
+                    $excludedCells []= $xy[0] . '-' . $xy[1];
+                }
+            }
+
+            $tbody = $this->doc->createElement('tbody');
+            for ($i = 0; $i < $item['rows']; $i++) {
+                $tr = $this->doc->createElement('tr');
+
+                if ($item['headerLeft'] !== null) {
+                    $th = $this->doc->createElement('th');
+                    $th->textContent = $item['headerLeft'][$i];
+                    $tr->appendChild($th);
+                }
+
+                for ($j = 0; $j < $item['cols']; $j++) {
+                    $td = $this->doc->createElement('td');
+
+                    $isExcluded = in_array($j . '-' . $i, $excludedCells);
+                    if (!$isExcluded) {
+                        $box = $this->doc->createElement('input');
+                        $box->setAttribute('type', 'checkbox');
+                        $box->setAttribute('name', $name . '--' . $j . '-' . $i);
+                        $td->appendChild($box);
+                    }
+
+                    $tr->appendChild($td);
+                }
+                $tbody->appendChild($tr);
+            }
+            $table->appendChild($tbody);
+            $data->appendChild($table);
         }
 
         return $root;
+    }
+
+    function setInnerHTML($node, $html) {
+        $fragment = $node->ownerDocument->createDocumentFragment();
+        $fragment->appendXML($html);
+        $node->appendChild($fragment);
     }
 
     function renderTextItem($item) {
@@ -162,8 +290,7 @@ class CongressRegistrationForm {
         $root->setAttribute('class', 'form-item form-text-item');
         if (gettype($item['text']) === 'string') {
             // plain text
-            // TODO: render markdown
-            $root->textContent = $item['text'];
+            $this->setInnerHTML($root, $this->parsedown->text($item['text']));
         } else {
             $root->setAttribute('data-script', base64_encode(json_encode($item['text'])));
         }
