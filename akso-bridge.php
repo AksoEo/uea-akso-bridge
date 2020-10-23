@@ -28,6 +28,9 @@ class AksoBridgePlugin extends Plugin {
         ];
     }
 
+    const CONGRESS_REGISTRATION_PATH = 'alighilo';
+    const CONGRESS_REGISTRATION_DATAID = 'dataId';
+
     // allow access to protected property
     public function getGrav() {
         return $this->grav;
@@ -284,7 +287,7 @@ class AksoBridgePlugin extends Plugin {
                 // you can't add more than 1 page with the same SplFileInfo, otherwise *weird*
                 // *things* will happen.
                 // so we'll only add the registration page if we're currently *on* that page
-                $regPath = $page->route() . '/alighilo';
+                $regPath = $page->route() . '/' . self::CONGRESS_REGISTRATION_PATH;
                 if (substr($currentPath, 0, strlen($regPath)) !== $regPath) continue;
 
                 $regPage = new Page();
@@ -514,14 +517,35 @@ class AksoBridgePlugin extends Plugin {
 
             if ($isRegistration) {
                 $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
+                $dataId = null;
+                if (isset($_GET[self::CONGRESS_REGISTRATION_DATAID])) {
+                    $dataId = $_GET[self::CONGRESS_REGISTRATION_DATAID];
+                }
+                $userData = null;
+                // TODO: fetch user data
 
                 $currency = null;
                 if ($formRes['b']['price']) {
                     $currency = $formRes['b']['price']['currency'];
                 }
+                $form = new CongressRegistrationForm($app, $formRes['b']['form'], $currency);
 
-                $formRenderer = new CongressRegistrationForm($formRes['b']['form'], $currency);
-                $twig->twig_vars['akso_congress_registration_form'] = $formRenderer->render();
+                if ($userData) {
+                    $form->setUserData($userData);
+                }
+
+                $isSubmission = $_SERVER['REQUEST_METHOD'] === 'POST';
+
+                if ($isSubmission) {
+                    $post = !empty($_POST) ? $_POST : [];
+                    $form->trySubmit($post);
+                }
+
+                if ($form->redirectStatus !== null) {
+                    $this->grav->redirectLangSafe($form->redirectTarget, $form->redirectStatus);
+                }
+
+                $twig->twig_vars['akso_congress_registration_form'] = $form->render();
             }
         } else {
             // no registration form

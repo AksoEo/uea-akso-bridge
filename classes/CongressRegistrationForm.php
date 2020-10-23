@@ -2,16 +2,116 @@
 namespace Grav\Plugin\AksoBridge;
 
 class CongressRegistrationForm {
+    const DATA_VAR_NAME = 'form_data';
+
+    private $app;
     private $form;
     private $currency;
     private $doc;
     private $parsedown;
-    public function __construct($form, $currency) {
+    public function __construct($app, $form, $currency) {
+        $this->app = $app;
         $this->form = $form;
         $this->currency = $currency;
         $this->doc = new \DOMDocument();
         $this->parsedown = new \Parsedown();
         // $this->parsedown->setSafeMode(true); // this does not work
+    }
+
+    public $redirectStatus = null;
+    public $redirectTarget = null;
+
+    // User data in API format
+    private $data = null;
+
+    // List of errors. Map<field name (string), string>
+    private $errors = [];
+    // Top-level error
+    private $error = null;
+
+    // Sets user data from API data.
+    public function setUserData($apiData) {
+        $this->data = $apiData;
+    }
+
+    /// Reads input field data from POST.
+    /// Only validates types.
+    function readInputFieldFromPost($item, $data) {
+        $ty = $item['type'];
+        $out = null;
+
+        if ($ty === 'boolean') $out = (bool) $data;
+        else if ($ty === 'number') $out = $data === "" ? null : floatval($data);
+        else if ($ty === 'text') $out = $data === "" ? null : strval($data);
+        else if ($ty === 'money') $out = $data === "" ? null : intval($data);
+        else if ($ty === 'enum') $out = $data === "" ? null : strval($data);
+        else if ($ty === 'country') $out = $data === "" ? null : strval($$data);
+        else if ($ty === 'date') $out = $data === "" ? null : strval($data);
+        else if ($ty === 'time') $out = $data === "" ? null : strval($data);
+        else if ($ty === 'datetime') {
+            if ($data !== "") {
+                $tz = 'UTC';
+                if ($item['tz']) $tz = $item['tz'];
+                try {
+                    $tz = new \DateTimeZone($tz);
+                } catch (\Exception $e) {
+                    $tz = new \DateTimeZone('UTC');
+                }
+                $dtFormat = 'Y-m-d\\TH:i:s';
+                $date = \DateTime::createFromFormat($dtFormat, strval($data), $tz);
+                if ($date !== false) {
+                    $out = $date->getTimestamp();
+                }
+            }
+        } else if ($ty === 'boolean_table') {
+            $out = [];
+            for ($i = 0; $i < $item['rows']; $i++) {
+                $row = [];
+                for ($j = 0; $j < $item['cols']; $j++) {
+                    $cellValue = false;
+                    if (isset($data[$j]) && isset($data[$j][$i])) {
+                        $cellValue = (bool) $data[$j][$i];
+                    }
+                    $row[] = $cellValue;
+                }
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    function loadPostData($data) {
+        $this->data = [];
+
+        foreach ($this->form as $item) {
+            if ($item['el'] === 'input') {
+                $name = $item['name'];
+                $fieldData = null;
+                if (isset($data[$name])) {
+                    $fieldData = $data[$name];
+                }
+
+                $res = $this->readInputFieldFromPost($item, $fieldData);
+                $this->data[$name] = $res;
+            } else if ($item['el'] === 'script') {
+                // TODO: run script
+                // if exec fails/takes too long, simply assume valid and defer to server
+            }
+        }
+
+        // everything ok
+        return true;
+    }
+
+    // Attempts to submit the form with the given POST data.
+    public function trySubmit($post) {
+        if (isset($post[self::DATA_VAR_NAME])) {
+            $isOk = $this->loadPostData($post[self::DATA_VAR_NAME]);
+            // TODO
+        } else {
+            // no data, pretend nothing was sent (do nothing)
+        }
     }
 
     function renderInputItem($item) {
@@ -24,8 +124,11 @@ class CongressRegistrationForm {
         $data->setAttribute('class', 'form-data');
 
         $ty = $item['type'];
-        $name = $item['name'];
+        $name = self::DATA_VAR_NAME . '[' . $item['name'] . ']';
         $inputId = 'form-' . $item['name'];
+
+        $value = null;
+        if ($this->data && isset($this->data[$item['name']])) $value = $this->data[$item['name']];
 
         $label = $this->doc->createElement('label');
         $label->textContent = $item['label'];
@@ -55,6 +158,7 @@ class CongressRegistrationForm {
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
             $input->setAttribute('type', 'checkbox');
+            if ($value) $input->setAttribute('checked', '');
             if ($disabled) $input->setAttribute('disabled', '');
 
             $root->appendChild($input);
@@ -82,6 +186,7 @@ class CongressRegistrationForm {
             } else {
                 $input->setAttribute('type', 'number');
             }
+            if ($value !== null) $input->setAttribute('value', $value);
             $data->appendChild($input);
         } else if ($ty === 'text') {
             $input = $this->doc->createElement('input');
@@ -93,6 +198,7 @@ class CongressRegistrationForm {
             if ($item['patternError'] !== null) $input->setAttribute('data-pattern-error', $item['patternError']);
             if ($item['minLength'] !== null) $input->setAttribute('minLength', $item['minLength']);
             if ($item['maxLength'] !== null) $input->setAttribute('maxLength', $item['maxLength']);
+            if ($value !== null) $input->setAttribute('value', $value);
             // TODO: CH Autofill
             $data->appendChild($input);
         } else if ($ty === 'money') {
@@ -105,6 +211,7 @@ class CongressRegistrationForm {
             if ($item['min'] !== null) $input->setAttribute('max', $item['min']);
             if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            if ($value !== null) $input->setAttribute('value', $value);
             $data->appendChild($input);
         } else if ($ty === 'enum') {
             if ($item['variant'] === 'select') {
@@ -128,6 +235,7 @@ class CongressRegistrationForm {
                         // TODO: handle onlyExisting
                         $node->setAttribute('disabled', '');
                     }
+                    if ($value === $option['value']) $node->setAttribute('selected', '');
                     $input->appendChild($node);
                 }
 
@@ -148,6 +256,7 @@ class CongressRegistrationForm {
                     $radio->setAttribute('type', 'radio');
                     $radio->setAttribute('name', $name);
                     $radio->setAttribute('id', $radioId);
+                    if ($value === $option['value']) $radio->setAttribute('checked', '');
                     if ($option['disabled']) $radio->setAttribute('disabled', '');
                     $li->appendChild($radio);
 
@@ -170,6 +279,7 @@ class CongressRegistrationForm {
             $input->setAttribute('type', 'date');
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            if ($value !== null) $input->setAttribute('value', $value);
             // TODO: CH autofill
             $data->appendChild($input);
         } else if ($ty === 'time') {
@@ -179,6 +289,7 @@ class CongressRegistrationForm {
             $input->setAttribute('type', 'time');
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            if ($value !== null) $input->setAttribute('value', $value);
             $data->appendChild($input);
         } else if ($ty === 'datetime') {
             $input = $this->doc->createElement('input');
@@ -212,6 +323,12 @@ class CongressRegistrationForm {
 
                     $input->setAttribute('max', $item['max']);
                 } catch (\Exception $e) {}
+            }
+            if ($value !== null) {
+                $dateTime = new \DateTime("@$value");
+                $dateTime->setTimezone($tz);
+                $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i:s');
+                $input->setAttribute('value', $formatted);
             }
             $data->appendChild($input);
         } else if ($ty === 'boolean_table') {
@@ -264,7 +381,9 @@ class CongressRegistrationForm {
                     if (!$isExcluded) {
                         $box = $this->doc->createElement('input');
                         $box->setAttribute('type', 'checkbox');
-                        $box->setAttribute('name', $name . '--' . $j . '-' . $i);
+                        $box->setAttribute('name', $name . '[' . $j . '][' . $i . ']');
+                        if ($value !== null && $value[$i][$j]) $box->setAttribute('checked', '');
+
                         $td->appendChild($box);
                     }
 
