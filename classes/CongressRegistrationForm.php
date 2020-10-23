@@ -9,12 +9,14 @@ class CongressRegistrationForm {
     private $currency;
     private $doc;
     private $parsedown;
-    public function __construct($app, $form, $currency) {
+    private $locale;
+    public function __construct($locale, $app, $form, $currency) {
         $this->app = $app;
         $this->form = $form;
         $this->currency = $currency;
         $this->doc = new \DOMDocument();
         $this->parsedown = new \Parsedown();
+        $this->locale = $locale['registration_form'];
         // $this->parsedown->setSafeMode(true); // this does not work
     }
 
@@ -61,6 +63,8 @@ class CongressRegistrationForm {
                 $date = \DateTime::createFromFormat($dtFormat, strval($data), $tz);
                 if ($date !== false) {
                     $out = $date->getTimestamp();
+                } else {
+                    $this->errors[$item['name']] = $this->localize('err_datetime_fmt');
                 }
             }
         } else if ($ty === 'boolean_table') {
@@ -94,21 +98,158 @@ class CongressRegistrationForm {
 
                 $res = $this->readInputFieldFromPost($item, $fieldData);
                 $this->data[$name] = $res;
-            } else if ($item['el'] === 'script') {
-                // TODO: run script
-                // if exec fails/takes too long, simply assume valid and defer to server
+            }
+        }
+    }
+
+    function localize($key, ...$params) {
+        if (count($params)) {
+            $out = '';
+            $i = 0;
+            foreach ($params as $p) {
+                $out .= $this->locale[$key . '_' . $i];
+                $out .= $p;
+                $i++;
+            }
+            $out .= $this->locale[$key . '_' . $i];
+            return $out;
+        }
+        return $this->locale[$key];
+    }
+
+    function getFieldError($scriptCtx, $item, $value) {
+        if (isset($this->errors[$item['name']])) {
+            // error already exists (possibly from loadPostData)
+            return $this->errors[$item['name']];
+        }
+
+        $ty = $item['type'];
+        $req = $item['required'];
+
+        if (gettype($req) !== 'boolean') {
+            // AKSO script
+            // TODO: evaluate scripts
+            $req = "actual value goes here";
+        }
+
+        if ($req && $value === null) {
+            // field is required!
+            return $this->localize('err_field_is_required');
+        }
+
+        if ($value !== null) {
+            if ($ty === 'boolean') {
+                if ($req && !$value) {
+                    // booleans are special: required means they must be true
+                    return $this->localize('err_field_is_required');
+                }
+            } else if ($ty === 'number') {
+                if ($item['step'] !== null) {
+                    if ($value % $item['step'] !== 0) {
+                        return $this->localize('err_number_step', $item['step']);
+                    }
+                }
+
+                $fulfillsMin = true;
+                $fulfillsMax = true;
+                if ($item['min'] !== null) {
+                    $fulfillsMin = $value >= $item['min'];
+                }
+                if ($item['max'] !== null) {
+                    $fulfillsMax = $value <= $item['max'];
+                }
+
+                if ($item['min'] !== null && $item['max'] !== null) {
+                    if (!$fulfillsMin || !$fulfillsMax) {
+                        return $this->localize('err_number_range', $item['min'], $item['max']);
+                    }
+                } else if (!$fulfillsMin) {
+                    return $this->localize('err_number_min', $item['min']);
+                } else if (!$fulfillsMax) {
+                    return $this->localize('err_number_max', $item['max']);
+                }
+            } else if ($ty === 'text') {
+                // TODO: validate pattern, length
+            } else if ($ty === 'money') {
+                if ($item['step'] !== null) {
+                    if ($value % $item['step'] !== 0) {
+                        return $this->localize('err_money_step', $item['step']);
+                    }
+                }
+
+                $min = $item['min'] === null ? 0 : $item['min'];
+
+                $fulfillsMin = $value >= $min;
+                $fulfillsMax = ($item['max'] !== null) ? ($value <= $item['max']) : true;
+
+                if ($item['max'] !== null && (!$fulfillsMin || !$fulfillsMax)) {
+                    return $this->localize('err_money_range', $min, $item['max']);
+                } else if (!$fulfillsMin) {
+                    return $this->localize('err_money_min', $min);
+                }
+            } else if ($ty === 'enum') {
+                $found = false;
+                foreach ($item['options'] as $option) {
+                    if ($option['value'] === $value) {
+                        $found = true;
+                        break;
+                    }
+                }
+
+                if (!$found) return $this->localize('err_enum_not_in_set');
+            } else if ($ty === 'country') {
+                // TODO: validate value in options
+            } else if ($ty === 'date') {
+                // TODO: validate date format + date range
+            } else if ($ty === 'time') {
+                // TODO: validate time format + time range
+            } else if ($ty === 'datetime') {
+                // TODO: validate datetime range
+            } else if ($ty === 'boolean_table') {
+                // TODO: validate min/max select
             }
         }
 
-        // everything ok
-        return true;
+        return null; // everything ok
+    }
+
+    // Validates form data.
+    // Assumes every field exists in $this->data.
+    function validateData() {
+        if ($this->data === null) return;
+        $ok = true;
+        $scriptCtx = [];
+
+        foreach ($this->form as $item) {
+            if ($item['el'] === 'input') {
+                $value = $this->data[$item['name']];
+                $fieldError = $this->getFieldError($scriptCtx, $item, $value);
+                if ($fieldError) $ok = false;
+                $this->errors[$item['name']] = $fieldError;
+
+                $scriptCtx []= array(
+                    'type' => 'input',
+                    'value' => $value,
+                );
+            } else if ($item['el'] === 'script') {
+                $scriptCtx []= array(
+                    'type' => 'script',
+                    'defs' => $item['script'],
+                );
+            }
+        }
+
+        return $ok;
     }
 
     // Attempts to submit the form with the given POST data.
     public function trySubmit($post) {
         if (isset($post[self::DATA_VAR_NAME])) {
-            $isOk = $this->loadPostData($post[self::DATA_VAR_NAME]);
-            // TODO
+            $this->loadPostData($post[self::DATA_VAR_NAME]);
+            $isOk = $this->validateData();
+            if ($isOk) {
+                // TODO: submit
+            }
         } else {
             // no data, pretend nothing was sent (do nothing)
         }
@@ -150,7 +291,7 @@ class CongressRegistrationForm {
         }
         $disabled = $item['disabled'] === true;
 
-        // TODO: run eval with default form var values to get all defaults etc
+        // TODO: run eval with default/current form var values to get all defaults etc
 
         if ($ty === 'boolean') {
             $label->setAttribute('class', 'form-label is-boolean-label');
@@ -171,6 +312,14 @@ class CongressRegistrationForm {
             $root->appendChild($labelContainer);
             if ($description) $root->appendChild($description);
             $root->appendChild($data);
+        }
+
+        if (isset($this->errors[$item['name']])) {
+            $fieldError = $this->errors[$item['name']];
+            $err = $this->doc->createElement('div');
+            $err->setAttribute('class', 'field-error');
+            $err->textContent = $fieldError;
+            $root->appendChild($err);
         }
 
         if ($ty === 'number') {

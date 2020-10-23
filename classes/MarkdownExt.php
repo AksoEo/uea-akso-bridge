@@ -1099,7 +1099,7 @@ class MarkdownExt {
             $membersOnlyBox->appendChild(new Element('div', 'Tiu ĉi enhavo estas nur videbla por membroj.'));
 
             $loginLink = new Element('a', 'Ensalutu');
-            $signUpLink = new Element('a', $isLoggedIn ? 'Al la aliĝilo' : 'al la aliĝilo');
+            $signUpLink = new Element('a', $isLoggedIn ? 'Aliĝi kiel membro de UEA' : 'aliĝu kiel membro de UEA');
 
             $loginLink->href = $this->plugin->loginPath;
             $signUpLink->href = 'TODO'; // TODO: this link
@@ -1109,7 +1109,7 @@ class MarkdownExt {
                 $membersOnlyBox->appendChild($signUpLink);
             } else {
                 $membersOnlyBox->appendChild($loginLink);
-                $membersOnlyBox->appendChild(new Element('span', ' se vi jam havas konton ĉe UEA. Alie, iru '));
+                $membersOnlyBox->appendChild(new Element('span', ' se vi jam havas konton ĉe UEA. Alie, '));
                 $membersOnlyBox->appendChild($signUpLink);
                 $membersOnlyBox->appendChild(new Element('span', '.'));
             }

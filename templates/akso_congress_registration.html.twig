@@ -10,10 +10,20 @@
         <div class="registration-congress-name">
             {{ akso_congress.name|e }}
         </div>
+        {% if akso_congress_registration_not_found %}
+        <div class="registration-error">
+            {{akso_locale.registration_form.user_data_not_found}}
+        </div>
+        {% elseif akso_congress_registration_generic_error %}
+        <div class="registration-error">
+            {{akso_locale.registration_form.user_data_generic_error}}
+        </div>
+        {% else %}
         {{ akso_congress_registration_form }}
         <div class="form-footer">
             <button type="submit">Sendi</button>
         </div>
+        {% endif %}
     </form>
     {% else %}
     <h2>

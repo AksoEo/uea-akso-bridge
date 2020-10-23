@@ -22,3 +22,18 @@ form.registration-form .form-footer {
     padding: 1em;
     text-align: right;
 }
+form.registration-form .registration-error {
+    background: var(--error-bg);
+    color: var(--error-fg);
+    border-radius: var(--radius);
+    margin-bottom: 1em;
+    padding: 0.5em 1em;
+}
+form.registration-form .field-error {
+    background: var(--error-bg);
+    color: var(--error-fg);
+    border-radius: var(--radius);
+    font-size: 0.9em;
+    margin-top: 0.3em;
+    padding: 0.3em 1em;
+}

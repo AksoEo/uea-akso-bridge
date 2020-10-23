@@ -36,11 +36,15 @@ class AksoBridgePlugin extends Plugin {
         return $this->grav;
     }
 
+    public $locale;
+
     // called at the beginning at some point
     public function onPluginsInitialized() {
         require_once __DIR__ . '/vendor/autoload.php';
         require_once __DIR__ . '/aksobridged/php/vendor/autoload.php';
         require_once __DIR__ . '/aksobridged/php/src/AksoBridge.php';
+
+        $this->locale = parse_ini_file(dirname(__FILE__) . '/locale.ini', true);
 
         // get request uri
         $uri = $this->grav['uri'];
@@ -353,6 +357,8 @@ class AksoBridgePlugin extends Plugin {
         $state = $this->pageState;
         $post = !empty($_POST) ? $_POST : [];
 
+        $twig->twig_vars['akso_locale'] = $this->locale;
+
         $templateId = $this->grav['page']->template();
         if ($templateId === 'akso_congress_instance' || $templateId === 'akso_congress_registration') {
             $head = $this->grav['page']->header();
@@ -522,30 +528,56 @@ class AksoBridgePlugin extends Plugin {
                     $dataId = $_GET[self::CONGRESS_REGISTRATION_DATAID];
                 }
                 $userData = null;
-                // TODO: fetch user data
+                $userDataError = null;
 
-                $currency = null;
-                if ($formRes['b']['price']) {
-                    $currency = $formRes['b']['price']['currency'];
-                }
-                $form = new CongressRegistrationForm($app, $formRes['b']['form'], $currency);
-
-                if ($userData) {
-                    $form->setUserData($userData);
-                }
-
-                $isSubmission = $_SERVER['REQUEST_METHOD'] === 'POST';
-
-                if ($isSubmission) {
-                    $post = !empty($_POST) ? $_POST : [];
-                    $form->trySubmit($post);
-                }
-
-                if ($form->redirectStatus !== null) {
-                    $this->grav->redirectLangSafe($form->redirectTarget, $form->redirectStatus);
+                if ($dataId) {
+                    $fields = [];
+                    foreach ($formRes['b']['form'] as $formItem) {
+                        if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
+                    }
+                    $res = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/participants/' . $dataId, array(
+                        'fields' => $fields,
+                    ));
+                    // TODO: fetch other fields too, do something with them...?
+                    if ($res['k']) {
+                        $userData = $res['b']['data'];
+                    } else {
+                        $userDataError = $res;
+                    }
                 }
 
-                $twig->twig_vars['akso_congress_registration_form'] = $form->render();
+                if ($userDataError) {
+                    $twig->twig_vars['akso_congress_registration_form'] = "";
+                    if ($userDataError['sc'] === 404) {
+                        // not found
+                        $twig->twig_vars['akso_congress_registration_not_found'] = true;
+                    } else {
+                        $twig->twig_vars['akso_congress_registration_generic_error'] = true;
+                    }
+                } else {
+                    $currency = null;
+                    if ($formRes['b']['price']) {
+                        $currency = $formRes['b']['price']['currency'];
+                    }
+                    $form = new CongressRegistrationForm($this->locale, $app, $formRes['b']['form'], $currency);
+
+                    if ($userData) {
+                        $form->setUserData($userData);
+                    }
+
+                    $isSubmission = $_SERVER['REQUEST_METHOD'] === 'POST';
+
+                    if ($isSubmission) {
+                        $post = !empty($_POST) ? $_POST : [];
+                        $form->trySubmit($post);
+                    }
+
+                    if ($form->redirectStatus !== null) {
+                        $this->grav->redirectLangSafe($form->redirectTarget, $form->redirectStatus);
+                    }
+
+                    $twig->twig_vars['akso_congress_registration_form'] = $form->render();
+                }
             }
         } else {
             // no registration form
