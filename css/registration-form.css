@@ -1,7 +1,13 @@
-form.registration-form .registration-congress-name {
+.registration-form .registration-congress-name {
     padding: 0.5em 1em;
     font-weight: bold;
     font-size: small;
+}
+.registration-form .registration-editing-title {
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    border-bottom: 2px solid var(--accent);
 }
 form.registration-form .form-item {
     padding: 0.5em 1em;
@@ -20,7 +26,15 @@ form.registration-form .form-script-item {
 }
 form.registration-form .form-footer {
     padding: 1em;
-    text-align: right;
+    display: flex;
+    justify-content: space-between;
+}
+form.registration-form .registration-message {
+    background: var(--light-accent);
+    color: var(--light-accent-fg);
+    border-radius: var(--radius);
+    margin-bottom: 1em;
+    padding: 0.5em 1em;
 }
 form.registration-form .registration-error {
     background: var(--error-bg);
@@ -36,4 +50,11 @@ form.registration-form .field-error {
     font-size: 0.9em;
     margin-top: 0.3em;
     padding: 0.3em 1em;
+}
+.registration-form .registration-confirmation {
+    text-align: center;
+    margin-bottom: 4em;
+}
+.registration-form .registration-confirmation .confirmation-link-container {
+    margin-bottom: 1em;
 }

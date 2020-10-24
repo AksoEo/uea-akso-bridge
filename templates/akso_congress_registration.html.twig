@@ -5,11 +5,54 @@
             {{ akso_congress_error|e }}
         </div>
     {% endif %}
-    {% if akso_congress_registration_enabled %}
+    {% if akso_congress_registration_confirmation %}
+    <div class="registration-form is-confirmation">
+        <div class="registration-congress-name">
+            {{ akso_congress.name|e }}
+        </div>
+        <div class="registration-confirmation">
+            <h1>
+                {{akso_locale.registration_form.confirmation_title}}
+            </h1>
+            <div class="confirmation-link-container">
+                <a class="link-button" href="{{ akso_congress_registration_edit_link|e('html_attr') }}">
+                    {{akso_locale.registration_form.confirmation_view_registration}}
+                </a>
+            </div>
+            <div class="confirmation-link-container">
+                <a class="link-button" href="{{ akso_congress_registration_back_link|e('html_attr') }}">
+                    {{akso_locale.registration_form.confirmation_back_to_congress}}
+                </a>
+            </div>
+        </div>
+    </div>
+    {% elseif akso_congress_registration_confirm_cancel %}
+    <form class="registration-form is-cancellation-confirmation" method="POST">
+        <div class="registration-congress-name">
+            {{ akso_congress.name|e }}
+        </div>
+        <h2>
+            {{akso_locale.registration_form.cancellation_title}}
+        </h2>
+        <div class="form-footer">
+            <a class="link-button" href="{{ akso_congress_registration_cancel_back|e('html_attr') }}">
+                {{akso_locale.registration_form.cancellation_back}}
+            </a>
+            <button type="submit" formaction="{{ akso_congress_registration_rly_cancel|e('html_attr') }}">
+                {{akso_locale.registration_form.cancellation_cancel}}
+            </button>
+        </div>
+    </form>
+    {% elseif akso_congress_registration_enabled %}
     <form class="registration-form" id="akso-congress-registration-form" method="POST">
         <div class="registration-congress-name">
             {{ akso_congress.name|e }}
         </div>
+        {% if akso_congress_registration_dataId %}
+        <div class="registration-editing-title">
+            {{akso_locale.registration_form.editing_title}}
+        </div>
+        {% endif %}
         {% if akso_congress_registration_not_found %}
         <div class="registration-error">
             {{akso_locale.registration_form.user_data_not_found}}
@@ -21,7 +64,27 @@
         {% else %}
         {{ akso_congress_registration_form }}
         <div class="form-footer">
-            <button type="submit">Sendi</button>
+            {% if akso_congress_registration_dataId %}
+            {% if akso_congress_registration_cancelable %}
+            <a class="link-button" href="{{ akso_congress_registration_cancel_target|e('html_attr') }}">
+                {{akso_locale.registration_form.cancel}}
+            </a>
+            {% endif %}
+            {% else %}
+            <span class="spacer" />
+            {% endif %}
+
+            {% if akso_congress_registration_dataId %}
+            {% if akso_congress_registration_editable %}
+            <button type="submit">
+                {{akso_locale.registration_form.patch}}
+            </button>
+            {% endif %}
+            {% else %}
+            <button type="submit">
+                {{akso_locale.registration_form.post}}
+            </button>
+            {% endif %}
         </div>
         {% endif %}
     </form>

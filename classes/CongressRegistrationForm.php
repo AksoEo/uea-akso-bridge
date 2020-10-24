@@ -5,24 +5,31 @@ class CongressRegistrationForm {
     const DATA_VAR_NAME = 'form_data';
 
     private $app;
+    private $plugin;
     private $form;
     private $currency;
     private $doc;
     private $parsedown;
     private $locale;
-    public function __construct($locale, $app, $form, $currency) {
+    private $congressId;
+    private $instanceId;
+    public function __construct($plugin, $app, $form, $congressId, $instanceId, $currency) {
         $this->app = $app;
+        $this->plugin = $plugin;
         $this->form = $form;
+        $this->congressId = $congressId;
+        $this->instanceId = $instanceId;
         $this->currency = $currency;
         $this->doc = new \DOMDocument();
         $this->parsedown = new \Parsedown();
-        $this->locale = $locale['registration_form'];
+        $this->locale = $plugin->locale['registration_form'];
         // $this->parsedown->setSafeMode(true); // this does not work
     }
 
-    public $redirectStatus = null;
-    public $redirectTarget = null;
+    public $confirmDataId = null;
 
+    // If this is set, then we're editing a registration instead of creating one
+    private $dataId = null;
     // User data in API format
     private $data = null;
 
@@ -30,9 +37,12 @@ class CongressRegistrationForm {
     private $errors = [];
     // Top-level error
     private $error = null;
+    // Top-level message
+    private $message = null;
 
     // Sets user data from API data.
-    public function setUserData($apiData) {
+    public function setUserData($dataId, $apiData) {
+        $this->dataId = $dataId;
         $this->data = $apiData;
     }
 
@@ -169,7 +179,27 @@ class CongressRegistrationForm {
                     return $this->localize('err_number_max', $item['max']);
                 }
             } else if ($ty === 'text') {
-                // TODO: validate pattern, length
+                if ($item['pattern'] !== null) {
+                    // FIXME: can't match the pattern in PHP because it will break
+                    // if (preg_match($item['pattern'], $value) === 0) {
+                    // did not match
+                    // return $item['patternError'] ? $item['patternError'] : $this->localize('err_text_pattern_generic');
+                    // }
+                }
+
+                // Javascript uses UTF16
+                $fulfillsMin = $item['minLength'] !== null ? mb_strlen($value, 'UTF-16') >= $item['minLength'] : true;
+                $fulfillsMax = $item['maxLength'] !== null ? mb_strlen($value, 'UTF-16') >= $item['maxLength'] : true;
+
+                if ($item['minLength'] !== null && $item['maxLength'] !== null) {
+                    if (!$fulfillsMin || !$fulfillsMax) {
+                        return $this->localize('err_text_len_range', $item['min'], $item['max']);
+                    }
+                } else if (!$fulfillsMin) {
+                    return $this->localize('err_text_len_min', $item['min']);
+                } else if (!$fulfillsMax) {
+                    return $this->localize('err_text_len_max', $item['max']);
+                }
             } else if ($ty === 'money') {
                 if ($item['step'] !== null) {
                     if ($value % $item['step'] !== 0) {
@@ -200,13 +230,37 @@ class CongressRegistrationForm {
             } else if ($ty === 'country') {
                 // TODO: validate value in options
             } else if ($ty === 'date') {
-                // TODO: validate date format + date range
+                $dateTime = \DateTime::createFromFormat('Y-m-d', $value);
+                if ($dateTime === false) return $this->localize('err_date_fmt');
+                // TODO: validate date range
             } else if ($ty === 'time') {
-                // TODO: validate time format + time range
+                $dateTime = \DateTime::createFromFormat('H:i', $value);
+                if ($dateTime === false) return $this->localize('err_time_fmt');
+                // TODO: validate time range
             } else if ($ty === 'datetime') {
+                $dateTime = \DateTime::createFromFormat('Y-m-d\TH:i:s', $value);
+                if ($dateTime === false) return $this->localize('err_datetime_fmt');
                 // TODO: validate datetime range
             } else if ($ty === 'boolean_table') {
-                // TODO: validate min/max select
+                $selected = 0;
+                for ($i = 0; $i < $item['rows']; $i++) {
+                    for ($j = 0; $j < $item['cols']; $j++) {
+                        if ($value[$i][$j]) $selected++;
+                    }
+                }
+
+                $fulfillsMin = $item['minSelect'] !== null ? $selected >= $item['minSelect'] : true;
+                $fulfillsMax = $item['maxSelect'] !== null ? $selected <= $item['maxSelect'] : true;
+
+                if ($item['minSelect'] !== null && $item['maxSelect'] !== null) {
+                    if (!$fulfillsMin || !$fulfillsMax) {
+                        return $this->localize('err_bool_table_select_range', $item['minSelect'], $item['maxSelect']);
+                    }
+                } else if (!$fulfillsMin) {
+                    return $this->localize('err_bool_table_select_min', $item['minSelect']);
+                } else if (!$fulfillsMax) {
+                    return $this->localize('err_bool_table_select_max', $item['maxSelect']);
+                }
             }
         }
 
@@ -242,17 +296,71 @@ class CongressRegistrationForm {
         return $ok;
     }
 
+    private $didSubmit = false;
+    private $submitResult = null;
+
+    function submit() {
+        $args = array('data' => $this->data);
+        $this->didSubmit = true;
+
+        if ($this->dataId) {
+            // PATCH
+            $res = $this->app->bridge->patch('/congresses/' . $this->congressId . '/instances/' . $this->instanceId . '/participants/' . $this->dataId, $args, [], []);
+            if ($res['k']) {
+                $this->message = $this->localize('msg_patch_success');
+            } else if ($res['sc'] === 400) {
+                $this->error = $this->localize('err_submit_invalid');
+            } else {
+                $this->error = $this->localize('err_submit_generic');
+            }
+        } else {
+            // new registration
+            $res = $this->app->bridge->post('/congresses/' . $this->congressId . '/instances/' . $this->instanceId . '/participants', $args, [], []);
+            if ($res['k']) {
+                $this->confirmDataId = $res['h']['x-identifier'];
+            } else if ($res['sc'] === 400) {
+                $this->error = $this->localize('err_submit_invalid');
+            } else if ($res['sc'] === 409) {
+                $this->error = $this->localize('err_submit_already_registered');
+            } else {
+                $this->error = $this->localize('err_submit_generic');
+            }
+        }
+    }
+
     // Attempts to submit the form with the given POST data.
     public function trySubmit($post) {
         if (isset($post[self::DATA_VAR_NAME])) {
             $this->loadPostData($post[self::DATA_VAR_NAME]);
             $isOk = $this->validateData();
             if ($isOk) {
-                // TODO: submit
+                $this->submit();
+            } else {
+                $this->error = $this->localize('err_submit_invalid');
             }
         } else {
             // no data, pretend nothing was sent (do nothing)
         }
+    }
+
+    function renderTop() {
+        $err = $this->doc->createElement('div');
+        $err->setAttribute('class', 'registration-error');
+
+        if ($this->error) {
+            $err->textContent = $this->error;
+            return $err;
+        }
+
+        $msg = $this->doc->createElement('div');
+        $msg->setAttribute('class', 'registration-message');
+
+        if ($this->message) {
+            $msg->textContent = $this->message;
+            return $msg;
+        }
+
+        return null;
     }
 
     function renderInputItem($item) {
@@ -581,6 +689,9 @@ class CongressRegistrationForm {
     public function render() {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'congress-registration-form-contents');
+
+        $top = $this->renderTop();
+        if ($top) $root->appendChild($top);
 
         foreach ($this->form as $item) {
             $root->appendChild($this->renderItem($item));
