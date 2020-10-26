@@ -1,3 +1,11 @@
+.registration-form .noscript-note {
+    display: block;
+    padding: 0.5em 1em;
+    background: var(--bg2);
+    font-size: 0.9em;
+    margin: 1em;
+    border-radius: var(--radius);
+}
 .registration-form .registration-congress-name {
     padding: 0.5em 1em;
     font-weight: bold;

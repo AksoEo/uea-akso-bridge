@@ -328,18 +328,24 @@ class CongressRegistrationForm {
         }
     }
 
-    // Attempts to submit the form with the given POST data.
-    public function trySubmit($post) {
+    public function validate($post) {
         if (isset($post[self::DATA_VAR_NAME])) {
             $this->loadPostData($post[self::DATA_VAR_NAME]);
             $isOk = $this->validateData();
-            if ($isOk) {
-                $this->submit();
-            } else {
+            if (!$isOk) {
                 $this->error = $this->localize('err_submit_invalid');
             }
+            return $isOk;
         } else {
             // no data, pretend nothing was sent (do nothing)
+            return false;
+        }
+    }
+
+    // Attempts to submit the form with the given POST data.
+    public function trySubmit($post) {
+        if ($this->validate($post)) {
+            $this->submit();
         }
     }
 
@@ -367,6 +373,7 @@ class CongressRegistrationForm {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-field form-item form-input-item');
         $root->setAttribute('data-name', $item['name']);
+        $root->setAttribute('data-el', 'input');
         $root->setAttribute('data-type', $item['type']);
 
         $data = $this->doc->createElement('div');
@@ -378,6 +385,14 @@ class CongressRegistrationForm {
 
         $value = null;
         if ($this->data && isset($this->data[$item['name']])) $value = $this->data[$item['name']];
+        else if ($item['default'] !== null) {
+            if (gettype($item['default']) === 'array') {
+                $root->setAttribute('data-script-default', base64_encode(json_encode($item['default'])));
+                // TODO: eval & set
+            } else {
+                $value = $item['default'];
+            }
+        }
 
         $label = $this->doc->createElement('label');
         $label->textContent = $item['label'];
@@ -392,12 +407,20 @@ class CongressRegistrationForm {
         // only add 'required' server-side if it's guaranteed to be true
         $required = $item['required'] === true;
         if ($required) {
+            $root->setAttribute('data-required', 'true');
             $req = $this->doc->createElement('span');
             $req->setAttribute('class', 'label-required');
             $req->textContent = ' *';
             $label->appendChild($req);
         }
+        if (gettype($item['required']) === 'array') {
+            $root->setAttribute('data-script-required', base64_encode(json_encode($item['required'])));
+        }
+
         $disabled = $item['disabled'] === true;
+        if (gettype($item['disabled']) === 'array') {
+            $root->setAttribute('data-script-disabled', base64_encode(json_encode($item['disabled'])));
+        }
 
         // TODO: run eval with default/current form var values to get all defaults etc
 
@@ -471,6 +494,7 @@ class CongressRegistrationForm {
             if ($value !== null) $input->setAttribute('value', $value);
             $data->appendChild($input);
         } else if ($ty === 'enum') {
+            $root->setAttribute('data-variant', $item['variant']);
             if ($item['variant'] === 'select') {
                 $input = $this->doc->createElement('select');
                 $input->setAttribute('id', $inputId);
@@ -497,7 +521,8 @@ class CongressRegistrationForm {
                 }
 
                 $data->appendChild($input);
-            } else {
+            } else if ($item['variant'] === 'radio') {
+                $root->setAttribute('data-radio-name', $name);
                 $group = $this->doc->createElement('ul');
                 $group->setAttribute('class', 'radio-group');
                 $group->setAttribute('id', $inputId);
@@ -513,8 +538,12 @@ class CongressRegistrationForm {
                     $radio->setAttribute('type', 'radio');
                     $radio->setAttribute('name', $name);
                     $radio->setAttribute('id', $radioId);
+                    $radio->setAttribute('value', $option['value']);
                     if ($value === $option['value']) $radio->setAttribute('checked', '');
-                    if ($option['disabled']) $radio->setAttribute('disabled', '');
+                    if ($option['disabled']) {
+                        $radio->setAttribute('disabled', '');
+                        $radio->setAttribute('data-disabled', 'true');
+                    }
                     $li->appendChild($radio);
 
                     $rlabel = $this->doc->createElement('label');
@@ -557,6 +586,7 @@ class CongressRegistrationForm {
             if ($item['tz']) $tz = $item['tz'];
             try {
                 $tz = new \DateTimeZone($tz);
+                $root->setAttribute('data-tz', $tz->getOffset());
             } catch (\Exception $e) {
                 $tz = new \DateTimeZone('UTC');
             }
@@ -592,11 +622,14 @@ class CongressRegistrationForm {
             $table = $this->doc->createElement('table');
             $table->setAttribute('id', $inputId);
 
+            $root->setAttribute('data-rows', $item['rows']);
+            $root->setAttribute('data-cols', $item['cols']);
+
             if ($item['minSelect']) {
-                $table->setAttribute('data-min-select', $item['minSelect']);
+                $root->setAttribute('data-min-select', $item['minSelect']);
             }
             if ($item['maxSelect']) {
-                $table->setAttribute('data-max-select', $item['maxSelect']);
+                $root->setAttribute('data-max-select', $item['maxSelect']);
             }
 
             if ($item['headerTop'] !== null) {
@@ -637,6 +670,7 @@ class CongressRegistrationForm {
                     $isExcluded = in_array($j . '-' . $i, $excludedCells);
                     if (!$isExcluded) {
                         $box = $this->doc->createElement('input');
+                        $box->setAttribute('data-index', $j . '-' . $i);
                         $box->setAttribute('type', 'checkbox');
                         $box->setAttribute('name', $name . '[' . $j . '][' . $i . ']');
                         if ($value !== null && $value[$i][$j]) $box->setAttribute('checked', '');
@@ -664,11 +698,13 @@ class CongressRegistrationForm {
     function renderTextItem($item) {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-item form-text-item');
+        $root->setAttribute('data-el', 'text');
         if (gettype($item['text']) === 'string') {
             // plain text
             $this->setInnerHTML($root, $this->parsedown->text($item['text']));
         } else {
             $root->setAttribute('data-script', base64_encode(json_encode($item['text'])));
+            // TODO: render
         }
         return $root;
     }
@@ -676,6 +712,7 @@ class CongressRegistrationForm {
     function renderScriptItem($item) {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-item form-script-item');
+        $root->setAttribute('data-el', 'script');
         $root->setAttribute('data-script', base64_encode(json_encode($item['script'])));
         return $root;
     }

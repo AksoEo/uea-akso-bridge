@@ -31,6 +31,7 @@ class AksoBridgePlugin extends Plugin {
     const CONGRESS_REGISTRATION_PATH = 'alighilo';
     const CONGRESS_REGISTRATION_DATAID = 'dataId';
     const CONGRESS_REGISTRATION_CANCEL = 'cancel';
+    const CONGRESS_REGISTRATION_VALIDATE = 'validate';
     const CONGRESS_REGISTRATION_REALLY_CANCEL = 'really_cancel';
 
     // allow access to protected property
@@ -527,9 +528,14 @@ class AksoBridgePlugin extends Plugin {
 
             if ($isRegistration) {
                 $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/registration-form.js');
                 $dataId = null;
+                $validateOnly = false;
                 $isCancellation = false;
                 $isActualCancellation = false;
+                if (isset($_GET[self::CONGRESS_REGISTRATION_VALIDATE])) {
+                    $validateOnly = (bool) $_GET[self::CONGRESS_REGISTRATION_VALIDATE];
+                }
                 if (isset($_GET[self::CONGRESS_REGISTRATION_DATAID])) {
                     $dataId = $_GET[self::CONGRESS_REGISTRATION_DATAID];
                 }
@@ -596,7 +602,11 @@ class AksoBridgePlugin extends Plugin {
 
                     if ($isSubmission) {
                         $post = !empty($_POST) ? $_POST : [];
-                        $form->trySubmit($post);
+                        if ($validateOnly) {
+                            $form->validate($post);
+                        } else {
+                            $form->trySubmit($post);
+                        }
                     }
 
                     if ($form->confirmDataId !== null) {
@@ -621,6 +631,7 @@ class AksoBridgePlugin extends Plugin {
                         $twig->twig_vars['akso_congress_registration_edit_link'] = $this->grav['uri']->path() . '?' .
                             self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
                     } else {
+                        $submitQuery = '';
                         if ($dataId !== null) {
                             $twig->twig_vars['akso_congress_registration_dataId'] = $dataId;
                             $twig->twig_vars['akso_congress_registration_editable'] = $isEditable;
@@ -630,8 +641,13 @@ class AksoBridgePlugin extends Plugin {
                                 self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId . '&' .
                                 self::CONGRESS_REGISTRATION_CANCEL . '=true';
                             $twig->twig_vars['akso_congress_registration_cancel_target'] = $cancelTarget;
+
+                            $submitQuery = self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
                         }
 
+                        $validateQuery = self::CONGRESS_REGISTRATION_VALIDATE . '=true&' . $submitQuery;
+                        $twig->twig_vars['akso_congress_registration_validate'] = $this->grav['uri']->path() . '?' . $validateQuery;
+                        $twig->twig_vars['akso_congress_registration_submit'] = $this->grav['uri']->path() . '?' . $submitQuery;
                         $twig->twig_vars['akso_congress_registration_form'] = $form->render();
                     }
                 }

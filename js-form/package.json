@@ -1,0 +1,26 @@
+{
+  "name": "akso-bridge",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "rollup -c --watch",
+    "build": "NODE_ENV=production rollup -c"
+  },
+  "author": "",
+  "license": "SEE LICENSE IN ..",
+  "devDependencies": {
+    "@rollup/plugin-alias": "^3.1.1",
+    "@rollup/plugin-commonjs": "^15.1.0",
+    "@rollup/plugin-node-resolve": "^9.0.0",
+    "@rollup/pluginutils": "^4.0.0",
+    "ini": "^1.3.5",
+    "rollup": "^2.32.1"
+  },
+  "dependencies": {
+    "@rollup/plugin-json": "^4.1.0",
+    "@tejo/akso-script": "^0.2.2",
+    "markdown-it": "^12.0.2",
+    "punycode2": "^1.0.0"
+  }
+}

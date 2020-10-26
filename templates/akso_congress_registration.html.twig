@@ -44,7 +44,7 @@
         </div>
     </form>
     {% elseif akso_congress_registration_enabled %}
-    <form class="registration-form" id="akso-congress-registration-form" method="POST">
+    <form class="registration-form" id="akso-congress-registration-form" method="POST" action="{{ akso_congress_registration_submit|e('html_attr') }}">
         <div class="registration-congress-name">
             {{ akso_congress.name|e }}
         </div>
@@ -62,6 +62,9 @@
             {{akso_locale.registration_form.user_data_generic_error}}
         </div>
         {% else %}
+        <noscript class="noscript-note">
+            {{akso_locale.registration_form.noscript_note}}
+        </noscript>
         {{ akso_congress_registration_form }}
         <div class="form-footer">
             {% if akso_congress_registration_dataId %}
@@ -69,19 +72,31 @@
             <a class="link-button" href="{{ akso_congress_registration_cancel_target|e('html_attr') }}">
                 {{akso_locale.registration_form.cancel}}
             </a>
+            <noscript>
+                <button type="submit" formaction="{{ akso_congress_registration_validate|e('html_attr') }}">
+                    {{akso_locale.registration_form.validate}}
+                </button>
+            </noscript>
             {% endif %}
             {% else %}
-            <span class="spacer" />
+            <div>
+                <noscript>
+                    <button type="submit" formaction="{{ akso_congress_registration_validate|e('html_attr') }}">
+                        {{akso_locale.registration_form.validate}}
+                    </button>
+                </noscript>
+            </div>
             {% endif %}
+
 
             {% if akso_congress_registration_dataId %}
             {% if akso_congress_registration_editable %}
-            <button type="submit">
+            <button type="submit" class="submit-button">
                 {{akso_locale.registration_form.patch}}
             </button>
             {% endif %}
             {% else %}
-            <button type="submit">
+            <button type="submit" class="submit-button">
                 {{akso_locale.registration_form.post}}
             </button>
             {% endif %}

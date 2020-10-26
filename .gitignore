@@ -1,3 +1,5 @@
 # Composer
 .composer
 vendor/*
+# compiled output
+js/registration-form.js
