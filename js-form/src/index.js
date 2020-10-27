@@ -376,6 +376,7 @@ class FormInput {
         if (!this.didInteract) return;
         const error = this.getValidationError();
         this.setError(error);
+        return !error;
     }
 
     setError(str) {
@@ -427,6 +428,8 @@ function init() {
     for (let i = 0; i < qaFormItems.length; i++) formItems.push(initFormItem(qaFormItems[i], onChange));
 
     update = () => {
+        let isValid = true;
+
         const scriptStack = [];
         const formVars = {
             // TODO: get actual values
@@ -459,21 +462,21 @@ function init() {
             } else if (item.el === 'input') {
                 item.update(scriptStack, formVars);
                 formVars[item.name] = item.getValue();
-                item.validate();
+                if (!item.validate()) isValid = false;
             } else if (item.el === 'script') {
                 scriptStack.push(item.script);
             }
         }
+
+        return isValid;
     };
     update();
 
     submitButton.addEventListener('click', (e) => {
-        //e.preventDefault();
-
         // show all errors
         for (const item of formItems) item.didInteract = true;
 
-        update();
+        if (!update()) e.preventDefault();
     });
 }
 

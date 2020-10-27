@@ -78,13 +78,23 @@ class CongressRegistrationForm {
                 }
             }
         } else if ($ty === 'boolean_table') {
+            $excludedCells = [];
+            if ($item['excludeCells'] !== null) {
+                foreach ($item['excludeCells'] as $xy) {
+                    $excludedCells []= $xy[0] . '-' . $xy[1];
+                }
+            }
+
             $out = [];
             for ($i = 0; $i < $item['rows']; $i++) {
                 $row = [];
                 for ($j = 0; $j < $item['cols']; $j++) {
-                    $cellValue = false;
-                    if (isset($data[$j]) && isset($data[$j][$i])) {
-                        $cellValue = (bool) $data[$j][$i];
+                    $isExcluded = in_array($j . '-' . $i, $excludedCells);
+                    $cellValue = $isExcluded ? null : false;
+                    if (!$isExcluded) {
+                        if (isset($data[$j]) && isset($data[$j][$i])) {
+                            $cellValue = (bool) $data[$j][$i];
+                        }
                     }
                     $row[] = $cellValue;
                 }
@@ -96,7 +106,9 @@ class CongressRegistrationForm {
     }
 
     function loadPostData($data) {
-        $this->data = [];
+        $existingData = false;
+        if (!$this->data) $this->data = [];
+        else $existingData = true;
 
         foreach ($this->form as $item) {
             if ($item['el'] === 'input') {
@@ -422,6 +434,11 @@ class CongressRegistrationForm {
             $root->setAttribute('data-script-disabled', base64_encode(json_encode($item['disabled'])));
         }
 
+        if ($this->dataId && !$item['editable']) {
+            // we're editing a registration, but this field can't be edited
+            $disabled = true;
+        }
+
         // TODO: run eval with default/current form var values to get all defaults etc
 
         if ($ty === 'boolean') {
@@ -466,6 +483,7 @@ class CongressRegistrationForm {
             } else {
                 $input->setAttribute('type', 'number');
             }
+            if ($disabled) $input->setAttribute('disabled', '');
             if ($value !== null) $input->setAttribute('value', $value);
             $data->appendChild($input);
         } else if ($ty === 'text') {
@@ -479,6 +497,7 @@ class CongressRegistrationForm {
             if ($item['minLength'] !== null) $input->setAttribute('minLength', $item['minLength']);
             if ($item['maxLength'] !== null) $input->setAttribute('maxLength', $item['maxLength']);
             if ($value !== null) $input->setAttribute('value', $value);
+            if ($disabled) $input->setAttribute('disabled', '');
             // TODO: CH Autofill
             $data->appendChild($input);
         } else if ($ty === 'money') {
@@ -491,6 +510,7 @@ class CongressRegistrationForm {
             if ($item['min'] !== null) $input->setAttribute('max', $item['min']);
             if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            if ($disabled) $input->setAttribute('disabled', '');
             if ($value !== null) $input->setAttribute('value', $value);
             $data->appendChild($input);
         } else if ($ty === 'enum') {
@@ -499,6 +519,7 @@ class CongressRegistrationForm {
                 $input = $this->doc->createElement('select');
                 $input->setAttribute('id', $inputId);
                 $input->setAttribute('name', $name);
+                if ($disabled) $input->setAttribute('disabled', '');
 
                 if (!$required) {
                     $node = $this->doc->createElement('option');
@@ -530,7 +551,7 @@ class CongressRegistrationForm {
                 foreach ($item['options'] as $option) {
                     $li = $this->doc->createElement('li');
                     // TODO: handle onlyExisting
-                    if ($option['disabled']) $li->setAttribute('class', 'is-disabled');
+                    if ($disabled || $option['disabled']) $li->setAttribute('class', 'is-disabled');
 
                     $radioId = $inputId . '--' . $option['value'];
 
@@ -563,6 +584,7 @@ class CongressRegistrationForm {
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
             $input->setAttribute('type', 'date');
+            if ($disabled) $input->setAttribute('disabled', '');
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
             if ($value !== null) $input->setAttribute('value', $value);
@@ -573,6 +595,7 @@ class CongressRegistrationForm {
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
             $input->setAttribute('type', 'time');
+            if ($disabled) $input->setAttribute('disabled', '');
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
             if ($value !== null) $input->setAttribute('value', $value);
@@ -582,6 +605,7 @@ class CongressRegistrationForm {
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
             $input->setAttribute('type', 'datetime-local');
+            if ($disabled) $input->setAttribute('disabled', '');
             $tz = 'UTC';
             if ($item['tz']) $tz = $item['tz'];
             try {
@@ -672,6 +696,7 @@ class CongressRegistrationForm {
                         $box = $this->doc->createElement('input');
                         $box->setAttribute('data-index', $j . '-' . $i);
                         $box->setAttribute('type', 'checkbox');
+                        if ($disabled) $box->setAttribute('disabled', '');
                         $box->setAttribute('name', $name . '[' . $j . '][' . $i . ']');
                         if ($value !== null && $value[$i][$j]) $box->setAttribute('checked', '');
 
