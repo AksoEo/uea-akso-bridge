@@ -468,7 +468,7 @@ function init() {
     update();
 
     submitButton.addEventListener('click', (e) => {
-        e.preventDefault();
+        //e.preventDefault();
 
         // show all errors
         for (const item of formItems) item.didInteract = true;
