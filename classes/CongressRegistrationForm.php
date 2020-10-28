@@ -1,7 +1,32 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 
+// ASC script exec context
+class CRFScriptExecCtx {
+    private $app;
+    public $scriptStack = [];
+    public $formVars = [];
+
+    public function __construct($app) {
+        $this->app = $app;
+    }
+
+    public function pushScript($script) {
+        $this->scriptStack[] = $script;
+    }
+    public function setFormVar($name, $value) {
+        $this->formVars[$name] = $value;
+    }
+
+    public function eval($expr) {
+        return $this->app->bridge->evalScript($this->scriptStack, $this->formVars, $expr);
+    }
+}
+
+// Handles the congress registration form.
 class CongressRegistrationForm {
+    // All form fields will be put into this variable inside $POST (e.g. form_data[name] for a
+    // field called "name").
     const DATA_VAR_NAME = 'form_data';
 
     private $app;
@@ -26,9 +51,11 @@ class CongressRegistrationForm {
         // $this->parsedown->setSafeMode(true); // this does not work
     }
 
+    // This field will be set after a new registration is successfully created, and contain
+    // the registration dataId.
     public $confirmDataId = null;
 
-    // If this is set, then we're editing a registration instead of creating one
+    // If this is set, then we're editing a registration instead of creating one.
     private $dataId = null;
     // User data in API format
     private $data = null;
@@ -113,13 +140,19 @@ class CongressRegistrationForm {
         foreach ($this->form as $item) {
             if ($item['el'] === 'input') {
                 $name = $item['name'];
-                $fieldData = null;
-                if (isset($data[$name])) {
-                    $fieldData = $data[$name];
-                }
 
-                $res = $this->readInputFieldFromPost($item, $fieldData);
-                $this->data[$name] = $res;
+                if (!$existingData || $item['editable']) {
+                    $fieldData = isset($this->data[$name]) ? $this->data[$name] : null;
+                    // TODO: set fieldData to null if the user did mean to send the field, but it was
+                    // not present due to the browser not sending unchecked checkboxes
+
+                    if (isset($data[$name])) {
+                        $fieldData = $data[$name];
+                    }
+
+                    $res = $this->readInputFieldFromPost($item, $fieldData);
+                    $this->data[$name] = $res;
+                }
             }
         }
     }
@@ -149,9 +182,13 @@ class CongressRegistrationForm {
         $req = $item['required'];
 
         if (gettype($req) !== 'boolean') {
-            // AKSO script
-            // TODO: evaluate scripts
-            $req = "actual value goes here";
+            // script value
+            $res = $scriptCtx->eval($req);
+            if ($res['s']) {
+                $req = $res['v'] === true;
+            } else {
+                // TODO: handle error?
+            }
         }
 
         if ($req && $value === null) {
@@ -192,11 +229,10 @@ class CongressRegistrationForm {
                 }
             } else if ($ty === 'text') {
                 if ($item['pattern'] !== null) {
-                    // FIXME: can't match the pattern in PHP because it will break
-                    // if (preg_match($item['pattern'], $value) === 0) {
-                    // did not match
-                    // return $item['patternError'] ? $item['patternError'] : $this->localize('err_text_pattern_generic');
-                    // }
+                    $res = $this->app->bridge->matchRegExp($item['pattern'], $value);
+                    if (!$res['m']) {
+                        return $item['patternError'] ? $item['patternError'] : $this->localize('err_text_pattern_generic');
+                    }
                 }
 
                 // Javascript uses UTF16
@@ -284,7 +320,7 @@ class CongressRegistrationForm {
     function validateData() {
         if ($this->data === null) return;
         $ok = true;
-        $scriptCtx = [];
+        $scriptCtx = new CRFScriptExecCtx($this->app);
 
         foreach ($this->form as $item) {
             if ($item['el'] === 'input') {
@@ -293,15 +329,9 @@ class CongressRegistrationForm {
                 if ($fieldError) $ok = false;
                 $this->errors[$item['name']] = $fieldError;
 
-                $scriptCtx []= array(
-                    'type' => 'input',
-                    'value' => $value,
-                );
+                $scriptCtx->setFormVar($item['name'], $value);
             } else if ($item['el'] === 'script') {
-                $scriptCtx []= array(
-                    'type' => 'script',
-                    'defs' => $item['script'],
-                );
+                $scriptCtx->pushScript($item['script']);
             }
         }
 
@@ -361,6 +391,22 @@ class CongressRegistrationForm {
         }
     }
 
+    public $cancelSucceeded = false;
+
+    /// Attempts to cancel the form.
+    public function cancel() {
+        $canceledTime = time();
+        $patchData = array(
+            'cancelledTime' => $canceledTime
+        );
+        $res = $this->app->bridge->patch('/congresses/' . $this->congressId . '/instances/' . $this->instanceId . '/participants/' . $this->dataId, $patchData, [], []);
+        if ($res['k']) {
+            return $canceledTime;
+        } else {
+            return null;
+        }
+    }
+
     function renderTop() {
         $err = $this->doc->createElement('div');
         $err->setAttribute('class', 'registration-error');
@@ -381,7 +427,14 @@ class CongressRegistrationForm {
         return null;
     }
 
-    function renderInputItem($item) {
+    function ascCastToString($value) {
+        if (gettype($value) === 'array') {
+            return implode('', $value);
+        }
+        return (string) $value;
+    }
+
+    function renderInputItem($scriptCtx, $item) {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-field form-item form-input-item');
         $root->setAttribute('data-name', $item['name']);
@@ -400,7 +453,11 @@ class CongressRegistrationForm {
         else if ($item['default'] !== null) {
             if (gettype($item['default']) === 'array') {
                 $root->setAttribute('data-script-default', base64_encode(json_encode($item['default'])));
-                // TODO: eval & set
+
+                $res = $scriptCtx->eval($item['default']);
+                if ($res['s']) {
+                    $value = $res['v'];
+                }
             } else {
                 $value = $item['default'];
             }
@@ -439,7 +496,7 @@ class CongressRegistrationForm {
             $disabled = true;
         }
 
-        // TODO: run eval with default/current form var values to get all defaults etc
+        $scriptCtx->setFormVar($item['name'], $value);
 
         if ($ty === 'boolean') {
             $label->setAttribute('class', 'form-label is-boolean-label');
@@ -484,7 +541,7 @@ class CongressRegistrationForm {
                 $input->setAttribute('type', 'number');
             }
             if ($disabled) $input->setAttribute('disabled', '');
-            if ($value !== null) $input->setAttribute('value', $value);
+            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
             $data->appendChild($input);
         } else if ($ty === 'text') {
             $input = $this->doc->createElement('input');
@@ -496,7 +553,7 @@ class CongressRegistrationForm {
             if ($item['patternError'] !== null) $input->setAttribute('data-pattern-error', $item['patternError']);
             if ($item['minLength'] !== null) $input->setAttribute('minLength', $item['minLength']);
             if ($item['maxLength'] !== null) $input->setAttribute('maxLength', $item['maxLength']);
-            if ($value !== null) $input->setAttribute('value', $value);
+            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
             if ($disabled) $input->setAttribute('disabled', '');
             // TODO: CH Autofill
             $data->appendChild($input);
@@ -511,7 +568,7 @@ class CongressRegistrationForm {
             if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
             if ($disabled) $input->setAttribute('disabled', '');
-            if ($value !== null) $input->setAttribute('value', $value);
+            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
             $data->appendChild($input);
         } else if ($ty === 'enum') {
             $root->setAttribute('data-variant', $item['variant']);
@@ -587,7 +644,7 @@ class CongressRegistrationForm {
             if ($disabled) $input->setAttribute('disabled', '');
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
-            if ($value !== null) $input->setAttribute('value', $value);
+            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
             // TODO: CH autofill
             $data->appendChild($input);
         } else if ($ty === 'time') {
@@ -598,7 +655,7 @@ class CongressRegistrationForm {
             if ($disabled) $input->setAttribute('disabled', '');
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
-            if ($value !== null) $input->setAttribute('value', $value);
+            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
             $data->appendChild($input);
         } else if ($ty === 'datetime') {
             $input = $this->doc->createElement('input');
@@ -720,7 +777,7 @@ class CongressRegistrationForm {
         $node->appendChild($fragment);
     }
 
-    function renderTextItem($item) {
+    function renderTextItem($scriptCtx, $item) {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-item form-text-item');
         $root->setAttribute('data-el', 'text');
@@ -729,23 +786,32 @@ class CongressRegistrationForm {
             $this->setInnerHTML($root, $this->parsedown->text($item['text']));
         } else {
             $root->setAttribute('data-script', base64_encode(json_encode($item['text'])));
-            // TODO: render
+
+            $res = $scriptCtx->eval($item['text']);
+            if ($res['s'] && gettype($res['v']) === 'string') {
+                $this->setInnerHTML($root, $this->parsedown->text($res['v']));
+            } else {
+                // TODO: handle error?
+            }
         }
         return $root;
     }
 
-    function renderScriptItem($item) {
+    function renderScriptItem($scriptCtx, $item) {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-item form-script-item');
         $root->setAttribute('data-el', 'script');
         $root->setAttribute('data-script', base64_encode(json_encode($item['script'])));
+
+        $scriptCtx->pushScript($item['script']);
+
         return $root;
     }
 
-    function renderItem($item) {
-        if ($item['el'] === 'input') return $this->renderInputItem($item);
-        if ($item['el'] === 'text') return $this->renderTextItem($item);
-        if ($item['el'] === 'script') return $this->renderScriptItem($item);
+    function renderItem($scriptCtx, $item) {
+        if ($item['el'] === 'input') return $this->renderInputItem($scriptCtx, $item);
+        if ($item['el'] === 'text') return $this->renderTextItem($scriptCtx, $item);
+        if ($item['el'] === 'script') return $this->renderScriptItem($scriptCtx, $item);
     }
 
     public function render() {
@@ -755,8 +821,9 @@ class CongressRegistrationForm {
         $top = $this->renderTop();
         if ($top) $root->appendChild($top);
 
+        $scriptCtx = new CRFScriptExecCtx($this->app);
         foreach ($this->form as $item) {
-            $root->appendChild($this->renderItem($item));
+            $root->appendChild($this->renderItem($scriptCtx, $item));
         }
 
         return $this->doc->saveHtml($root);

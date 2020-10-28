@@ -26,11 +26,32 @@
             </div>
         </div>
     </div>
+    {% elseif akso_congress_registration_canceled %}
+    <div class="registration-form is-canceled">
+        <div class="registration-congress-name">
+            {{ akso_congress.name|e }}
+        </div>
+        <div class="registration-canceled">
+            <h1>
+                {{akso_locale.registration_form.canceled_title}}
+            </h1>
+            <div class="canceled-link-container">
+                <a class="link-button" href="{{ akso_congress_registration_back_link|e('html_attr') }}">
+                    {{akso_locale.registration_form.confirmation_back_to_congress}}
+                </a>
+            </div>
+        </div>
+    </div>
     {% elseif akso_congress_registration_confirm_cancel %}
     <form class="registration-form is-cancellation-confirmation" method="POST">
         <div class="registration-congress-name">
             {{ akso_congress.name|e }}
         </div>
+        {% if akso_congress_registration_cancel_error %}
+        <div class="registration-error">
+            {{akso_locale.registration_form.err_cancel_generic}}
+        </div>
+        {% endif %}
         <h2>
             {{akso_locale.registration_form.cancellation_title}}
         </h2>

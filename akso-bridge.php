@@ -550,11 +550,12 @@ class AksoBridgePlugin extends Plugin {
                 $isEditable = $formRes['b']['editable'];
                 $isCancelable = $formRes['b']['cancellable'];
 
+                $canceledTime = null;
                 $userData = null;
                 $userDataError = null;
 
                 if ($dataId) {
-                    $fields = [];
+                    $fields = ['cancelledTime'];
                     foreach ($formRes['b']['form'] as $formItem) {
                         if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
                     }
@@ -564,6 +565,12 @@ class AksoBridgePlugin extends Plugin {
                     // TODO: fetch other fields too, do something with them...?
                     if ($res['k']) {
                         $userData = $res['b']['data'];
+                        $canceledTime = $res['b']['cancelledTime'];
+
+                        if ($canceledTime) {
+                            $isCancellation = false;
+                            $isActualCancellation = false;
+                        }
                     } else {
                         $userDataError = $res;
                     }
@@ -598,14 +605,16 @@ class AksoBridgePlugin extends Plugin {
                     $isSubmission = !$isCancellation && ($_SERVER['REQUEST_METHOD'] === 'POST');
                     $isConfirmation = false;
 
-                    // TODO: cancellation
-
-                    if ($isSubmission) {
-                        $post = !empty($_POST) ? $_POST : [];
-                        if ($validateOnly) {
-                            $form->validate($post);
-                        } else {
-                            $form->trySubmit($post);
+                    if (!$canceledTime) {
+                        if ($isActualCancellation) {
+                            $canceledTime = $form->cancel();
+                        } else if ($isSubmission) {
+                            $post = !empty($_POST) ? $_POST : [];
+                            if ($validateOnly) {
+                                $form->validate($post);
+                            } else {
+                                $form->trySubmit($post);
+                            }
                         }
                     }
 
@@ -613,8 +622,24 @@ class AksoBridgePlugin extends Plugin {
                         $dataId = $form->confirmDataId;
                         $isConfirmation = true;
                     }
+                    //
+                    // FIXME: better way of building urls?
+                    $backLink = explode('/', $this->grav['uri']->path());
+                    array_pop($backLink);
+                    $backLink = implode('/', $backLink);
+                    $twig->twig_vars['akso_congress_registration_back_link'] = $backLink;
 
-                    if ($isCancellation && $dataId !== null) {
+                    if ($canceledTime) {
+                        $twig->twig_vars['akso_congress_registration_canceled'] = true;
+                        if ($form->cancelSucceeded) {
+                            $twig->twig_vars['akso_congress_registration_cancel_success'] = true;
+                        }
+                    } else if ($isActualCancellation && $form->cancelSucceeded) {
+                    } else if ($isCancellation && $dataId !== null) {
+                        if ($isActualCancellation && !$form->cancelSucceeded) {
+                            $twig->twig_vars['akso_congress_registration_cancel_error'] = true;
+                        }
+
                         $twig->twig_vars['akso_congress_registration_confirm_cancel'] = true;
                         $twig->twig_vars['akso_congress_registration_cancel_back'] = $this->grav['uri']->path() . '?' .
                             self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
@@ -623,11 +648,6 @@ class AksoBridgePlugin extends Plugin {
                             self::CONGRESS_REGISTRATION_REALLY_CANCEL . '=true';
                     } else if ($isConfirmation) {
                         $twig->twig_vars['akso_congress_registration_confirmation'] = true;
-                        // FIXME: better way of building urls?
-                        $backLink = explode('/', $this->grav['uri']->path());
-                        array_pop($backLink);
-                        $backLink = implode('/', $backLink);
-                        $twig->twig_vars['akso_congress_registration_back_link'] = $backLink;
                         $twig->twig_vars['akso_congress_registration_edit_link'] = $this->grav['uri']->path() . '?' .
                             self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
                     } else {
