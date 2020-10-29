@@ -3,6 +3,58 @@ import locale from '../../locale.ini';
 import Markdown from 'markdown-it';
 
 // TODO: load phone number/country modules if necessary
+// TODO: money input
+
+let scrollAnimationLoop = 0;
+function scrollNodeIntoView(node) {
+    let windowTop = 0;
+    let windowBottom = window.innerHeight;
+
+    if (window.visualViewport) {
+        windowTop = window.visualViewport.offsetTop;
+        windowBottom = window.visualViewport.height;
+    }
+
+    const nodeRect = node.getBoundingClientRect();
+    if (nodeRect.top > 0 && nodeRect.bottom < windowBottom) {
+        // node is fully in frame
+        return;
+    }
+
+    // target scrollY such that the target node is centered
+    const centerY = (windowTop + windowBottom) / 2;
+    let target = Math.max(0, nodeRect.top + window.scrollY - centerY);
+
+    let value = window.scrollY;
+    let velocity = 0;
+    const F = 109.66;
+    const D = 20.94;
+
+    scrollAnimationLoop++;
+    const loop = scrollAnimationLoop;
+    let lastTime = Date.now();
+    const loopFn = () => {
+        if (loop === scrollAnimationLoop) requestAnimationFrame(loopFn);
+        const dt = (Date.now() - lastTime) / 1000;
+        lastTime = Date.now();
+
+        velocity += ((target - value) * F - velocity * D) * dt;
+        value += velocity * dt;
+        window.scroll(window.scrollX, value);
+
+        // stop if value is near target
+        if (Math.abs(value - target) < 3) scrollAnimationLoop++;
+    };
+    loopFn();
+}
+window.addEventListener('touchstart', () => {
+    // cancel scroll animation if the user taps the screen
+    scrollAnimationLoop++;
+}, { passive: true });
+window.addEventListener('wheel', () => {
+    // cancel scroll animation if the user scrolls
+    scrollAnimationLoop++;
+}, { passive: true });
 
 const md = new Markdown();
 const MAX_EVAL_STEPS = 4096;
@@ -430,7 +482,7 @@ function init() {
     let onChange = () => update();
     for (let i = 0; i < qaFormItems.length; i++) formItems.push(initFormItem(qaFormItems[i], onChange));
 
-    update = () => {
+    update = (isSubmissionAttempt) => {
         let isValid = true;
 
         const scriptStack = [];
@@ -444,6 +496,8 @@ function init() {
         const getFormValue = id => {
             return formVars[id] || null;
         };
+
+        let firstInvalidInput = null;
 
         for (const item of formItems) {
             if (item.el === 'text') {
@@ -465,10 +519,17 @@ function init() {
             } else if (item.el === 'input') {
                 item.update(scriptStack, formVars);
                 formVars[item.name] = item.getValue();
-                if (!item.validate()) isValid = false;
+                if (!item.validate()) {
+                    isValid = false;
+                    if (!firstInvalidInput) firstInvalidInput = item;
+                }
             } else if (item.el === 'script') {
                 scriptStack.push(item.script);
             }
+        }
+
+        if (!isValid && isSubmissionAttempt && firstInvalidInput) {
+            scrollNodeIntoView(firstInvalidInput.node);
         }
 
         return isValid;
@@ -479,7 +540,7 @@ function init() {
         // show all errors
         for (const item of formItems) item.didInteract = true;
 
-        if (!update()) e.preventDefault();
+        if (!update(true)) e.preventDefault();
     });
 }
 

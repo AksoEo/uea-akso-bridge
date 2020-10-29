@@ -646,7 +646,8 @@ class CongressRegistrationForm {
             else $input = $this->doc->createElement('input');
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
-            if ($item['variant'] !== 'textarea') $input->setAttribute('type', $item['variant']);
+            if ($item['variant'] === 'uri') $input->setAttribute('type', 'url');
+            else if ($item['variant'] !== 'textarea') $input->setAttribute('type', $item['variant']);
             if ($item['placeholder'] !== null) $input->setAttribute('placeholder', $item['placeholder']);
             if ($item['pattern'] !== null) $input->setAttribute('pattern', $item['pattern']);
             if ($item['patternError'] !== null) $input->setAttribute('data-pattern-error', $item['patternError']);
@@ -829,6 +830,7 @@ class CongressRegistrationForm {
         } else if ($ty === 'boolean_table') {
             $table = $this->doc->createElement('table');
             $table->setAttribute('id', $inputId);
+            $table->setAttribute('class', 'boolean-table');
 
             $root->setAttribute('data-rows', $item['rows']);
             $root->setAttribute('data-cols', $item['cols']);
