@@ -29,6 +29,11 @@ form.registration-form .form-input-item[data-type=date],
 form.registration-form .form-input-item[data-type=time],
 form.registration-form .form-input-item[data-type=datetime] {
 }
+form.registration-form .form-input-item[data-type=text] textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 6em;
+}
 form.registration-form .form-script-item {
     display: none;
 }

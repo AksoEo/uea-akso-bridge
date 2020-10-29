@@ -154,7 +154,8 @@ class FormInput {
             if (Number.isFinite(parsed)) return parsed;
             return null;
         } else if (type === 'text') {
-            return this.node.querySelector('input').value || null;
+            const input = this.node.querySelector('input') || this.node.querySelector('textarea');
+            return input.value || null;
         } else if (type === 'enum') {
             const { variant } = this.node.dataset;
             if (variant === 'select') {
@@ -212,7 +213,8 @@ class FormInput {
         } else if (type === 'number' || type === 'money') {
             this.node.querySelector('input').value = value || '';
         } else if (type === 'text') {
-            this.node.querySelector('input').value || '';
+            const input = this.node.querySelector('input') || this.node.querySelector('textarea');
+            input.value || '';
         } else if (type === 'enum') {
             const { variant } = this.node.dataset;
             if (variant === 'select') {
@@ -248,12 +250,10 @@ class FormInput {
     }
 
     getRequired() {
-        console.log('getting required', this.node.dataset.required);
         return !!this.node.dataset.required;
     }
 
     setRequired(required) {
-        console.log('setting required', required);
         const label = this.node.querySelector('label');
         const oldReq = label.querySelector('.label-required');
         this.node.dataset.required = required ? 'true' : '';
@@ -268,8 +268,11 @@ class FormInput {
 
     setDisabled(disabled) {
         const { type } = this;
-        if (type === 'boolean' || type === 'number' || type === 'money' || type === 'text' || type === 'date' || type === 'time' || type === 'datetime') {
+        if (type === 'boolean' || type === 'number' || type === 'money' || type === 'date' || type === 'time' || type === 'datetime') {
             this.node.querySelector('input').disabled = disabled;
+        } else if (type === 'text') {
+            const input = this.node.querySelector('input') || this.node.querySelector('textarea');
+            input.disabled = disabled;
         } else if (type === 'enum') {
             const { variant } = this.node.dataset;
             if (variant === 'select') {
@@ -312,7 +315,7 @@ class FormInput {
             } else if (type === 'number') {
                 // Don't need to validate min/max/step because that's handled in HTML
             } else if (type === 'text') {
-                const input = this.node.querySelector('input');
+                const input = this.node.querySelector('input') || this.node.querySelector('textarea');
                 const pattern = input.getAttribute('pattern');
                 if (pattern) {
                     try {

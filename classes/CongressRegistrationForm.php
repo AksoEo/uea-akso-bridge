@@ -29,6 +29,15 @@ class CongressRegistrationForm {
     // field called "name").
     const DATA_VAR_NAME = 'form_data';
 
+    const AUTOFILLABLE_API_FIELDS = [
+        "id", "codeholderType", // used to check eligibility
+        "birthdate", "email", "officePhone", "cellphone", "landlinePhone", "website",
+        "profession", "feeCountry", "address.country", "address.countryArea",
+        "address.city", "address.cityArea", "address.streetAddress", "address.postalCode",
+        "address.sortingCode", "firstNameLegal", "lastNameLegal", "firstName", "lastName",
+        "honorific"
+    ];
+
     private $app;
     private $plugin;
     private $form;
@@ -84,7 +93,7 @@ class CongressRegistrationForm {
         else if ($ty === 'text') $out = $data === "" ? null : strval($data);
         else if ($ty === 'money') $out = $data === "" ? null : intval($data);
         else if ($ty === 'enum') $out = $data === "" ? null : strval($data);
-        else if ($ty === 'country') $out = $data === "" ? null : strval($$data);
+        else if ($ty === 'country') $out = $data === "" ? null : strval($data);
         else if ($ty === 'date') $out = $data === "" ? null : strval($data);
         else if ($ty === 'time') $out = $data === "" ? null : strval($data);
         else if ($ty === 'datetime') {
@@ -276,7 +285,7 @@ class CongressRegistrationForm {
 
                 if (!$found) return $this->localize('err_enum_not_in_set');
             } else if ($ty === 'country') {
-                // TODO: validate value in options
+                // nothing to validate here because all options presented in the UI are valid
             } else if ($ty === 'date') {
                 $dateTime = \DateTime::createFromFormat('Y-m-d', $value);
                 if ($dateTime === false) return $this->localize('err_date_fmt');
@@ -343,6 +352,10 @@ class CongressRegistrationForm {
 
     function submit() {
         $args = array('data' => $this->data);
+        $ch = $this->getCodeholder();
+        if ($ch && $ch['codeholderType'] === 'human') {
+            $args['codeholderId'] = $ch['id'];
+        }
         $this->didSubmit = true;
 
         if ($this->dataId) {
@@ -434,6 +447,88 @@ class CongressRegistrationForm {
         return (string) $value;
     }
 
+    // returns list of akso countries and their name_eo
+    private $cachedCountries = null;
+    function getCountries() {
+        if (!$this->cachedCountries) {
+            $res = $this->app->bridge->get('/countries', array(
+                'limit' => 300,
+                'fields' => ['code', 'name_eo'],
+                'order' => [['name_eo', 'asc']],
+            ), 600);
+            if ($res['k']) {
+                $this->cachedCountries = $res['b'];
+            } else {
+                // TODO: handle failure better
+                throw new Exception('Failed to load countries');
+            }
+        }
+        return $this->cachedCountries;
+    }
+
+    private $cachedCodeholder = null;
+    function getCodeholder() {
+        if (!$this->cachedCodeholder) {
+            if (!$this->plugin->aksoUser) return null;
+            $res = $this->app->bridge->get('/codeholders/' . $this->plugin->aksoUser['id'], array(
+                'fields' => self::AUTOFILLABLE_API_FIELDS,
+            ));
+            if ($res['k']) {
+                $this->cachedCodeholder = $res['b'];
+            } else {
+                // TODO: handle failure
+                // currently, do nothing
+            }
+        }
+        return $this->cachedCodeholder;
+    }
+
+    private $cachedCodeholderAddress = null;
+    function getCodeholderAddress() {
+        if (!$this->cachedCodeholderAddress) {
+            if (!$this->plugin->aksoUser) return null;
+            $res = $this->app->bridge->get('/codeholders/' . $this->plugin->aksoUser['id'] . '/address/eo', []);
+            if ($res['k']) {
+                $this->cachedCodeholderAddress = $res['b'][$this->plugin->aksoUser['id']];
+            } else {
+                // TODO: handle failure
+                // currently, do nothing
+            }
+        }
+        return $this->cachedCodeholderAddress;
+    }
+
+    function chAutofill($field) {
+        $ch = $this->getCodeholder();
+        if (!$ch || $ch['codeholderType'] !== 'human') return null;
+
+        if ($field === 'name') {
+            // format name
+            $name = '';
+            if (isset($ch['honorific'])) $name .= $data['honorific'] . ' ';
+            if (isset($ch['firstName'])) $name .= $data['firstName'] . ' ';
+            else $name .= $data['firstNameLegal'] . ' ';
+            if (isset($ch['lastName'])) $name .= $data['lastName'];
+            else if (isset($ch['lastNameLegal'])) $name .= $data['lastNameLegal'];
+            $name = trim($str);
+            return $name;
+        } else if ($field === 'country' || $field === 'countryArea' || $field === 'city' ||
+            $field === 'cityArea' || $field === 'streetAddress' || $field === 'postalCode' ||
+            $field === 'sortingCode') {
+            if ($ch['address']) return $ch['address'][$field];
+            return null;
+        } else if ($field === 'address') {
+            return $this->getCodeholderAddress();
+        } else if ($field === 'phone') {
+            if ($ch['cellphone']) return $ch['cellphone'];
+            if ($ch['landlinePhone']) return $ch['landlinePhone'];
+            if ($ch['officePhone']) return $ch['officePhone'];
+            return null;
+        }
+        if ($ch[$field]) return $ch[$field];
+        return null;
+    }
+
     function renderInputItem($scriptCtx, $item) {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'form-field form-item form-input-item');
@@ -461,6 +556,8 @@ class CongressRegistrationForm {
             } else {
                 $value = $item['default'];
             }
+        } else if (isset($item['chAutofill'])) {
+            $value = $this->chAutofill($item['chAutofill']);
         }
 
         $label = $this->doc->createElement('label');
@@ -532,7 +629,7 @@ class CongressRegistrationForm {
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
             if ($item['placeholder'] !== null) $input->setAttribute('placeholder', $item['placeholder']);
-            if ($item['min'] !== null) $input->setAttribute('max', $item['min']);
+            if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
             if ($item['variant'] === 'slider') {
@@ -544,18 +641,22 @@ class CongressRegistrationForm {
             if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
             $data->appendChild($input);
         } else if ($ty === 'text') {
-            $input = $this->doc->createElement('input');
+            $input = null;
+            if ($item['variant'] === 'textarea') $input = $this->doc->createElement('textarea');
+            else $input = $this->doc->createElement('input');
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
-            $input->setAttribute('type', $item['variant']);
+            if ($item['variant'] !== 'textarea') $input->setAttribute('type', $item['variant']);
             if ($item['placeholder'] !== null) $input->setAttribute('placeholder', $item['placeholder']);
             if ($item['pattern'] !== null) $input->setAttribute('pattern', $item['pattern']);
             if ($item['patternError'] !== null) $input->setAttribute('data-pattern-error', $item['patternError']);
             if ($item['minLength'] !== null) $input->setAttribute('minLength', $item['minLength']);
             if ($item['maxLength'] !== null) $input->setAttribute('maxLength', $item['maxLength']);
-            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
+            if ($value !== null) {
+                if ($item['variant'] === 'textarea') $input->textContent = $this->ascCastToString($value);
+                else $input->setAttribute('value', $this->ascCastToString($value));
+            }
             if ($disabled) $input->setAttribute('disabled', '');
-            // TODO: CH Autofill
             $data->appendChild($input);
         } else if ($ty === 'money') {
             $input = $this->doc->createElement('input');
@@ -564,7 +665,7 @@ class CongressRegistrationForm {
             $input->setAttribute('type', 'number');
             $input->setAttribute('data-currency', $item['currency']);
             if ($item['placeholder'] !== null) $input->setAttribute('placeholder', $item['placeholder']);
-            if ($item['min'] !== null) $input->setAttribute('max', $item['min']);
+            if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
             if ($disabled) $input->setAttribute('disabled', '');
@@ -635,7 +736,34 @@ class CongressRegistrationForm {
                 $data->appendChild($group);
             }
         } else if ($ty === 'country') {
-            // TODO: this one
+            $input = $this->doc->createElement('select');
+            $input->setAttribute('id', $inputId);
+            $input->setAttribute('name', $name);
+            if ($disabled) $input->setAttribute('disabled', '');
+
+            if (!$required) {
+                $node = $this->doc->createElement('option');
+                $node->setAttribute('class', 'null-option');
+                $node->setAttribute('value', '');
+                $node->textContent = '—';
+                $input->appendChild($node);
+            }
+
+            $countries = $this->getCountries();
+            foreach ($countries as $country) {
+                if (in_array($country['code'], $item['exclude'])) {
+                    // excluded
+                    continue;
+                }
+
+                $opt = $this->doc->createElement('option');
+                $opt->setAttribute('value', $country['code']);
+                if ($value === $country['code']) $opt->setAttribute('selected', '');
+                $opt->textContent = $country['name_eo'];
+                $input->appendChild($opt);
+            }
+
+            $data->appendChild($input);
         } else if ($ty === 'date') {
             $input = $this->doc->createElement('input');
             $input->setAttribute('id', $inputId);
@@ -645,7 +773,6 @@ class CongressRegistrationForm {
             if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
             if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
             if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
-            // TODO: CH autofill
             $data->appendChild($input);
         } else if ($ty === 'time') {
             $input = $this->doc->createElement('input');
