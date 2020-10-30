@@ -289,15 +289,75 @@ class CongressRegistrationForm {
             } else if ($ty === 'date') {
                 $dateTime = \DateTime::createFromFormat('Y-m-d', $value);
                 if ($dateTime === false) return $this->localize('err_date_fmt');
-                // TODO: validate date range
+
+                $minDate = null;
+                $maxDate = null;
+                if ($item['min']) $minDate = \DateTime::createFromFormat('Y-m-d', $item['min']);
+                if ($item['max']) $maxDate = \DateTime::createFromFormat('Y-m-d', $item['max']);
+
+                $fulfillsMin = $minDate ? $dateTime >= $minDate : true;
+                $fulfillsMax = $maxDate ? $dateTime <= $maxDate : true;
+
+                if ($minDate && $maxDate) {
+                    if (!$fulfillsMin || !$fulfillsMax) {
+                        return $this->localize('err_datetime_range', Utils::formatDate($minDate), Utils::formatDate($maxDate));
+                    }
+                } else if (!$fulfillsMin) {
+                    return $this->localize('err_datetime_min', Utils::formatDate($minDate));
+                } else if (!$fulfillsMax) {
+                    return $this->localize('err_datetime_max', Utils::formatDate($maxDate));
+                }
             } else if ($ty === 'time') {
                 $dateTime = \DateTime::createFromFormat('H:i', $value);
                 if ($dateTime === false) return $this->localize('err_time_fmt');
-                // TODO: validate time range
+
+                $timeMins = $dateTime->format('H') * 60 + $dateTime->format('i');
+                $minMins = 0;
+                $maxMins = 1440;
+
+                if ($item['min']) {
+                    $minMins = \DateTime::createFromFormat('H:i', $item['min']);
+                    $minMins = $minMins->format('H') * 60 + $minMins->format('i');
+                }
+                if ($item['max']) {
+                    $maxMins = \DateTime::createFromFormat('H:i', $item['max']);
+                    $maxMins = $maxMins->format('H') * 60 + $maxMins->format('i');
+                }
+
+
+                if ($item['min'] && $item['max']) {
+                    if ($minMins > $timeMins || $maxMins < $timeMins) {
+                        return $this->localize('err_datetime_range', $item['min'], $item['max']);
+                    }
+                } else if ($minMins > $timeMins) {
+                    return $this->localize('err_datetime_min', $item['min']);
+                } else if ($maxMins < $timeMins) {
+                    return $this->localize('err_datetime_max', $item['max']);
+                }
             } else if ($ty === 'datetime') {
-                $dateTime = \DateTime::createFromFormat('Y-m-d\TH:i', $value);
+                $dateTime = new \DateTime("@$value");
                 if ($dateTime === false) return $this->localize('err_datetime_fmt');
-                // TODO: validate datetime range
+
+                $fulfillsMin = $item['min'] ? $item['min'] <= $value : true;
+                $fulfillsMax = $item['max'] ? $item['max'] >= $value : true;
+
+                if ($item['min'] && $item['max']) {
+                    if (!$fulfillsMin || !$fulfillsMax) {
+                        $minTime = $item['min'];
+                        $maxTime = $item['max'];
+                        $minTime = Utils::formatDate(new \DateTime("@$minTime"));
+                        $maxTime = Utils::formatDate(new \DateTime("@$maxTime"));
+                        return $this->localize('err_datetime_range', $minTime, $maxTime);
+                    }
+                } else if (!$fulfillsMin) {
+                    $minTime = $item['min'];
+                    $minTime = Utils::formatDate(new \DateTime("@$minTime"));
+                    return $this->localize('err_datetime_min', $minTime);
+                } else if (!$fulfillsMax) {
+                    $maxTime = $item['max'];
+                    $maxTime = Utils::formatDate(new \DateTime("@$maxTime"));
+                    return $this->localize('err_datetime_max', $maxTime);
+                }
             } else if ($ty === 'boolean_table') {
                 $selected = 0;
                 for ($i = 0; $i < $item['rows']; $i++) {

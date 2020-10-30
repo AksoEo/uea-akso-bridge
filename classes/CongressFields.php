@@ -70,8 +70,8 @@ class CongressFields {
 
         if ($field === 'nomo') return [array('name' => 'span', 'text' => $data['name'])];
         if ($field === 'homaid') return [array('name' => 'span', 'text' => $data['humanId'])];
-        if ($field === 'komenco') return [array('name' => 'span', 'text' => $this->formatDate($data['dateFrom']))];
-        if ($field === 'fino') return [array('name' => 'span', 'text' => $this->formatDate($data['dateTo']))];
+        if ($field === 'komenco') return [array('name' => 'span', 'text' => Utils::formatDate($data['dateFrom']))];
+        if ($field === 'fino') return [array('name' => 'span', 'text' => Utils::formatDate($data['dateTo']))];
         if ($field === 'tempokalkulo' || $field === 'tempokalkulo!') {
             $firstEventRes = $this->bridge->get('/congresses/' . $congress . '/instances/' . $instance . '/programs', array(
                 'order' => ['timeFrom.asc'],
@@ -146,7 +146,7 @@ class CongressFields {
             $now = new \DateTime();
             $deltaInterval = $now->diff($tsTime);
 
-            $contents = new Element('span', $this->formatDuration($deltaInterval));
+            $contents = new Element('span', Utils::formatDuration($deltaInterval));
             $countdown->appendChild($contents);
         }
 
@@ -173,75 +173,19 @@ class CongressFields {
             $span = '';
             if ($startYear === $endYear) {
                 if ($startMonth === $endMonth) {
-                    $span = $startDate . '–' . $endDate . ' ' . $this->formatMonth($startMonth) . ' ' . $startYear;
+                    $span = $startDate . '–' . $endDate . ' ' . Utils::formatMonth($startMonth) . ' ' . $startYear;
                 } else {
-                    $span = $startDate . ' ' . $this->formatMonth($startMonth);
-                    $span .= '–' . $endDate . ' ' . $this->formatMonth($endMonth);
+                    $span = $startDate . ' ' . Utils::formatMonth($startMonth);
+                    $span .= '–' . $endDate . ' ' . Utils::formatMonth($endMonth);
                     $span .= ' ' . $startYear;
                 }
             } else {
-                $span = $startDate . ' ' . $this->formatMonth($startMonth) . ' ' . $startYear;
-                $span .= '–' . $endDate . ' ' . $this->formatMonth($endMonth) . ' ' . $endYear;
+                $span = $startDate . ' ' . Utils::formatMonth($startMonth) . ' ' . $startYear;
+                $span .= '–' . $endDate . ' ' . Utils::formatMonth($endMonth) . ' ' . $endYear;
             }
 
             $contents = new Element('span', $span);
             $dateSpan->appendChild($contents);
         }
-    }
-
-    private function formatDate($dateString) {
-        $date = \DateTime::createFromFormat('Y-m-d', $dateString);
-        $formatted = $date->format('d') . ' ' . $this->formatMonth($date->format('m')) . ' ' . $date->format('Y');
-        return $formatted;
-    }
-
-    private function formatDuration($interval) {
-        $prefix = $interval->invert ? 'antaŭ ' : 'post ';
-
-        $years = $interval->y;
-        $months = $interval->m;
-        $days = $interval->d;
-        $hours = $interval->h;
-        $minutes = $interval->i;
-        $seconds = $interval->s;
-
-        $out = '';
-        $space = "⁠"; // u+2060 word joiner
-        $zspace = " "; // figure space
-
-        if ($years > 0) {
-            return $prefix . $years . ' jaro' . (($years > 1) ? 'j' : '');
-        }
-        if ($months > 0) {
-            return $prefix . $months . ' monato' . (($months > 1) ? 'j' : '');
-        }
-
-        if ($days >= 7) {
-            return $prefix . $days . ' tagoj';
-        } else if ($days > 0) {
-            $out .= $days . $space . 't' . $zspace;
-        }
-        if ($days > 0 || $hours > 0) $out .= $hours . $space . 'h' . $zspace;
-        $out .= $minutes . $space . 'm';
-        return $prefix . $out;
-    }
-
-    private function formatMonth($number) {
-        $months = [
-            '???',
-            'januaro',
-            'februaro',
-            'marto',
-            'aprilo',
-            'majo',
-            'junio',
-            'julio',
-            'aŭgusto',
-            'septembro',
-            'oktobro',
-            'novembro',
-            'decembro',
-        ];
-        return $months[(int) $number];
     }
 }
