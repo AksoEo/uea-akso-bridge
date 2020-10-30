@@ -528,7 +528,7 @@ class AksoBridgePlugin extends Plugin {
 
             if ($isRegistration) {
                 $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
-                $this->grav['assets']->add('plugin://akso-bridge/js/registration-form.js');
+                $this->grav['assets']->add('plugin://akso-bridge/js/form/index.js');
                 $dataId = null;
                 $validateOnly = false;
                 $isCancellation = false;

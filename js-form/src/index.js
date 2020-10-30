@@ -1,9 +1,12 @@
-import { evaluate, stdlib } from '@tejo/akso-script';
+import { evaluate, stdlib, loadCountryFmt, loadPhoneFmt } from '@tejo/akso-script';
 import locale from '../../locale.ini';
 import Markdown from 'markdown-it';
 import { initDatePolyfill, initTimePolyfill, initDateTimePolyfill } from './date-editor';
 
-// TODO: load phone number/country modules if necessary
+// TODO: load if needed/show progress?
+loadCountryFmt().then(() => console.log('Loaded ASC countries'));
+loadPhoneFmt().then(() => console.log('Loaded ASC phone-numbers'));
+
 // TODO: money input
 
 let scrollAnimationLoop = 0;
