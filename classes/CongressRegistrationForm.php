@@ -105,7 +105,7 @@ class CongressRegistrationForm {
                 } catch (\Exception $e) {
                     $tz = new \DateTimeZone('UTC');
                 }
-                $dtFormat = 'Y-m-d\\TH:i:s';
+                $dtFormat = 'Y-m-d\\TH:i';
                 $date = \DateTime::createFromFormat($dtFormat, strval($data), $tz);
                 if ($date !== false) {
                     $out = $date->getTimestamp();
@@ -295,7 +295,7 @@ class CongressRegistrationForm {
                 if ($dateTime === false) return $this->localize('err_time_fmt');
                 // TODO: validate time range
             } else if ($ty === 'datetime') {
-                $dateTime = \DateTime::createFromFormat('Y-m-d\TH:i:s', $value);
+                $dateTime = \DateTime::createFromFormat('Y-m-d\TH:i', $value);
                 if ($dateTime === false) return $this->localize('err_datetime_fmt');
                 // TODO: validate datetime range
             } else if ($ty === 'boolean_table') {
@@ -805,7 +805,7 @@ class CongressRegistrationForm {
                     $epoch = $item['min'];
                     $dateTime = new \DateTime("@$epoch");
                     $dateTime->setTimezone($tz);
-                    $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i:s');
+                    $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i');
 
                     $input->setAttribute('min', $formatted);
                 } catch (\Exception $e) {}
@@ -815,7 +815,7 @@ class CongressRegistrationForm {
                     $epoch = $item['max'];
                     $dateTime = new \DateTime("@$epoch");
                     $dateTime->setTimezone($tz);
-                    $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i:s');
+                    $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i');
 
                     $input->setAttribute('max', $item['max']);
                 } catch (\Exception $e) {}
@@ -823,7 +823,7 @@ class CongressRegistrationForm {
             if ($value !== null) {
                 $dateTime = new \DateTime("@$value");
                 $dateTime->setTimezone($tz);
-                $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i:s');
+                $formatted = $dateTime->format('Y-m-d') . 'T' . $dateTime->format('H:i');
                 $input->setAttribute('value', $formatted);
             }
             $data->appendChild($input);

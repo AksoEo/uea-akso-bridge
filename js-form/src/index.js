@@ -1,6 +1,7 @@
 import { evaluate, stdlib } from '@tejo/akso-script';
 import locale from '../../locale.ini';
 import Markdown from 'markdown-it';
+import { initDatePolyfill, initTimePolyfill, initDateTimePolyfill } from './date-editor';
 
 // TODO: load phone number/country modules if necessary
 // TODO: money input
@@ -23,7 +24,7 @@ function scrollNodeIntoView(node) {
 
     // target scrollY such that the target node is centered
     const centerY = (windowTop + windowBottom) / 2;
-    let target = Math.max(0, nodeRect.top + window.scrollY - centerY);
+    let target = Math.max(0, nodeRect.top + nodeRect.height / 2 + window.scrollY - centerY);
 
     let value = window.scrollY;
     let velocity = 0;
@@ -160,6 +161,25 @@ class FormInput {
                     this.didChange();
                 });
             }
+        } else if (type === 'date') {
+            const input = this.node.querySelector('input');
+            // type="date" will fall back to "text" on browsers where date isn't supported
+            if (input.type !== 'date') initDatePolyfill(input, () => {
+                this.didInteract = true;
+                this.didChange();
+            });
+        } else if (type === 'time') {
+            const input = this.node.querySelector('input');
+            if (input.type !== 'time') initTimePolyfill(input, () => {
+                this.didInteract = true;
+                this.didChange();
+            });
+        } else if (type === 'datetime') {
+            const input = this.node.querySelector('input');
+            if (input.type !== 'datetime-local') initDateTimePolyfill(input, () => {
+                this.didInteract = true;
+                this.didChange();
+            });
         }
 
         const { scriptDefault, scriptRequired, scriptDisabled } = this.node.dataset;

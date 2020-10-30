@@ -51,6 +51,23 @@ form.registration-form .form-input-item .boolean-table tbody tr th {
     /* headerLeft */
     text-align: right;
 }
+form.registration-form .form-input-item .js-date-editor input,
+form.registration-form .form-input-item .js-date-editor select,
+form.registration-form .form-input-item .js-time-editor select {
+    min-width: auto;
+}
+form.registration-form .form-input-item .js-date-time-editor .inner-input,
+form.registration-form .form-input-item .js-time-editor .inner-input,
+form.registration-form .form-input-item .js-date-editor .inner-input {
+    display: none;
+}
+form.registration-form .form-input-item .js-date-time-editor .js-time-editor,
+form.registration-form .form-input-item .js-date-time-editor .js-date-editor {
+    display: inline-block;
+}
+form.registration-form .form-input-item .js-date-time-editor .js-date-editor {
+    margin-right: 1em;
+}
 form.registration-form .form-script-item {
     display: none;
 }
