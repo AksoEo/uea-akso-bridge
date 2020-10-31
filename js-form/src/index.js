@@ -3,6 +3,13 @@ import locale from '../../locale.ini';
 import Markdown from 'markdown-it';
 import { initDatePolyfill, initTimePolyfill, initDateTimePolyfill } from './date-editor';
 
+{
+    const noscriptItems = document.querySelectorAll('.congress-form-noscript');
+    for (let i = 0; i < noscriptItems.length; i++) {
+        noscriptItems[i].parentNode.removeChild(noscriptItems[i]);
+    }
+}
+
 // TODO: load if needed/show progress?
 loadCountryFmt().then(() => console.log('Loaded ASC countries'));
 loadPhoneFmt().then(() => console.log('Loaded ASC phone-numbers'));

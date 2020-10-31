@@ -91,8 +91,11 @@ class CongressRegistrationForm {
         if ($ty === 'boolean') $out = (bool) $data;
         else if ($ty === 'number') $out = $data === "" ? null : floatval($data);
         else if ($ty === 'text') $out = $data === "" ? null : strval($data);
-        else if ($ty === 'money') $out = $data === "" ? null : intval($data);
-        else if ($ty === 'enum') $out = $data === "" ? null : strval($data);
+        else if ($ty === 'money') {
+            $currencies = $this->app->bridge->currencies();
+            $multiplier = $currencies[$item['currency']];
+            $out = $data === "" ? null : floor(floatval($data) * $multiplier);
+        } else if ($ty === 'enum') $out = $data === "" ? null : strval($data);
         else if ($ty === 'country') $out = $data === "" ? null : strval($data);
         else if ($ty === 'date') $out = $data === "" ? null : strval($data);
         else if ($ty === 'time') $out = $data === "" ? null : strval($data);
@@ -443,12 +446,14 @@ class CongressRegistrationForm {
         }
     }
 
-    public function validate($post) {
+    public function validate($post, $showValidMessage = false) {
         if (isset($post[self::DATA_VAR_NAME])) {
             $this->loadPostData($post[self::DATA_VAR_NAME]);
             $isOk = $this->validateData();
             if (!$isOk) {
                 $this->error = $this->localize('err_submit_invalid');
+            } else if ($showValidMessage) {
+                $this->message = $this->localize('validate_valid');
             }
             return $isOk;
         } else {
@@ -720,18 +725,33 @@ class CongressRegistrationForm {
             if ($disabled) $input->setAttribute('disabled', '');
             $data->appendChild($input);
         } else if ($ty === 'money') {
+            $container = $this->doc->createElement('div');
+            $container->setAttribute('class', 'money-input');
+
+            $currencies = $this->app->bridge->currencies();
+            $multiplier = $currencies[$item['currency']];
+
             $input = $this->doc->createElement('input');
             $input->setAttribute('id', $inputId);
             $input->setAttribute('name', $name);
             $input->setAttribute('type', 'number');
+            $input->setAttribute('data-currency-multiplier', $multiplier);
             $input->setAttribute('data-currency', $item['currency']);
             if ($item['placeholder'] !== null) $input->setAttribute('placeholder', $item['placeholder']);
-            if ($item['min'] !== null) $input->setAttribute('min', $item['min']);
-            if ($item['step'] !== null) $input->setAttribute('step', $item['step']);
-            if ($item['max'] !== null) $input->setAttribute('max', $item['max']);
+            if ($item['min'] !== null) $input->setAttribute('min', $item['min'] / $multiplier);
+            if ($item['step'] !== null) $input->setAttribute('step', $item['step'] / $multiplier);
+            else $input->setAttribute('step', 1 / $multiplier);
+            if ($item['max'] !== null) $input->setAttribute('max', $item['max'] / $multiplier);
             if ($disabled) $input->setAttribute('disabled', '');
-            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value));
-            $data->appendChild($input);
+            if ($value !== null) $input->setAttribute('value', $this->ascCastToString($value) / $multiplier);
+            $container->appendChild($input);
+
+            $currLabel = $this->doc->createElement('span');
+            $currLabel->setAttribute('class', 'currency-label');
+            $currLabel->textContent = $item['currency'];
+            $container->appendChild($currLabel);
+
+            $data->appendChild($container);
         } else if ($ty === 'enum') {
             $root->setAttribute('data-variant', $item['variant']);
             if ($item['variant'] === 'select') {

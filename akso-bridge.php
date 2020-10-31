@@ -611,7 +611,7 @@ class AksoBridgePlugin extends Plugin {
                         } else if ($isSubmission) {
                             $post = !empty($_POST) ? $_POST : [];
                             if ($validateOnly) {
-                                $form->validate($post);
+                                $form->validate($post, true);
                             } else {
                                 $form->trySubmit($post);
                             }

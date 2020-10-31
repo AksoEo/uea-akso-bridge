@@ -83,9 +83,9 @@
             {{akso_locale.registration_form.user_data_generic_error}}
         </div>
         {% else %}
-        <noscript class="noscript-note">
+        <div class="noscript-note congress-form-noscript">
             {{akso_locale.registration_form.noscript_note}}
-        </noscript>
+        </div>
         {{ akso_congress_registration_form }}
         <div class="form-footer">
             {% if akso_congress_registration_dataId %}
@@ -93,19 +93,19 @@
             <a class="link-button" href="{{ akso_congress_registration_cancel_target|e('html_attr') }}">
                 {{akso_locale.registration_form.cancel}}
             </a>
-            <noscript>
+            <div class="congress-form-noscript">
                 <button type="submit" formaction="{{ akso_congress_registration_validate|e('html_attr') }}">
                     {{akso_locale.registration_form.validate}}
                 </button>
-            </noscript>
+            </div>
             {% endif %}
             {% else %}
             <div>
-                <noscript>
+                <div class="congress-form-noscript">
                     <button type="submit" formaction="{{ akso_congress_registration_validate|e('html_attr') }}">
                         {{akso_locale.registration_form.validate}}
                     </button>
-                </noscript>
+                </div>
             </div>
             {% endif %}
 

@@ -6601,7 +6601,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   	year: "[[Year]]"
   };
   var registration_form = {
-  	noscript_note: "JavaScript estas malŝaltita en via retumilo. Kelkaj elementoj de formularoj eble ne funkcios laŭ intenco. Vi povas premi la butonon “Validigi” ĉe la subo por ĝisdatigi la formularon sen sendi ĝin.",
+  	noscript_note: "JavaScript estas malŝaltita en via retumilo [[or maybe it just doesn’t support JS features we use, or the script failed to load, etc.]]. Kelkaj elementoj de formularoj eble ne funkcios laŭ intenco. Vi povas premi la butonon “Validigi” ĉe la subo por ĝisdatigi la formularon sen sendi ĝin.",
   	validate: "Validigi",
   	cancel: "Nuligi aliĝon",
   	post: "Sendi",
@@ -18984,6 +18984,14 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
     input.className += ' inner-input';
   }
 
+  {
+    var noscriptItems = document.querySelectorAll('.congress-form-noscript');
+
+    for (var i$1 = 0; i$1 < noscriptItems.length; i$1++) {
+      noscriptItems[i$1].parentNode.removeChild(noscriptItems[i$1]);
+    }
+  } // TODO: load if needed/show progress?
+
   loadCountryFmt().then(function () {
     return console.log('Loaded ASC countries');
   });
@@ -19079,7 +19087,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
 
     if (args.length) {
       var out = '';
-      var i = 0;
+      var _i = 0;
 
       var _iterator = _createForOfIteratorHelper(args),
           _step;
@@ -19087,9 +19095,9 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
       try {
         for (_iterator.s(); !(_step = _iterator.n()).done;) {
           var p = _step.value;
-          out += locale.registration_form[key + '_' + i];
+          out += locale.registration_form[key + '_' + _i];
           out += p;
-          i++;
+          _i++;
         }
       } catch (err) {
         _iterator.e(err);
@@ -19097,7 +19105,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
         _iterator.f();
       }
 
-      out += locale.registration_form[key + '_' + i];
+      out += locale.registration_form[key + '_' + _i];
       return out;
     }
 
@@ -19140,8 +19148,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
         var type = this.type;
         var inputs = this.node.querySelectorAll('input');
 
-        for (var i = 0; i < inputs.length; i++) {
-          var input = inputs[i];
+        for (var _i2 = 0; _i2 < inputs.length; _i2++) {
+          var input = inputs[_i2];
           input.addEventListener('change', this.didChange);
 
           if (type === 'number' || type === 'text' || type === 'money' || type === 'date' || type === 'time' || type === 'datetime') {
@@ -19294,8 +19302,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
           } else if (variant === 'radio') {
             var inputs = this.node.querySelectorAll('input[type=radio]');
 
-            for (var i = 0; i < inputs.length; i++) {
-              if (inputs[i].checked) return inputs[i].value;
+            for (var _i3 = 0; _i3 < inputs.length; _i3++) {
+              if (inputs[_i3].checked) return inputs[_i3].value;
             }
 
             return null;
@@ -19371,8 +19379,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
           } else if (variant === 'radio') {
             var inputs = this.node.querySelectorAll('input[type=radio]');
 
-            for (var i = 0; i < inputs.length; i++) {
-              inputs[i].checked = inputs[i].value === value;
+            for (var _i4 = 0; _i4 < inputs.length; _i4++) {
+              inputs[_i4].checked = inputs[_i4].value === value;
             }
           }
         } else if (type === 'country') ; else if (type === 'date') {
@@ -19436,8 +19444,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
           } else if (variant === 'radio') {
             var inputs = this.node.querySelectorAll('input[type=radio]');
 
-            for (var i = 0; i < inputs.length; i++) {
-              var radio = inputs[i];
+            for (var _i5 = 0; _i5 < inputs.length; _i5++) {
+              var radio = inputs[_i5];
               radio.disabled = disabled || radio.dataset.disabled;
             }
           }
@@ -19611,8 +19619,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
       return update();
     };
 
-    for (var i = 0; i < qaFormItems.length; i++) {
-      formItems.push(initFormItem(qaFormItems[i], onChange));
+    for (var _i6 = 0; _i6 < qaFormItems.length; _i6++) {
+      formItems.push(initFormItem(qaFormItems[_i6], onChange));
     }
 
     update = function update(isSubmissionAttempt) {

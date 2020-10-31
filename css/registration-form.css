@@ -68,6 +68,9 @@ form.registration-form .form-input-item .js-date-time-editor .js-date-editor {
 form.registration-form .form-input-item .js-date-time-editor .js-date-editor {
     margin-right: 1em;
 }
+form.registration-form .form-input-item .money-input .currency-label {
+    margin-left: 0.2em;
+}
 form.registration-form .form-script-item {
     display: none;
 }
