@@ -6602,6 +6602,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   };
   var registration_form = {
   	noscript_note: "JavaScript estas malŝaltita en via retumilo [[or maybe it just doesn’t support JS features we use, or the script failed to load, etc.]]. Kelkaj elementoj de formularoj eble ne funkcios laŭ intenco. Vi povas premi la butonon “Validigi” ĉe la subo por ĝisdatigi la formularon sen sendi ĝin.",
+  	validate_valid: "[[Form input appears to be valid]]",
   	validate: "Validigi",
   	cancel: "Nuligi aliĝon",
   	post: "Sendi",
@@ -6666,7 +6667,24 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   	cancellation_title: "Ĉu vi certas ke vi volas nuligi vian aliĝon?",
   	cancellation_back: "Reen",
   	cancellation_cancel: "Nuligi la aliĝon",
-  	canceled_title: "[[This registration has been canceled]]"
+  	canceled_title: "[[This registration has been canceled]]",
+  	payment_box_title: "[[Outstanding payment]]",
+  	payment_box_create_intent: "[[Pay]]",
+  	payment_title: "[[Registration Payment]]",
+  	payment_all_paid: "[[No outstanding payment]]",
+  	payment_all_paid_back: "[[Back]]",
+  	payment_methods_none: "[[No payment methods available]]",
+  	payment_method_pay: "[[Use this method]]",
+  	payment_outstanding: "[[Outstanding payment:]]",
+  	payment_back_to_edit: "[[Back]]",
+  	payment_amount_to_pay: "[[Amount to pay]]",
+  	payment_notes: "[[Notes]]",
+  	payment_currency: "[[Pay in currency]]",
+  	payment_notes_placeholder: "[[If you would like to add any notes about this payment, write them here. I don’t know who will read them though (especially for stripe intents)]]",
+  	payment_intent_create: "[[Pay]]",
+  	payment_intent_purpose_title: "[[Congress registration]]",
+  	payment_intent_redirect: "[[Redirecting you to the payment page. If this does not happen automatically, you can use this link.]]",
+  	payment_intent_redirect_open: "[[Open]]"
   };
   var locale = {
   	date_picker: date_picker,
@@ -18990,6 +19008,13 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
     for (var i$1 = 0; i$1 < noscriptItems.length; i$1++) {
       noscriptItems[i$1].parentNode.removeChild(noscriptItems[i$1]);
     }
+  }
+  {
+    var intentRedirect = document.querySelector('#payment-intent-redirect-button');
+
+    if (intentRedirect) {
+      intentRedirect.click();
+    }
   } // TODO: load if needed/show progress?
 
   loadCountryFmt().then(function () {
@@ -18997,7 +19022,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   });
   loadPhoneFmt().then(function () {
     return console.log('Loaded ASC phone-numbers');
-  }); // TODO: money input
+  }); // TODO: validate number ranges/step anyway because browsers are often rather unhelpful with their
+  // error messages
 
   var scrollAnimationLoop = 0;
 
@@ -19202,7 +19228,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
 
               _this2.didInteract = true;
             });
-          } else ;
+          }
         }
 
         if (type === 'enum') {
@@ -19234,6 +19260,12 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
           var _input3 = this.node.querySelector('input');
 
           if (_input3.type !== 'datetime-local') initDateTimePolyfill(_input3);
+        } else if (type === 'country') {
+          this.node.querySelector('select').addEventListener('change', function () {
+            _this2.didInteract = true;
+
+            _this2.didChange();
+          });
         }
 
         var _this$node$dataset = this.node.dataset,
@@ -19449,7 +19481,9 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
               radio.disabled = disabled || radio.dataset.disabled;
             }
           }
-        } else if (type === 'country') ; else if (type === 'boolean_table') {
+        } else if (type === 'country') {
+          this.node.querySelector('select').disabled = disabled;
+        } else if (type === 'boolean_table') {
           var _this$node$dataset4 = this.node.dataset,
               cols = _this$node$dataset4.cols,
               rows = _this$node$dataset4.rows;

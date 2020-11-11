@@ -68,6 +68,8 @@ class CongressRegistrationForm {
     private $dataId = null;
     // User data in API format
     private $data = null;
+    // Participant data
+    private $participant = null;
 
     // List of errors. Map<field name (string), string>
     private $errors = [];
@@ -77,9 +79,12 @@ class CongressRegistrationForm {
     private $message = null;
 
     // Sets user data from API data.
-    public function setUserData($dataId, $apiData) {
+    public function setParticipant($dataId, $apiData) {
         $this->dataId = $dataId;
-        $this->data = $apiData;
+        $this->participant = $apiData;
+        if (isset($apiData['data'])) {
+            $this->data = $apiData['data'];
+        }
     }
 
     /// Reads input field data from POST.

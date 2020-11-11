@@ -8,7 +8,7 @@ use Grav\Common\Page\Page;
 use Grav\Common\Helpers\Excerpts;
 use Grav\Plugin\AksoBridge\MarkdownExt;
 use Grav\Plugin\AksoBridge\AppBridge;
-use Grav\Plugin\AksoBridge\CongressRegistrationForm;
+use Grav\Plugin\AksoBridge\CongressRegistration;
 
 // TODO: pass host to bridge as Host header
 
@@ -29,10 +29,6 @@ class AksoBridgePlugin extends Plugin {
     }
 
     const CONGRESS_REGISTRATION_PATH = 'alighilo';
-    const CONGRESS_REGISTRATION_DATAID = 'dataId';
-    const CONGRESS_REGISTRATION_CANCEL = 'cancel';
-    const CONGRESS_REGISTRATION_VALIDATE = 'validate';
-    const CONGRESS_REGISTRATION_REALLY_CANCEL = 'really_cancel';
 
     // allow access to protected property
     public function getGrav() {
@@ -303,6 +299,7 @@ class AksoBridgePlugin extends Plugin {
                 $regPageHeader = $regPage->header();
                 // copy congress instance id from the congress page into the sign-up page
                 $regPageHeader->congress_instance = $page->header()->congress_instance;
+                $regPageHeader->payment_org = $page->header()->payment_org;
                 $pages->addPage($regPage, $regPath);
                 break;
             }
@@ -367,17 +364,21 @@ class AksoBridgePlugin extends Plugin {
             $head = $this->grav['page']->header();
             $congressId = null;
             $instanceId = null;
+            $paymentOrg = null;
             if (isset($head->congress_instance)) {
                 $parts = explode("/", $head->congress_instance, 2);
                 $congressId = intval($parts[0], 10);
                 $instanceId = intval($parts[1], 10);
+            }
+            if (isset($head->payment_org)) {
+                $paymentOrg = intval($head->payment_org, 10);
             }
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
             }
 
             $isRegistration = $templateId === 'akso_congress_registration';
-            $this->handleCongressVariables($congressId, $instanceId, $isRegistration);
+            $this->handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration);
         }
 
         if ($this->grav['uri']->path() === $this->loginPath) {
@@ -428,7 +429,7 @@ class AksoBridgePlugin extends Plugin {
         }
     }
 
-    private function handleCongressVariables($congressId, $instanceId, $isRegistration) {
+    private function handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration) {
         $app = new AppBridge($this->grav);
         $app->open();
         $head = $this->grav['page']->header();
@@ -460,6 +461,8 @@ class AksoBridgePlugin extends Plugin {
                 $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
                 break;
             }
+
+            $congressName = $res['b']['name'];
 
             $twig->twig_vars['akso_congress_registration_link'] = $this->grav['page']->route() . '/alighilo';
 
@@ -529,148 +532,9 @@ class AksoBridgePlugin extends Plugin {
             if ($isRegistration) {
                 $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
                 $this->grav['assets']->add('plugin://akso-bridge/js/form/index.js');
-                $dataId = null;
-                $validateOnly = false;
-                $isCancellation = false;
-                $isActualCancellation = false;
-                if (isset($_GET[self::CONGRESS_REGISTRATION_VALIDATE])) {
-                    $validateOnly = (bool) $_GET[self::CONGRESS_REGISTRATION_VALIDATE];
-                }
-                if (isset($_GET[self::CONGRESS_REGISTRATION_DATAID])) {
-                    $dataId = $_GET[self::CONGRESS_REGISTRATION_DATAID];
-                }
-                if (isset($_GET[self::CONGRESS_REGISTRATION_CANCEL])) {
-                    $isCancellation = (bool) $_GET[self::CONGRESS_REGISTRATION_CANCEL];
-                }
-                if (isset($_GET[self::CONGRESS_REGISTRATION_REALLY_CANCEL])) {
-                    $isActualCancellation = (bool) $_GET[self::CONGRESS_REGISTRATION_REALLY_CANCEL];
-                    $isCancellation = $isCancellation || $isActualCancellation;
-                }
 
-                $isEditable = $formRes['b']['editable'];
-                $isCancelable = $formRes['b']['cancellable'];
-
-                $canceledTime = null;
-                $userData = null;
-                $userDataError = null;
-
-                if ($dataId) {
-                    $fields = ['cancelledTime'];
-                    foreach ($formRes['b']['form'] as $formItem) {
-                        if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
-                    }
-                    $res = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/participants/' . $dataId, array(
-                        'fields' => $fields,
-                    ));
-                    // TODO: fetch other fields too, do something with them...?
-                    if ($res['k']) {
-                        $userData = $res['b']['data'];
-                        $canceledTime = $res['b']['cancelledTime'];
-
-                        if ($canceledTime) {
-                            $isCancellation = false;
-                            $isActualCancellation = false;
-                        }
-                    } else {
-                        $userDataError = $res;
-                    }
-                }
-
-                if ($userDataError) {
-                    $twig->twig_vars['akso_congress_registration_form'] = "";
-                    if ($userDataError['sc'] === 404) {
-                        // not found
-                        $twig->twig_vars['akso_congress_registration_not_found'] = true;
-                    } else {
-                        $twig->twig_vars['akso_congress_registration_generic_error'] = true;
-                    }
-                } else {
-                    $currency = null;
-                    if ($formRes['b']['price']) {
-                        $currency = $formRes['b']['price']['currency'];
-                    }
-                    $form = new CongressRegistrationForm(
-                        $this,
-                        $app,
-                        $formRes['b']['form'],
-                        $congressId,
-                        $instanceId,
-                        $currency
-                    );
-
-                    if ($userData) {
-                        $form->setUserData($dataId, $userData);
-                    }
-
-                    $isSubmission = !$isCancellation && ($_SERVER['REQUEST_METHOD'] === 'POST');
-                    $isConfirmation = false;
-
-                    if (!$canceledTime) {
-                        if ($isActualCancellation) {
-                            $canceledTime = $form->cancel();
-                        } else if ($isSubmission) {
-                            $post = !empty($_POST) ? $_POST : [];
-                            if ($validateOnly) {
-                                $form->validate($post, true);
-                            } else {
-                                $form->trySubmit($post);
-                            }
-                        }
-                    }
-
-                    if ($form->confirmDataId !== null) {
-                        $dataId = $form->confirmDataId;
-                        $isConfirmation = true;
-                    }
-                    //
-                    // FIXME: better way of building urls?
-                    $backLink = explode('/', $this->grav['uri']->path());
-                    array_pop($backLink);
-                    $backLink = implode('/', $backLink);
-                    $twig->twig_vars['akso_congress_registration_back_link'] = $backLink;
-
-                    if ($canceledTime) {
-                        $twig->twig_vars['akso_congress_registration_canceled'] = true;
-                        if ($form->cancelSucceeded) {
-                            $twig->twig_vars['akso_congress_registration_cancel_success'] = true;
-                        }
-                    } else if ($isActualCancellation && $form->cancelSucceeded) {
-                    } else if ($isCancellation && $dataId !== null) {
-                        if ($isActualCancellation && !$form->cancelSucceeded) {
-                            $twig->twig_vars['akso_congress_registration_cancel_error'] = true;
-                        }
-
-                        $twig->twig_vars['akso_congress_registration_confirm_cancel'] = true;
-                        $twig->twig_vars['akso_congress_registration_cancel_back'] = $this->grav['uri']->path() . '?' .
-                            self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
-                        $twig->twig_vars['akso_congress_registration_rly_cancel'] = $this->grav['uri']->path() . '?' .
-                            self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId . '&' .
-                            self::CONGRESS_REGISTRATION_REALLY_CANCEL . '=true';
-                    } else if ($isConfirmation) {
-                        $twig->twig_vars['akso_congress_registration_confirmation'] = true;
-                        $twig->twig_vars['akso_congress_registration_edit_link'] = $this->grav['uri']->path() . '?' .
-                            self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
-                    } else {
-                        $submitQuery = '';
-                        if ($dataId !== null) {
-                            $twig->twig_vars['akso_congress_registration_dataId'] = $dataId;
-                            $twig->twig_vars['akso_congress_registration_editable'] = $isEditable;
-                            $twig->twig_vars['akso_congress_registration_cancelable'] = $isCancelable;
-
-                            $cancelTarget = $this->grav['uri']->path() . '?' .
-                                self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId . '&' .
-                                self::CONGRESS_REGISTRATION_CANCEL . '=true';
-                            $twig->twig_vars['akso_congress_registration_cancel_target'] = $cancelTarget;
-
-                            $submitQuery = self::CONGRESS_REGISTRATION_DATAID . '=' . $dataId;
-                        }
-
-                        $validateQuery = self::CONGRESS_REGISTRATION_VALIDATE . '=true&' . $submitQuery;
-                        $twig->twig_vars['akso_congress_registration_validate'] = $this->grav['uri']->path() . '?' . $validateQuery;
-                        $twig->twig_vars['akso_congress_registration_submit'] = $this->grav['uri']->path() . '?' . $submitQuery;
-                        $twig->twig_vars['akso_congress_registration_form'] = $form->render();
-                    }
-                }
+                $registration = new CongressRegistration($this, $app, $congressId, $instanceId, $paymentOrg, $formRes['b'], $congressName);
+                $twig->twig_vars['akso_congress_registration'] = $registration->run();
             }
         } else {
             // no registration form

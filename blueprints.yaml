@@ -41,3 +41,6 @@ form:
     api_secret:
       type: text
       label: API secret
+    payments_host:
+      type: text
+      label: Payments host

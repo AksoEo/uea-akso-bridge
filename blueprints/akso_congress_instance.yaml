@@ -8,6 +8,9 @@ form:
     header.congress_instance:
       type: akso_congress_instance_id
       label: 'Kongresa okazigo'
+    header.payment_org:
+      type: number
+      label: 'Pagorganizo'
     header.logo_url:
       type: text
       label: '[[logo image url]]'

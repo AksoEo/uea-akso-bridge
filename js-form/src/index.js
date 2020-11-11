@@ -10,11 +10,19 @@ import { initDatePolyfill, initTimePolyfill, initDateTimePolyfill } from './date
     }
 }
 
+{
+    const intentRedirect = document.querySelector('#payment-intent-redirect-button');
+    if (intentRedirect) {
+        intentRedirect.click();
+    }
+}
+
 // TODO: load if needed/show progress?
 loadCountryFmt().then(() => console.log('Loaded ASC countries'));
 loadPhoneFmt().then(() => console.log('Loaded ASC phone-numbers'));
 
-// TODO: money input
+// TODO: validate number ranges/step anyway because browsers are often rather unhelpful with their
+// error messages
 
 let scrollAnimationLoop = 0;
 function scrollNodeIntoView(node) {
@@ -159,8 +167,6 @@ class FormInput {
                     }
                     this.didInteract = true;
                 });
-            } else {
-                // TODO: set didInteract (missing: country)
             }
         }
 
@@ -187,6 +193,11 @@ class FormInput {
         } else if (type === 'datetime') {
             const input = this.node.querySelector('input');
             if (input.type !== 'datetime-local') initDateTimePolyfill(input, () => {
+                this.didInteract = true;
+                this.didChange();
+            });
+        } else if (type === 'country') {
+            this.node.querySelector('select').addEventListener('change', () => {
                 this.didInteract = true;
                 this.didChange();
             });
@@ -367,7 +378,7 @@ class FormInput {
                 }
             }
         } else if (type === 'country') {
-            // TODO
+            this.node.querySelector('select').disabled = disabled;
         } else if (type === 'boolean_table') {
             const { cols, rows } = this.node.dataset;
             for (let y = 0; y < rows; y++) {
