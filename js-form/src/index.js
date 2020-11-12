@@ -78,8 +78,15 @@ window.addEventListener('wheel', () => {
 const md = new Markdown();
 const MAX_EVAL_STEPS = 4096;
 
+function ascCastToString(value) {
+    if (Array.isArray(value)) return value.join('');
+    if (value) return value.toString();
+    return '';
+}
+
 function decodeScript(script) {
     if (!script) return null;
+    if (script.startsWith('!')) return JSON.parse(script.substr(1));
     return JSON.parse(atob(script));
 }
 
@@ -242,9 +249,15 @@ class FormInput {
         if (type === 'boolean') {
             return this.node.querySelector('input').checked;
         } else if (type === 'number' || type === 'money') {
-            const { value } = this.node.querySelector('input');
+            const input = this.node.querySelector('input');
+            const { value } = input;
             const parsed = parseFloat(value);
-            if (Number.isFinite(parsed)) return parsed;
+            if (Number.isFinite(parsed)) {
+                if (type === 'money') {
+                    return parsed * +input.dataset.currencyMultiplier;
+                }
+                return parsed;
+            }
             return null;
         } else if (type === 'text') {
             const input = this.node.querySelector('input') || this.node.querySelector('textarea');
@@ -304,7 +317,9 @@ class FormInput {
         if (type === 'boolean') {
             this.node.querySelector('input').checked = !!value;
         } else if (type === 'number' || type === 'money') {
-            this.node.querySelector('input').value = value || '';
+            const input = this.node.querySelector('input');
+            if (type === 'money') input.value = Number.isFinite(value) ? value / +input.dataset.currencyMultiplier : '';
+            else input.value = Number.isFinite(value) ? value : '';
         } else if (type === 'text') {
             const input = this.node.querySelector('input') || this.node.querySelector('textarea');
             input.value || '';
@@ -500,6 +515,7 @@ function initFormItem(node, onChange) {
 
         return {
             el: 'text',
+            node,
             script,
         };
     } else if (node.dataset.el === 'script') {
@@ -507,6 +523,8 @@ function initFormItem(node, onChange) {
             el: 'script',
             script: decodeScript(node.dataset.script),
         }
+    } else {
+        return { el: '' };
     }
 }
 
@@ -547,7 +565,7 @@ function init() {
                         const result = ascEval(scriptStack, formVars, item.script);
 
                         if (result) {
-                            item.node.innerHTML = md.render(result.toString());
+                            item.node.innerHTML = md.render(ascCastToString(result));
                         } else {
                             item.node.innerHTML = '';
                         }

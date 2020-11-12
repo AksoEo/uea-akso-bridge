@@ -52,18 +52,18 @@
                     {{akso_congress_registration.payment_error|e}}
                 </div>
             {% endif %}
-            <form method="POST">
+            <form method="POST" id="akso-congress-registration-form">
                 <div class="form-item payment-customer">
                     <div class="customer-name">{{akso_congress_registration.payment_customer_name}}</div>
                     <div class="customer-email">{{akso_congress_registration.payment_customer_email}}</div>
                 </div>
-                <div class="form-item form-input-item money-input" data-type="money">
-                    <div>
+                <div class="form-item form-input-item money-input" data-el="input" data-type="money" data-name="amount">
+                    <div class="form-label">
                         <label for="amount-to-pay">
                             {{akso_locale.registration_form.payment_amount_to_pay}}
                         </label>
                     </div>
-                    <div>
+                    <div class="form-data">
                         <input
                             id="amount-to-pay"
                             data-currency="{{ akso_congress_registration.payment_currency }}"
@@ -79,21 +79,39 @@
                         </span>
                     </div>
                 </div>
-                <div class="form-item form-input-item" data-type="text">
-                    <div>
+                <div
+                    class="form-item form-script-item"
+                    data-el="script"
+                    data-script="{{akso_congress_registration.payment_form_script|e('html_attr')}}"></div>
+                <div class="form-item form-text-item" data-el="text" data-script='!{"t":"c","f":"id","a":["fees_text"]}'>
+                    <b>{{akso_locale.registration_form.payment_fees}}</b>:
+                    {% if akso_congress_registration.payment_method.feeFixed is not empty %}
+                        {{akso_congress_registration.fee_fixed_rendered|e}}
+                    {% endif %}
+                    {% if akso_congress_registration.payment_method.feeFixed is not empty and akso_congress_registration.payment_method.feePercent is not empty %}
+                        <span>+</span>
+                    {% endif %}
+                    {% if akso_congress_registration.payment_method.feePercent is not empty %}
+                        {{akso_congress_registration.payment_method.feePercent|e}} %
+                    {% endif %}
+                </div>
+                <div class="form-item form-input-item" data-el="input" data-type="text" data-name="notes">
+                    <div class="form-label">
                         <label for="customer-notes">
                             {{akso_locale.registration_form.payment_notes}}
                         </label>
                     </div>
-                    <div>
+                    <div class="form-data">
                         <textarea
                             id="customer-notes"
                             name="notes"
-                            placeholder="{{akso_locale.registration_form.payment_notes_placeholder}}"></textarea>
+                            placeholder="{{akso_locale.registration_form.payment_notes_placeholder|e('html_attr')}}"></textarea>
                     </div>
                 </div>
                 <div class="form-footer">
-                    <span></span>
+                    <a class="link-button" href="{{ akso_congress_registration.payment_back_target|e('html_attr') }}">
+                        {{akso_locale.registration_form.payment_intent_cancel}}
+                    </a>
                     <button type="submit" class="submit-button is-primary">
                         {{akso_locale.registration_form.payment_intent_create}}
                     </button>
@@ -118,21 +136,29 @@
                     {% else %}
                     <li class="payment-method">
                     {% endif %}
-                        <h3>{{method.name|e}}</h3>
-                        <p>{{method.description|e}}</p>
-                        <form method="GET" action="{{ akso_congress_registration.method_target|e('html_attr') }}"
-                            {% if method.currencies|length > 1 %}
-                                <label>
-                                    {{akso_locale.registration_form.payment_currency}}
-                                </label>
-                                <select name="currency">
-                                    {% for currency in method.currencies %}
-                                        <option value="{{currency}}">{{currency}}</option>
-                                    {% endfor %}
-                                </select>
-                            {% else %}
-                                <input class="hidden-input" name="currency" value="{{ method.currencies[0] }}" />
+                        <h3 class="method-name">
+                            {{method.name|e}}
+
+                            {% if method.isRecommended %}
+                                <span class="method-recommended">{{akso_locale.registration_form.payment_method_recommended}}</span>
                             {% endif %}
+                        </h3>
+                        <p>{{method.description|e}}</p>
+                        <form method="GET" action="{{ akso_congress_registration.method_target|e('html_attr') }}" class="method-form">
+                            <div class="currency-select">
+                                {% if method.currencies|length > 1 %}
+                                    <label>
+                                        {{akso_locale.registration_form.payment_currency}}
+                                    </label>
+                                    <select name="currency">
+                                        {% for currency in method.currencies %}
+                                            <option value="{{currency}}">{{currency}}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <input class="hidden-input" name="currency" value="{{ method.currencies[0] }}" />
+                                {% endif %}
+                            </div>
                             <input class="hidden-input" name="dataId" value="{{ akso_congress_registration.data_id }}" />
                             <input class="hidden-input" name="payment" value="true" />
                             <input class="hidden-input" name="method" value="{{ method.id }}" />

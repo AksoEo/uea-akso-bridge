@@ -997,6 +997,7 @@ class CongressRegistrationForm {
         $root->setAttribute('data-el', 'text');
         if (gettype($item['text']) === 'string') {
             // plain text
+            // TODO: use markdown-it with appropriate notes
             $this->setInnerHTML($root, $this->parsedown->text($item['text']));
         } else {
             $root->setAttribute('data-script', base64_encode(json_encode($item['text'])));

@@ -6680,7 +6680,9 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   	payment_amount_to_pay: "[[Amount to pay]]",
   	payment_notes: "[[Notes]]",
   	payment_currency: "[[Pay in currency]]",
+  	payment_fees: "[[Fees]]",
   	payment_notes_placeholder: "[[If you would like to add any notes about this payment, write them here. I don’t know who will read them though (especially for stripe intents)]]",
+  	payment_intent_cancel: "[[Back]]",
   	payment_intent_create: "[[Pay]]",
   	payment_intent_purpose_title: "[[Congress registration]]",
   	payment_intent_redirect: "[[Redirecting you to the payment page. If this does not happen automatically, you can use this link.]]",
@@ -19083,8 +19085,15 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   var md = new markdownIt();
   var MAX_EVAL_STEPS = 4096;
 
+  function ascCastToString(value) {
+    if (Array.isArray(value)) return value.join('');
+    if (value) return value.toString();
+    return '';
+  }
+
   function decodeScript(script) {
     if (!script) return null;
+    if (script.startsWith('!')) return JSON.parse(script.substr(1));
     return JSON.parse(atob(script));
   }
 
@@ -19317,15 +19326,23 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
         if (type === 'boolean') {
           return this.node.querySelector('input').checked;
         } else if (type === 'number' || type === 'money') {
-          var _this$node$querySelec = this.node.querySelector('input'),
-              value = _this$node$querySelec.value;
-
+          var input = this.node.querySelector('input');
+          var value = input.value;
           var parsed = parseFloat(value);
-          if (Number.isFinite(parsed)) return parsed;
+
+          if (Number.isFinite(parsed)) {
+            if (type === 'money') {
+              return parsed * +input.dataset.currencyMultiplier;
+            }
+
+            return parsed;
+          }
+
           return null;
         } else if (type === 'text') {
-          var input = this.node.querySelector('input') || this.node.querySelector('textarea');
-          return input.value || null;
+          var _input4 = this.node.querySelector('input') || this.node.querySelector('textarea');
+
+          return _input4.value || null;
         } else if (type === 'enum') {
           var variant = this.node.dataset.variant;
 
@@ -19341,16 +19358,16 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
             return null;
           }
         } else if (type === 'country') ; else if (type === 'date') {
-          var _this$node$querySelec2 = this.node.querySelector('input'),
-              _value3 = _this$node$querySelec2.value;
+          var _this$node$querySelec = this.node.querySelector('input'),
+              _value3 = _this$node$querySelec.value;
 
           var match = _value3.match(RE_DATE_FMT);
 
           if (match) return _value3;
           return null;
         } else if (type === 'time') {
-          var _this$node$querySelec3 = this.node.querySelector('input'),
-              _value4 = _this$node$querySelec3.value;
+          var _this$node$querySelec2 = this.node.querySelector('input'),
+              _value4 = _this$node$querySelec2.value;
 
           var _match = _value4.match(RE_TIME_FMT);
 
@@ -19359,8 +19376,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
         } else if (type === 'datetime') {
           var tz = this.node.dataset.tz;
 
-          var _this$node$querySelec4 = this.node.querySelector('input'),
-              _value5 = _this$node$querySelec4.value;
+          var _this$node$querySelec3 = this.node.querySelector('input'),
+              _value5 = _this$node$querySelec3.value;
 
           var _match2 = _value5.match(RE_DATETIME_FMT);
 
@@ -19399,10 +19416,12 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
         if (type === 'boolean') {
           this.node.querySelector('input').checked = !!value;
         } else if (type === 'number' || type === 'money') {
-          this.node.querySelector('input').value = value || '';
+          var input = this.node.querySelector('input');
+          if (type === 'money') input.value = Number.isFinite(value) ? value / +input.dataset.currencyMultiplier : '';else input.value = Number.isFinite(value) ? value : '';
         } else if (type === 'text') {
-          var input = this.node.querySelector('input') || this.node.querySelector('textarea');
-          input.value || '';
+          var _input5 = this.node.querySelector('input') || this.node.querySelector('textarea');
+
+          _input5.value || '';
         } else if (type === 'enum') {
           var variant = this.node.dataset.variant;
 
@@ -19630,12 +19649,17 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
       var script = decodeScript(node.dataset.script);
       return {
         el: 'text',
+        node: node,
         script: script
       };
     } else if (node.dataset.el === 'script') {
       return {
         el: 'script',
         script: decodeScript(node.dataset.script)
+      };
+    } else {
+      return {
+        el: ''
       };
     }
   }
@@ -19682,7 +19706,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
                 var result = ascEval(scriptStack, formVars, item.script);
 
                 if (result) {
-                  item.node.innerHTML = md.render(result.toString());
+                  item.node.innerHTML = md.render(ascCastToString(result));
                 } else {
                   item.node.innerHTML = '';
                 }

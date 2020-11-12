@@ -132,3 +132,42 @@
 .registration-form .registration-payment .payment-button-container .link-button {
     margin-right: 0;
 }
+.registration-form.is-payment .payment-intent-redirect {
+    padding: 1em;
+    text-align: center;
+}
+.registration-form.is-payment #payment-intent-redirect-button {
+    margin-top: 1em;
+}
+
+.registration-form.is-payment .payment-methods {
+    padding: 0;
+    list-style-type: none;
+}
+.registration-form.is-payment .payment-methods .payment-method {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 1em;
+    margin: 1em 0;
+    text-align: left;
+}
+.registration-form.is-payment .payment-methods .payment-method .method-name {
+    margin-top: 0;
+}
+.registration-form.is-payment .payment-methods .payment-method .method-recommended {
+    margin-left: 0.1em;
+    font-size: 0.7em;
+    opacity: 0.7;
+}
+.registration-form.is-payment .payment-methods .payment-method .hidden-input {
+    display: none;
+}
+.registration-form.is-payment .payment-methods .payment-method .method-form {
+    display: flex;
+    justify-content: space-between;
+}
+@media (max-width: 600px) {
+    .registration-form.is-payment .payment-methods .payment-method .method-form {
+        display: block;
+    }
+}
