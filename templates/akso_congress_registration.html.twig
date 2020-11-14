@@ -15,6 +15,12 @@
                 </a>
             </div>
         </div>
+    {% else %}
+        <div class="registration-payment all-paid">
+            <h3 class="all-paid-title">
+                {{akso_locale.registration_form.payment_box_all_paid}}
+            </h3>
+        </div>
     {% endif %}
 {% endmacro %}
 
@@ -77,24 +83,31 @@
                         <span class="currency-label">
                             {{ akso_congress_registration.payment_currency }}
                         </span>
+
+                        <span
+                            class="currency-approx-conversion"
+                            data-currency="{{akso_congress_registration.payment_price_currency}}"
+                            data-approx-rate="{{akso_congress_registration.payment_price_approx_rate}}">*</span>
                     </div>
                 </div>
                 <div
                     class="form-item form-script-item"
                     data-el="script"
                     data-script="{{akso_congress_registration.payment_form_script|e('html_attr')}}"></div>
-                <div class="form-item form-text-item" data-el="text" data-script='!{"t":"c","f":"id","a":["fees_text"]}'>
-                    <b>{{akso_locale.registration_form.payment_fees}}</b>:
-                    {% if akso_congress_registration.payment_method.feeFixed is not empty %}
-                        {{akso_congress_registration.fee_fixed_rendered|e}}
-                    {% endif %}
-                    {% if akso_congress_registration.payment_method.feeFixed is not empty and akso_congress_registration.payment_method.feePercent is not empty %}
-                        <span>+</span>
-                    {% endif %}
-                    {% if akso_congress_registration.payment_method.feePercent is not empty %}
-                        {{akso_congress_registration.payment_method.feePercent|e}} %
-                    {% endif %}
-                </div>
+                {% if akso_congress_registration.payment_method.feeFixed is not empty or akso_congress_registration.payment_method.feePercent is not empty %}
+                    <div class="form-item form-text-item" data-el="text" data-script='!{"t":"c","f":"id","a":["fees_text"]}'>
+                        <b>{{akso_locale.registration_form.payment_fees}}</b>:
+                        {% if akso_congress_registration.payment_method.feeFixed is not empty %}
+                            {{akso_congress_registration.fee_fixed_rendered|e}}
+                        {% endif %}
+                        {% if akso_congress_registration.payment_method.feeFixed is not empty and akso_congress_registration.payment_method.feePercent is not empty %}
+                            <span>+</span>
+                        {% endif %}
+                        {% if akso_congress_registration.payment_method.feePercent is not empty %}
+                            {{akso_congress_registration.payment_method.feePercent|e}} %
+                        {% endif %}
+                    </div>
+                {% endif %}
                 <div class="form-item form-input-item" data-el="input" data-type="text" data-name="notes">
                     <div class="form-label">
                         <label for="customer-notes">
@@ -108,6 +121,9 @@
                             placeholder="{{akso_locale.registration_form.payment_notes_placeholder|e('html_attr')}}"></textarea>
                     </div>
                 </div>
+                <ul class="form-small-print">
+                    <li>* {{akso_locale.registration_form.payment_conversion_note}}</li>
+                </ul>
                 <div class="form-footer">
                     <a class="link-button" href="{{ akso_congress_registration.payment_back_target|e('html_attr') }}">
                         {{akso_locale.registration_form.payment_intent_cancel}}

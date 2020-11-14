@@ -208,12 +208,34 @@ class FormInput {
                 this.didInteract = true;
                 this.didChange();
             });
+        } else if (type === 'money') {
+            const conv = this.node.querySelector('.currency-approx-conversion');
+            if (conv) {
+                this.initCurrencyConv(conv);
+            }
         }
 
         const { scriptDefault, scriptRequired, scriptDisabled } = this.node.dataset;
         if (scriptDefault) this.scriptDefault = JSON.parse(atob(scriptDefault));
         if (scriptRequired) this.scriptRequired = JSON.parse(atob(scriptRequired));
         if (scriptDisabled) this.scriptDisabled = JSON.parse(atob(scriptDisabled));
+    }
+
+    initCurrencyConv(conv) {
+        this.currencyConv = conv;
+        this.renderCurrencyConv();
+    }
+    renderCurrencyConv() {
+        const conv = this.currencyConv;
+        if (!conv) return;
+        const displayCurrency = conv.dataset.currency;
+        const val = this.getValue();
+        if (Number.isFinite(val)) {
+            const converted = Math.round((val * conv.dataset.approxRate) / 1000000);
+            conv.textContent = '≈ ' + stdlib.currency_fmt.apply(null, [displayCurrency, converted]) + ' *';
+        } else {
+            conv.textContent = '*';
+        }
     }
 
     update(scriptStack, formVars) {
@@ -242,6 +264,8 @@ class FormInput {
                 console.warn(`Error getting disabled parameter for ${this.name}`, err);
             }
         }
+
+        this.renderCurrencyConv();
     }
 
     getValue() {
@@ -442,17 +466,17 @@ class FormInput {
             } else if (type === 'country') {
                 // should always be valid
             } else if (type === 'date') {
-                if (!RE_DATE_FMT.test(value)) {
+                if ((value || isRequired) && !RE_DATE_FMT.test(value)) {
                     return localize('err_date_fmt');
                 }
                 // TODO: validate date range in Safari
             } else if (type === 'time') {
-                if (!RE_TIME_FMT.test(value)) {
+                if ((value || isRequired) && !RE_TIME_FMT.test(value)) {
                     return localize('err_time_fmt');
                 }
                 // TODO: validate time range in Safari
             } else if (type === 'datetime') {
-                if (!RE_DATETIME_FMT.test(value)) {
+                if ((value || isRequired) && !RE_DATETIME_FMT.test(value)) {
                     return localize('err_datetime_fmt');
                 }
                 // TODO: validate datetime range in Safari

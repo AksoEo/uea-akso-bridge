@@ -6668,6 +6668,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   	cancellation_back: "Reen",
   	cancellation_cancel: "Nuligi la aliĝon",
   	canceled_title: "[[This registration has been canceled]]",
+  	payment_box_all_paid: "[[All paid]]",
   	payment_box_title: "[[Outstanding payment]]",
   	payment_box_create_intent: "[[Pay]]",
   	payment_title: "[[Registration Payment]]",
@@ -6675,6 +6676,7 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   	payment_all_paid_back: "[[Back]]",
   	payment_methods_none: "[[No payment methods available]]",
   	payment_method_pay: "[[Use this method]]",
+  	payment_method_recommended: "[[RECOMMENDED]]",
   	payment_outstanding: "[[Outstanding payment:]]",
   	payment_back_to_edit: "[[Back]]",
   	payment_amount_to_pay: "[[Amount to pay]]",
@@ -6686,7 +6688,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
   	payment_intent_create: "[[Pay]]",
   	payment_intent_purpose_title: "[[Congress registration]]",
   	payment_intent_redirect: "[[Redirecting you to the payment page. If this does not happen automatically, you can use this link.]]",
-  	payment_intent_redirect_open: "[[Open]]"
+  	payment_intent_redirect_open: "[[Open]]",
+  	payment_conversion_note: "[[If this is not the same currency as the outstanding payment price, the actual value will be determined when the form is submitted.]]"
   };
   var locale = {
   	date_picker: date_picker,
@@ -19275,6 +19278,12 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
 
             _this2.didChange();
           });
+        } else if (type === 'money') {
+          var conv = this.node.querySelector('.currency-approx-conversion');
+
+          if (conv) {
+            this.initCurrencyConv(conv);
+          }
         }
 
         var _this$node$dataset = this.node.dataset,
@@ -19284,6 +19293,27 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
         if (scriptDefault) this.scriptDefault = JSON.parse(atob(scriptDefault));
         if (scriptRequired) this.scriptRequired = JSON.parse(atob(scriptRequired));
         if (scriptDisabled) this.scriptDisabled = JSON.parse(atob(scriptDisabled));
+      }
+    }, {
+      key: "initCurrencyConv",
+      value: function initCurrencyConv(conv) {
+        this.currencyConv = conv;
+        this.renderCurrencyConv();
+      }
+    }, {
+      key: "renderCurrencyConv",
+      value: function renderCurrencyConv() {
+        var conv = this.currencyConv;
+        if (!conv) return;
+        var displayCurrency = conv.dataset.currency;
+        var val = this.getValue();
+
+        if (Number.isFinite(val)) {
+          var converted = Math.round(val * conv.dataset.approxRate / 1000000);
+          conv.textContent = '≈ ' + stdlib.currency_fmt.apply(null, [displayCurrency, converted]) + ' *';
+        } else {
+          conv.textContent = '*';
+        }
       }
     }, {
       key: "update",
@@ -19317,6 +19347,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
             console.warn("Error getting disabled parameter for ".concat(this.name), err);
           }
         }
+
+        this.renderCurrencyConv();
       }
     }, {
       key: "getValue",
@@ -19549,17 +19581,17 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
             } // min/maxLength handled in HTML
 
           } else if (type === 'money') ; else if (type === 'enum') ; else if (type === 'country') ; else if (type === 'date') {
-            if (!RE_DATE_FMT.test(value)) {
+            if ((value || isRequired) && !RE_DATE_FMT.test(value)) {
               return localize('err_date_fmt');
             } // TODO: validate date range in Safari
 
           } else if (type === 'time') {
-            if (!RE_TIME_FMT.test(value)) {
+            if ((value || isRequired) && !RE_TIME_FMT.test(value)) {
               return localize('err_time_fmt');
             } // TODO: validate time range in Safari
 
           } else if (type === 'datetime') {
-            if (!RE_DATETIME_FMT.test(value)) {
+            if ((value || isRequired) && !RE_DATETIME_FMT.test(value)) {
               return localize('err_datetime_fmt');
             } // TODO: validate datetime range in Safari
 

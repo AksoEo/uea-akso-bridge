@@ -76,7 +76,7 @@ class CongressRegistration {
         $this->isEditable = $this->form['editable'];
         $this->isCancelable = $this->form['cancellable'];
 
-        $fields = ['cancelledTime', 'price', 'amountPaid'];
+        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum'];
         foreach ($this->form['form'] as $formItem) {
             if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
         }
@@ -98,11 +98,15 @@ class CongressRegistration {
 
     private function runPayment() {
         $paymentInfo = $this->participantPaymentInfo();
-        if (!$paymentInfo['outstanding_payment']) {
-            return array('is_payment' => true, 'payment' => $paymentInfo);
-        }
-
         $editTarget = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $this->dataId;
+
+        if (!$paymentInfo['outstanding_payment']) {
+            return array(
+                'is_payment' => true,
+                'payment' => $paymentInfo,
+                'edit_target' => $editTarget
+            );
+        }
 
         if ($this->paymentMethod) {
             $res = $this->app->bridge->get('/aksopay/payment_orgs/' . $this->paymentOrg . '/methods/' . $this->paymentMethod, array(
@@ -121,8 +125,17 @@ class CongressRegistration {
 
                 $currencies = $this->app->bridge->currencies();
                 $multiplier = $currencies[$currency];
-                // TODO: get proper min
-                $min = $this->convertCurrency($this->currency, $currency, 0) / $multiplier;
+
+                $min = 0;
+                if ($this->participant['hasPaidMinimum']) {
+                    // TODO: some sort of minimum?
+                    $min = 1;
+                } else {
+                    $minA = $this->participant['price'] - $this->participant['amountPaid'];
+                    $minB = $this->form['price']['minUpfront'] - $this->participant['amountPaid'];
+                    $min = min($minA, $minB);
+                }
+                $min = $this->convertCurrency($this->currency, $currency, $min) / $multiplier;
                 $max = $this->convertCurrency($this->currency, $currency, $paymentInfo['remaining_amount']) / $multiplier;
                 $step = 1 / $multiplier;
                 $value = $max;
@@ -144,7 +157,7 @@ class CongressRegistration {
                         $error = '[[bad request]]';
                         break;
                     }
-                    $value = intval($value, 10);
+                    $value = floatval($value);
                     if ($value < $min || $value > $max) {
                         // TODO: bad request
                         $error = '[[value out of bounds]]';
@@ -155,6 +168,8 @@ class CongressRegistration {
                         $error = '[[invalid currency]]';
                         break;
                     }
+
+                    $triggerAmount = $this->convertCurrency($currency, $this->currency, $value);
 
                     $codeholderId = null;
                     if ($this->plugin->aksoUser) {
@@ -176,6 +191,10 @@ class CongressRegistration {
                             'title' => $this->plugin->locale['registration_form']['payment_intent_purpose_title'],
                             'description' => $this->congressName,
                             'amount' => $value,
+                            'triggerAmount' => array(
+                                'currency' => $this->currency,
+                                'amount' => $triggerAmount
+                            ),
                             'triggers' => 'congress_registration',
                             'dataId' => hex2bin($this->dataId),
                         )],
@@ -205,6 +224,8 @@ class CongressRegistration {
                     $feeFixedRendered = $this->formatCurrency($method['feeFixed']['val'], $currency);
                 }
 
+                $approxConversionRate = $this->convertCurrency($currency, $this->currency, 1000000);
+
                 return array(
                     'is_payment' => true,
                     'is_payment_method' => true,
@@ -215,6 +236,8 @@ class CongressRegistration {
                     'payment_method' => $method,
                     'payment_currency' => $currency,
                     'payment_currency_mult' => $multiplier,
+                    'payment_price_currency' => $this->currency,
+                    'payment_price_approx_rate' => $approxConversionRate,
                     'payment_amount_min' => $min,
                     'payment_amount_max' => $max,
                     'payment_amount_step' => $step,
@@ -303,13 +326,16 @@ class CongressRegistration {
     }
 
     private function convertCurrency($fromCur, $toCur, $value) {
-        // TODO: make this less bad
+        if ($fromCur == $toCur) return $value;
         $res = $this->app->bridge->get('/aksopay/exchange_rates', array(
             'base' => $fromCur,
         ), 60);
         if ($res['k']) {
-            $multiplier = $this->app->bridge->currencies()[$fromCur];
-            return round($value * $res['b'][$toCur] / 100 / $multiplier);
+            $rates = $res['b'];
+            $multipliers = $this->app->bridge->currencies();
+            $fromCurFloat = $value / $multipliers[$fromCur];
+            $toCurFloat = $this->app->bridge->convertCurrency($rates, $fromCur, $toCur, $fromCurFloat)['v'];
+            return round($toCurFloat * $multipliers[$toCur]);
         }
         return null;
     }
@@ -388,7 +414,7 @@ class CongressRegistration {
             $isConfirmation = true;
 
             $res = $this->app->bridge->get('/congresses/' . $this->congressId . '/instances/' . $this->instanceId . '/participants/' . $this->dataId, array(
-                'fields' => ['price', 'amountPaid']
+                'fields' => ['price', 'amountPaid', 'hasPaidMinimum']
             ));
             if ($res['k']) {
                 $this->participant = $res['b'];

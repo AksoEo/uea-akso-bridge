@@ -123,6 +123,13 @@
     margin-top: 0;
     margin-bottom: 0.5em;
 }
+.registration-form .registration-payment.all-paid {
+    background: var(--light-accent);
+    color: var(--light-accent-fg);
+}
+.registration-form .registration-payment .all-paid-title {
+    margin-bottom: 0;
+}
 .registration-form .registration-payment h3 .outstanding-amount {
     font-weight: normal;
 }
@@ -170,4 +177,14 @@
     .registration-form.is-payment .payment-methods .payment-method .method-form {
         display: block;
     }
+}
+.registration-form .form-small-print {
+    margin: 0;
+    padding: 0.2em 1em;
+    list-style-type: none;
+    font-size: 0.7em;
+    opacity: 0.7;
+    text-align: left;
+}
+.registration-form .form-small-print li {
 }
