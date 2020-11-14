@@ -19580,7 +19580,27 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
               }
             } // min/maxLength handled in HTML
 
-          } else if (type === 'money') ; else if (type === 'enum') ; else if (type === 'country') ; else if (type === 'date') {
+          } else if (type === 'money') ; else if (type === 'enum') {
+            // it might be that the server sent a bad default value
+            // so we need to verify that the value is valid
+            if (value) {
+              var options = [];
+
+              if (this.node.dataset.variant === 'select') {
+                options = this.node.querySelectorAll('select option');
+              } else if (this.node.dataset.variant === 'radio') {
+                options = this.node.querySelectorAll('input[type="radio"]');
+              }
+
+              for (var _i6 = 0; _i6 < options.length; _i6++) {
+                var option = options[_i6];
+
+                if (option.value === value) {
+                  if (option.disabled) return localize('err_enum_not_in_set');
+                }
+              }
+            }
+          } else if (type === 'country') ; else if (type === 'date') {
             if ((value || isRequired) && !RE_DATE_FMT.test(value)) {
               return localize('err_date_fmt');
             } // TODO: validate date range in Safari
@@ -19709,8 +19729,8 @@ define(['require', 'exports'], function (require, exports) { 'use strict';
       return update();
     };
 
-    for (var _i6 = 0; _i6 < qaFormItems.length; _i6++) {
-      formItems.push(initFormItem(qaFormItems[_i6], onChange));
+    for (var _i7 = 0; _i7 < qaFormItems.length; _i7++) {
+      formItems.push(initFormItem(qaFormItems[_i7], onChange));
     }
 
     update = function update(isSubmissionAttempt) {

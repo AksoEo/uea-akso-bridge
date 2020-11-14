@@ -462,7 +462,22 @@ class FormInput {
             } else if (type === 'money') {
                 // min/max/step handled in HTML
             } else if (type === 'enum') {
-                // should always be valid
+                // it might be that the server sent a bad default value
+                // so we need to verify that the value is valid
+                if (value) {
+                    let options = [];
+                    if (this.node.dataset.variant === 'select') {
+                        options = this.node.querySelectorAll('select option');
+                    } else if (this.node.dataset.variant === 'radio') {
+                        options = this.node.querySelectorAll('input[type="radio"]');
+                    }
+                    for (let i = 0; i < options.length; i++) {
+                        const option = options[i];
+                        if (option.value === value) {
+                            if (option.disabled) return localize('err_enum_not_in_set');
+                        }
+                    }
+                }
             } else if (type === 'country') {
                 // should always be valid
             } else if (type === 'date') {

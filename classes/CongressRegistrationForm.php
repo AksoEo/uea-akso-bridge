@@ -777,8 +777,10 @@ class CongressRegistrationForm {
                     $node = $this->doc->createElement('option');
                     $node->setAttribute('value', $option['value']);
                     $node->textContent = $option['name'];
-                    if ($option['disabled']) {
-                        // TODO: handle onlyExisting
+
+                    $optDisabled = $option['disabled'];
+                    if ($optDisabled === 'onlyExisting' && $this->dataId !== null && $value === $option['value']) $optDisabled = false;
+                    if ($optDisabled) {
                         $node->setAttribute('disabled', '');
                     }
                     if ($value === $option['value']) $node->setAttribute('selected', '');
@@ -794,8 +796,10 @@ class CongressRegistrationForm {
 
                 foreach ($item['options'] as $option) {
                     $li = $this->doc->createElement('li');
-                    // TODO: handle onlyExisting
-                    if ($disabled || $option['disabled']) $li->setAttribute('class', 'is-disabled');
+
+                    $optDisabled = $option['disabled'];
+                    if ($optDisabled === 'onlyExisting' && $this->dataId !== null && $value === $option['value']) $optDisabled = false;
+                    if ($disabled || $optDisabled) $li->setAttribute('class', 'is-disabled');
 
                     $radioId = $inputId . '--' . $option['value'];
 
@@ -805,7 +809,7 @@ class CongressRegistrationForm {
                     $radio->setAttribute('id', $radioId);
                     $radio->setAttribute('value', $option['value']);
                     if ($value === $option['value']) $radio->setAttribute('checked', '');
-                    if ($option['disabled']) {
+                    if ($disabled || $optDisabled) {
                         $radio->setAttribute('disabled', '');
                         $radio->setAttribute('data-disabled', 'true');
                     }
