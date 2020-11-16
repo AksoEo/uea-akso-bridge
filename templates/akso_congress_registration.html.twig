@@ -59,6 +59,10 @@
                 </div>
             {% endif %}
             <form method="POST" id="akso-congress-registration-form">
+                <input
+                    class="hidden-input"
+                    name="nonce"
+                    value="{{akso_congress_registration.form_nonce|e('html_attr')}}" />
                 <div class="form-item payment-customer">
                     <div class="customer-name">{{akso_congress_registration.payment_customer_name}}</div>
                     <div class="customer-email">{{akso_congress_registration.payment_customer_email}}</div>
@@ -132,7 +136,6 @@
                         {{akso_locale.registration_form.payment_intent_create}}
                     </button>
                 </div>
-        </div>
             </form>
         {% elseif akso_congress_registration.payment.outstanding_payment %}
             <h1>{{akso_locale.registration_form.payment_title}}</h1>
@@ -286,6 +289,10 @@
         <div class="noscript-note congress-form-noscript">
             {{akso_locale.registration_form.noscript_note}}
         </div>
+        <input
+            class="hidden-input"
+            name="nonce"
+            value="{{akso_congress_registration.form_nonce|e('html_attr')}}" />
         {{ akso_congress_registration.form }}
         <div class="form-footer">
             {% if akso_congress_registration.data_id %}

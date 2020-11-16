@@ -474,6 +474,10 @@ class CongressRegistrationForm {
         }
     }
 
+    public function setNonceInvalid() {
+        $this->error = $this->localize('err_nonce_invalid');
+    }
+
     public $cancelSucceeded = false;
 
     /// Attempts to cancel the form.

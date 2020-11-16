@@ -1,6 +1,8 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 
+use \Grav\Common\Utils;
+
 // handles congress registration form
 class CongressRegistration {
     const DATAID = 'dataId';
@@ -10,6 +12,7 @@ class CongressRegistration {
     const PAYMENT = 'payment';
     const PAYMENT_METHOD = 'method';
     const PAYMENT_CURRENCY = 'currency';
+    const NONCES = 'crf_nonces';
 
     private $plugin;
     private $app;
@@ -150,6 +153,17 @@ class CongressRegistration {
 
                 while ($isSubmission) {
                     $post = !empty($_POST) ? $_POST : [];
+
+                    $nonceValid = false;
+                    if (isset($post['nonce']) && isset($_SESSION[self::NONCES])) {
+                        $nonce = $post['nonce'];
+                        $nonceIndex = array_search($nonce, $_SESSION[self::NONCES]);
+                        if ($nonceIndex !== false) {
+                            $nonceValid = true;
+                            unset($_SESSION[self::NONCES][$nonceIndex]);
+                        }
+                    }
+
                     $value = $post['amount'];
                     $notes = $post['notes'];
                     if (gettype($value) !== 'string' || gettype($notes) !== 'string' || gettype($currency) !== 'string') {
@@ -166,6 +180,14 @@ class CongressRegistration {
                     $value = floor($value * $multiplier);
                     if (!in_array($currency, $method['currencies'])) {
                         $error = '[[invalid currency]]';
+                        $value = $value / $multiplier;
+                        break;
+                    }
+
+                    if (!$nonceValid) {
+                        // TODO: bad request
+                        $error = '[[invalid nonce]]';
+                        $value = $value / $multiplier;
                         break;
                     }
 
@@ -226,9 +248,14 @@ class CongressRegistration {
 
                 $approxConversionRate = $this->convertCurrency($currency, $this->currency, 1000000);
 
+                $nonce = base64_encode(random_bytes(32));
+                if (!isset($_SESSION[self::NONCES])) $_SESSION[self::NONCES] = [];
+                $_SESSION[self::NONCES][] = $nonce;
+
                 return array(
                     'is_payment' => true,
                     'is_payment_method' => true,
+                    'form_nonce' => $nonce,
                     'payment' => $paymentInfo,
                     'payment_success_redirect' => $redirectTarget,
                     'payment_success_return' => $returnTarget,
@@ -403,7 +430,21 @@ class CongressRegistration {
                 if ($this->validateOnly) {
                     $form->validate($post, true);
                 } else {
-                    $form->trySubmit($post);
+                    $nonceValid = false;
+                    if (isset($post['nonce']) && isset($_SESSION[self::NONCES])) {
+                        $nonce = $post['nonce'];
+                        $nonceIndex = array_search($nonce, $_SESSION[self::NONCES]);
+                        if ($nonceIndex !== false) {
+                            $nonceValid = true;
+                            unset($_SESSION[self::NONCES][$nonceIndex]);
+                        }
+                    }
+
+                    if ($nonceValid) {
+                        $form->trySubmit($post);
+                    } else {
+                        $form->setNonceInvalid();
+                    }
                 }
             }
         }
@@ -473,6 +514,10 @@ class CongressRegistration {
             $validateTarget = $this->plugin->getGrav()['uri']->path() . '?' . $validateQuery;
             $submitTarget = $this->plugin->getGrav()['uri']->path() . '?' . $submitQuery;
 
+            $nonce = base64_encode(random_bytes(32));
+            if (!isset($_SESSION[self::NONCES])) $_SESSION[self::NONCES] = [];
+            $_SESSION[self::NONCES][] = $nonce;
+
             return array(
                 'data_id' => $this->dataId,
                 'payment' => $payment,
@@ -481,6 +526,7 @@ class CongressRegistration {
                 'cancel_target' => $cancelTarget,
                 'validate_target' => $validateTarget,
                 'submit_target' => $submitTarget,
+                'form_nonce' => $nonce,
                 'form' => $form->render(),
             );
         }
