@@ -395,12 +395,23 @@ class CongressRegistration {
             self::DATAID . '=' . $this->dataId . '&' .
             self::PAYMENT . '=true';
 
+        $minUpfront = 0;
+        if ($this->form['price']) {
+            $minUpfront = $this->form['price']['minUpfront'];
+            $minUpfront = min($minUpfront, $remaining);
+        }
+        $isMinPayment = $this->participant['amountPaid'] < $minUpfront;
+
+        $minUpfrontRendered = $this->formatCurrency($minUpfront, $this->currency);
+
         return array(
             'outstanding_payment' => $remaining > 0,
             'remaining_amount' => $remaining,
             'remaining_rendered' => $remainingRendered,
             'total_amount' => $price,
             'total_rendered' => $totalRendered,
+            'is_min_payment' => $isMinPayment,
+            'min_upfront_rendered' => $minUpfrontRendered,
             'link' => $link,
         );
     }

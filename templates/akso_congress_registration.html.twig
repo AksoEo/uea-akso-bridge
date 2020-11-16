@@ -9,6 +9,14 @@
                     {{payment.remaining_rendered|e}}
                 </div>
             </h3>
+            <div class="payment-min-upfront">
+                {% if payment.is_min_payment %}
+                    {{akso_locale.registration_form.payment_box_min_upfront}}
+                    {{payment.min_upfront_rendered|e}}
+                {% else %}
+                    {{akso_locale.registration_form.payment_box_min_upfront_paid}}
+                {% endif %}
+            </div>
             <div class="payment-button-container">
                 <a href="{{payment.link|e('html_attr')}}" class="link-button is-primary">
                     {{akso_locale.registration_form.payment_box_create_intent}}
