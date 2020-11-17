@@ -383,9 +383,11 @@ class CongressRegistration {
     }
 
     private function participantPaymentInfo() {
-        if (!$this->participant) return array('outstanding_payment' => false);
+        if (!$this->participant) {
+            return array('has_payment' => false, 'outstanding_payment' => false);
+        }
         $price = $this->participant['price'];
-        if (!$price) return array('outstanding_payment' => false);
+        if (!$price) return array('has_payment' => false, 'outstanding_payment' => false);
         $remaining = $price - $this->participant['amountPaid'];
 
         $remainingRendered = $this->formatCurrency($remaining, $this->currency);
@@ -405,6 +407,7 @@ class CongressRegistration {
         $minUpfrontRendered = $this->formatCurrency($minUpfront, $this->currency);
 
         return array(
+            'has_payment' => true,
             'outstanding_payment' => $remaining > 0,
             'remaining_amount' => $remaining,
             'remaining_rendered' => $remainingRendered,

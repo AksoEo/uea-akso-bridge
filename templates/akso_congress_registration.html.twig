@@ -1,7 +1,7 @@
 {% extends 'partials/base.html.twig' %}
 
 {% macro registration_payment(akso_locale, payment) %}
-    {% if payment.outstanding_payment %}
+    {% if payment.outstanding_payment and payment.has_payment %}
         <div class="registration-payment">
             <h3>
                 {{akso_locale.registration_form.payment_box_title}}
@@ -9,6 +9,10 @@
                     {{payment.remaining_rendered|e}}
                 </div>
             </h3>
+            <div class="payment-total">
+                {{akso_locale.registration_form.payment_box_total}}
+                {{payment.total_rendered|e}}
+            </div>
             <div class="payment-min-upfront">
                 {% if payment.is_min_payment %}
                     {{akso_locale.registration_form.payment_box_min_upfront}}
@@ -23,10 +27,11 @@
                 </a>
             </div>
         </div>
-    {% else %}
+    {% elseif payment.has_payment %}
         <div class="registration-payment all-paid">
             <h3 class="all-paid-title">
                 {{akso_locale.registration_form.payment_box_all_paid}}
+                ({{payment.total_rendered|e}})
             </h3>
         </div>
     {% endif %}
