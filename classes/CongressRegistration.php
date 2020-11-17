@@ -5,7 +5,7 @@ use \Grav\Common\Utils;
 
 // handles congress registration form
 class CongressRegistration {
-    const DATAID = 'dataId';
+    public const DATAID = 'dataId';
     const CANCEL = 'cancel';
     const VALIDATE = 'validate';
     const REALLY_CANCEL = 'really_cancel';
@@ -79,7 +79,7 @@ class CongressRegistration {
         $this->isEditable = $this->form['editable'];
         $this->isCancelable = $this->form['cancellable'];
 
-        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum'];
+        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum', 'codeholderId'];
         foreach ($this->form['form'] as $formItem) {
             if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
         }
@@ -194,8 +194,8 @@ class CongressRegistration {
                     $triggerAmount = $this->convertCurrency($currency, $this->currency, $value);
 
                     $codeholderId = null;
-                    if ($this->plugin->aksoUser) {
-                        $codeholderId = $this->plugin->aksoUser['id'];
+                    if ($this->participant['codeholderId']) {
+                        $codeholderId = $this->participant['codeholderId'];
                     }
 
                     $res = $this->app->bridge->post('/aksopay/payment_intents', array(
@@ -469,7 +469,7 @@ class CongressRegistration {
             $isConfirmation = true;
 
             $res = $this->app->bridge->get('/congresses/' . $this->congressId . '/instances/' . $this->instanceId . '/participants/' . $this->dataId, array(
-                'fields' => ['price', 'amountPaid', 'hasPaidMinimum']
+                'fields' => ['price', 'amountPaid', 'hasPaidMinimum', 'codeholderId']
             ));
             if ($res['k']) {
                 $this->participant = $res['b'];
@@ -495,7 +495,7 @@ class CongressRegistration {
 
             $backTarget = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $this->dataId;
             $rlyTarget = $this->plugin->getGrav()['uri']->path() . '?' .
-                self::DATAId . '=' . $this->dataId . '&' .
+                self::DATAID . '=' . $this->dataId . '&' .
                 self::REALLY_CANCEL . '=true';
 
             return array(
@@ -560,6 +560,25 @@ class CongressRegistration {
             return $this->runPayment();
         } else {
             return $this->runForm();
+        }
+    }
+
+    public static function getDataIdForCodeholder($app, $congressId, $instanceId, $codeholderId) {
+        $res = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/participants', array(
+            'filter' => array('codeholderId' => $codeholderId),
+            'fields' => ['codeholderId', 'dataId', 'cancelledTime'],
+            'limit' => 100,
+        ));
+
+        if ($res['k']) {
+            // find first non-canceled registration
+            foreach ($res['b'] as $item) {
+                if ($item['codeholderId'] != $codeholderId) continue;
+                if ($item['cancelledTime']) continue;
+                return bin2hex($item['dataId']);
+            }
+        } else {
+            return null;
         }
     }
 }

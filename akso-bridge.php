@@ -524,6 +524,15 @@ class AksoBridgePlugin extends Plugin {
             $twig->twig_vars['akso_congress_registration_allowed'] = $formRes['b']['allowUse'];
             $twig->twig_vars['akso_congress_registration_guest_not_allowed'] = !$formRes['b']['allowGuests'] && !$this->aksoUser;
 
+            if (!$isRegistration && $this->aksoUser) {
+                // show "view my registration" instead of "register" if user is logged in & has registered
+                $dataId = CongressRegistration::getDataIdForCodeholder($app, $congressId, $instanceId, $this->aksoUser['id']);
+                if ($dataId) {
+                    $twig->twig_vars['akso_congress_registration_exists'] = true;
+                    $twig->twig_vars['akso_congress_registration_link'] .= '?' . CongressRegistration::DATAID . '=' . urlencode($dataId);
+                }
+            }
+
             if ($isRegistration && !$formRes['b']['allowGuests'] && !$this->aksoUser) {
                 // user needs to log in to use this!
                 $this->grav->redirectLangSafe($this->loginPath, 303);

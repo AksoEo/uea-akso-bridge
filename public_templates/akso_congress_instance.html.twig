@@ -54,6 +54,11 @@
         Ensaluti aŭ registriĝi por aliĝi
         <span class="registration-icon" />
     </a>
+    {% elseif akso_congress_registration_exists %}
+    <a class="link-button is-primary congress-registration-button is-existing" href={{ akso_congress_registration_link|e('html_attr') }}>
+        Vidi vian aliĝon
+        <span class="registration-icon" />
+    </a>
     {% else %}
     <a {{ reg_disabled }} class="link-button is-primary congress-registration-button" href={{ akso_congress_registration_link|e('html_attr') }}>
         Aliĝi
