@@ -649,7 +649,11 @@ const messageHandlers = {
             const sym = Symbol('result');
             const res = evaluate(s.concat({
                 [sym]: e,
-            }), sym, id => fv[id] || null, {
+            }), sym, id => {
+                const value = fv[id] || null;
+                if (value && value.type === 'date') return new Date(value.time * 1000);
+                return value;
+            }, {
                 shouldHalt () {
                     iter++;
                     return iter > 4096;

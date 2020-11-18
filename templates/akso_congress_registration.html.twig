@@ -168,6 +168,13 @@
                     {% else %}
                     <li class="payment-method">
                     {% endif %}
+                        <div class="method-type">
+                            {% if method.type == 'manual' %}
+                                {{akso_locale.registration_form.payment_type_manual}}
+                            {% elseif method.type == 'stripe' %}
+                                {{akso_locale.registration_form.payment_type_stripe}}
+                            {% endif %}
+                        </div>
                         <h3 class="method-name">
                             {{method.name|e}}
 

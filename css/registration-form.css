@@ -161,6 +161,9 @@
     margin: 1em 0;
     text-align: left;
 }
+.registration-form.is-payment .payment-methods .payment-method .method-type {
+    font-size: small;
+}
 .registration-form.is-payment .payment-methods .payment-method .method-name {
     margin-top: 0;
 }

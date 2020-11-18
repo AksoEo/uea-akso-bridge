@@ -17,6 +17,9 @@ class CRFScriptExecCtx {
     public function setFormVar($name, $value) {
         $this->formVars[$name] = $value;
     }
+    public function setDateFormVar($name, $epoch) {
+        $this->formVars[$name] = array('type' => 'date', 'time' => $epoch);
+    }
 
     public function eval($expr) {
         return $this->app->bridge->evalScript($this->scriptStack, $this->formVars, $expr);
@@ -1044,7 +1047,39 @@ class CongressRegistrationForm {
         $top = $this->renderTop();
         if ($top) $root->appendChild($top);
 
+        $meta = $this->doc->createElement('div');
+        $meta->setAttribute('class', 'form-meta');
+
         $scriptCtx = new CRFScriptExecCtx($this->app);
+
+        if ($this->participant) {
+            $meta->setAttribute('data-is-member', $this->participant['codeholderId'] != null);
+            $meta->setAttribute('data-created-time', $this->participant['createdTime']);
+            $meta->setAttribute('data-edited-time', $this->participant['editedTime']);
+
+            $scriptCtx->setFormVar('@isMember', $this->participant['codeholderId'] != null);
+            if ($this->participant['createdTime'] != null) {
+                $scriptCtx->setDateFormVar('@createdTime', $this->participant['createdTime']);
+            } else {
+                $scriptCtx->setFormVar('@createdTime', null);
+            }
+            if ($this->participant['editedTime'] != null) {
+                $scriptCtx->setDateFormVar('@editedTime', $this->participant['editedTime']);
+            } else {
+                $scriptCtx->setFormVar('@editedTime', null);
+            }
+        } else {
+            $meta->setAttribute('data-is-member', $this->plugin->aksoUser != null);
+            $meta->setAttribute('data-created-time', null);
+            $meta->setAttribute('data-edited-time', null);
+
+            $scriptCtx->setFormVar('@isMember', $this->plugin->aksoUser != null);
+            $scriptCtx->setFormVar('@createdTime', null);
+            $scriptCtx->setFormVar('@editedTime', null);
+        }
+
+        $root->appendChild($meta);
+
         foreach ($this->form as $item) {
             $root->appendChild($this->renderItem($scriptCtx, $item));
         }

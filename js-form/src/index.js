@@ -572,6 +572,8 @@ function init() {
     if (!form) return;
     const submitButton = form.querySelector('.submit-button')
 
+    const meta = form.querySelector('.form-meta') || ({ dataset: {} });
+
     // these are probably in the correct order
     const qaFormItems = form.querySelectorAll('.form-item');
     const formItems = [];
@@ -585,10 +587,9 @@ function init() {
 
         const scriptStack = [];
         const formVars = {
-            // TODO: get actual values
-            '@created_time': null,
-            '@edited_time': null,
-            '@is_member': false,
+            '@created_time': meta.dataset.createdTime ? new Date(meta.dataset.createdTime * 1000) : null,
+            '@edited_time': meta.dataset.editedTime ? new Date(meta.dataset.editedTime * 1000) : null,
+            '@is_member': meta.dataset.isMember || false,
         };
 
         const getFormValue = id => {

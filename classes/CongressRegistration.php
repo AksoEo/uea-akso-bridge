@@ -79,7 +79,7 @@ class CongressRegistration {
         $this->isEditable = $this->form['editable'];
         $this->isCancelable = $this->form['cancellable'];
 
-        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum', 'codeholderId'];
+        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum', 'codeholderId', 'createdTime', 'editedTime'];
         foreach ($this->form['form'] as $formItem) {
             if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
         }
@@ -566,7 +566,7 @@ class CongressRegistration {
     public static function getDataIdForCodeholder($app, $congressId, $instanceId, $codeholderId) {
         $res = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/participants', array(
             'filter' => array('codeholderId' => $codeholderId),
-            'fields' => ['codeholderId', 'dataId', 'cancelledTime'],
+            'fields' => ['codeholderId', 'dataId', 'cancelledTime', 'createdTime', 'editedTime'],
             'limit' => 100,
         ));
 
