@@ -79,7 +79,7 @@ class CongressRegistrationForm {
     // Top-level error
     private $error = null;
     // Top-level message
-    private $message = null;
+    public $message = null;
 
     // Sets user data from API data.
     public function setParticipant($dataId, $apiData) {

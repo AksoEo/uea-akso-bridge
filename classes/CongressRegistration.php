@@ -12,6 +12,7 @@ class CongressRegistration {
     const PAYMENT = 'payment';
     const PAYMENT_METHOD = 'method';
     const PAYMENT_CURRENCY = 'currency';
+    const PAYMENT_SUCCESS_RETURN = 'payment_success_return';
     const NONCES = 'crf_nonces';
 
     private $plugin;
@@ -42,6 +43,7 @@ class CongressRegistration {
     private $isPayment = false;
     private $paymentMethod = null;
     private $paymentCurrency = null;
+    private $paymentSuccessReturn = false;
 
     private function readReq() {
         if (isset($_GET[self::VALIDATE])) {
@@ -65,6 +67,11 @@ class CongressRegistration {
         }
         if (isset($_GET[self::PAYMENT_CURRENCY])) {
             $this->paymentCurrency = $_GET[self::PAYMENT_CURRENCY];
+        }
+        if (isset($_GET[self::PAYMENT_SUCCESS_RETURN])) {
+            $_SESSION[self::PAYMENT_SUCCESS_RETURN] = true;
+            $target = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $this->dataId;
+            $this->plugin->getGrav()->redirectLangSafe($target, 302);
         }
     }
 
@@ -167,26 +174,23 @@ class CongressRegistration {
                     $value = $post['amount'];
                     $notes = $post['notes'];
                     if (gettype($value) !== 'string' || gettype($notes) !== 'string' || gettype($currency) !== 'string') {
-                        // TODO: bad request
-                        $error = '[[bad request]]';
+                        $error = $this->locale['registration_form']['payment_err_bad_request'];
                         break;
                     }
                     $value = floatval($value);
                     if ($value < $min || $value > $max) {
-                        // TODO: bad request
-                        $error = '[[value out of bounds]]';
+                        $error = $this->plugin->locale['registration_form']['payment_err_bad_request'];
                         break;
                     }
                     $value = floor($value * $multiplier);
                     if (!in_array($currency, $method['currencies'])) {
-                        $error = '[[invalid currency]]';
+                        $error = $this->plugin->locale['registration_form']['payment_err_bad_request'];
                         $value = $value / $multiplier;
                         break;
                     }
 
                     if (!$nonceValid) {
-                        // TODO: bad request
-                        $error = '[[invalid nonce]]';
+                        $error = $this->plugin->locale['registration_form']['err_nonce_invalid'];
                         $value = $value / $multiplier;
                         break;
                     }
@@ -542,6 +546,11 @@ class CongressRegistration {
             $nonce = base64_encode(random_bytes(32));
             if (!isset($_SESSION[self::NONCES])) $_SESSION[self::NONCES] = [];
             $_SESSION[self::NONCES][] = $nonce;
+
+            if ($_SESSION[self::PAYMENT_SUCCESS_RETURN]) {
+                $_SESSION[self::PAYMENT_SUCCESS_RETURN] = false;
+                $form->message = $this->plugin->locale['registration_form']['payment_success_return_msg'];
+            }
 
             return array(
                 'data_id' => $this->dataId,
