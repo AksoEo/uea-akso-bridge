@@ -96,6 +96,12 @@
     margin-bottom: 1em;
     padding: 0.5em 1em;
 }
+.registration-form .registration-suggestion-banner {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    margin-bottom: 1em;
+    padding: 0.5em 1em;
+}
 .registration-form .field-error {
     background: var(--error-bg);
     color: var(--error-fg);

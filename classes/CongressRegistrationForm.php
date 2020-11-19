@@ -517,6 +517,13 @@ class CongressRegistrationForm {
             return $msg;
         }
 
+        if (!$this->participant && !$this->plugin->aksoUser) {
+            $banner = $this->doc->createElement('div');
+            $banner->setAttribute('class', 'registration-suggestion-banner');
+            $banner->textContent = $this->localize('consider_signing_in_title');
+            return $banner;
+        }
+
         return null;
     }
 
