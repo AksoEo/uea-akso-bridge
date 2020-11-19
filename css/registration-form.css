@@ -184,6 +184,13 @@
         display: block;
     }
 }
+.registration-form.is-intent-page .payment-amount {
+    margin-bottom: 0;
+}
+.registration-form.is-intent-page .payment-min-upfront {
+    margin-bottom: 0.5em;
+    opacity: 0.7;
+}
 .registration-form .form-small-print {
     margin: 0;
     padding: 0.2em 1em;

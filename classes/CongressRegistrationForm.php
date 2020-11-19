@@ -132,6 +132,7 @@ class CongressRegistrationForm {
                 }
             }
 
+            $isNull = true;
             $out = [];
             for ($i = 0; $i < $item['rows']; $i++) {
                 $row = [];
@@ -143,10 +144,12 @@ class CongressRegistrationForm {
                             $cellValue = (bool) $data[$j][$i];
                         }
                     }
+                    if ($cellValue) $isNull = false;
                     $row[] = $cellValue;
                 }
                 $out[] = $row;
             }
+            if ($isNull) $out = null;
         }
 
         return $out;

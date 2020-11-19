@@ -321,16 +321,18 @@ class FormInput {
         } else if (type === 'boolean_table') {
             const { cols, rows } = this.node.dataset;
             const value = [];
+            let isNull = true;
             for (let y = 0; y < rows; y++) {
                 const row = [];
                 for (let x = 0; x < cols; x++) {
                     const box = this.node.querySelector(`input[data-index="${x}-${y}"]`)
+                    if (box && box.checked) isNull = false;
                     if (!box) row.push(null);
                     else row.push(box.checked);
                 }
                 value.push(row);
             }
-            return value;
+            return isNull ? null : value;
         }
     }
 

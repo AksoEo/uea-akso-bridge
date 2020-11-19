@@ -322,7 +322,9 @@ class CongressRegistration {
         {
             $methodTarget = $this->plugin->getGrav()['uri']->path();
 
-            $paymentMethods = [];
+            $autoPaymentMethods = [];
+            $otherPaymentMethods = [];
+
             if ($this->paymentOrg) {
                 $res = $this->app->bridge->get('/aksopay/payment_orgs/' . $this->paymentOrg . '/methods', array(
                     'fields' => ['id', 'type', 'stripeMethods', 'name', 'description', 'currencies',
@@ -333,10 +335,16 @@ class CongressRegistration {
                 if ($res['k']) {
                     // put recommended methods first
                     foreach ($res['b'] as $method) {
-                        if ($method['isRecommended']) $paymentMethods[] = $method;
+                        if ($method['isRecommended']) {
+                            if ($method['type'] === 'stripe') $autoPaymentMethods[] = $method;
+                            else $otherPaymentMethods[] = $method;
+                        }
                     }
                     foreach ($res['b'] as $method) {
-                        if (!$method['isRecommended']) $paymentMethods[] = $method;
+                        if (!$method['isRecommended']) {
+                            if ($method['type'] === 'stripe') $autoPaymentMethods[] = $method;
+                            else $otherPaymentMethods[] = $method;
+                        }
                     }
                 }
             }
@@ -344,7 +352,10 @@ class CongressRegistration {
             return array(
                 'is_payment' => true,
                 'payment' => $paymentInfo,
-                'payment_methods' => $paymentMethods,
+                'payment_methods' => array(
+                    'auto' => $autoPaymentMethods,
+                    'other' => $otherPaymentMethods,
+                ),
                 'edit_target' => $editTarget,
                 'data_id' => $this->dataId,
                 'method_target' => $methodTarget,
