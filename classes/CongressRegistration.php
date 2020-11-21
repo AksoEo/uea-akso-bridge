@@ -547,7 +547,7 @@ class CongressRegistration {
             if (!isset($_SESSION[self::NONCES])) $_SESSION[self::NONCES] = [];
             $_SESSION[self::NONCES][] = $nonce;
 
-            if ($_SESSION[self::PAYMENT_SUCCESS_RETURN]) {
+            if (isset($_SESSION[self::PAYMENT_SUCCESS_RETURN]) && $_SESSION[self::PAYMENT_SUCCESS_RETURN]) {
                 $_SESSION[self::PAYMENT_SUCCESS_RETURN] = false;
                 $form->message = $this->plugin->locale['registration_form']['payment_success_return_msg'];
             }
