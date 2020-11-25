@@ -1,0 +1,15 @@
+{% extends "partials/base.html.twig" %}
+
+{% block content %}
+{% if akso_congress_error %}
+    <div class="error-banner">
+        {{ akso_congress_error|e }}
+    </div>
+{% endif %}
+
+{{ akso_congress.contents }}
+
+{% if not akso_congress.did_render_location %}
+{{ page.content }}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+title: AKSO Lokoj de Kongresa Okazigo
+'@extends':
+  type: default
+  context: blueprints://pages
+
+form:
+  fields:
+    header.congress_instance:
+      type: akso_congress_instance_id
+      label: 'Kongresa okazigo'
