@@ -33,6 +33,32 @@ class CongressLocations {
         }
     }
 
+    function renderInternalList($intLoc) {
+        $int = $this->doc->createElement('ul');
+        $int->setAttribute('class', 'internal-locations-list');
+
+        foreach ($intLoc as $location) {
+            $li = $this->doc->createElement('li');
+            $li->setAttribute('class', 'internal-location-list-item');
+            $li->setAttribute('data-id', $location['id']);
+
+            $name = $this->doc->createElement('a');
+            $name->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $location['id']);
+            $name->setAttribute('class', 'location-name');
+            $name->textContent = $location['name'];
+            $li->appendChild($name);
+
+            $description = $this->doc->createElement('div');
+            $description->setAttribute('class', 'location-description');
+            $description->textContent = $location['description']; // TODO: render md
+            $li->appendChild($description);
+
+            $int->appendChild($li);
+        }
+
+        return $int;
+    }
+
     function renderList() {
         $extLocations = [];
         $intLocations = [];
@@ -90,37 +116,12 @@ class CongressLocations {
             $description->textContent = $location['description']; // TODO: render md
             $li->appendChild($description);
 
+            if (isset($intLocations[$location['id']]) && count($intLocations[$location['id']]) > 0) {
+                $li->appendChild($this->renderInternalList($intLocations[$location['id']]));
+            }
+
             $ul->appendChild($li);
 
-            if (isset($intLocations[$location['id']]) && count($intLocations[$location['id']]) > 0) {
-                $intLoc = $intLocations[$location['id']];
-
-                $outerLi = $li;
-
-                $int = $this->doc->createElement('ul');
-                $int->setAttribute('class', 'internal-locations-list');
-
-                foreach ($intLoc as $location) {
-                    $li = $this->doc->createElement('li');
-                    $li->setAttribute('class', 'internal-location-list-item');
-                    $li->setAttribute('data-id', $location['id']);
-
-                    $name = $this->doc->createElement('a');
-                    $name->setAttribute('href', $path . '?' . self::QUERY_LOC . '=' . $location['id']);
-                    $name->setAttribute('class', 'location-name');
-                    $name->textContent = $location['name'];
-                    $li->appendChild($name);
-
-                    $description = $this->doc->createElement('div');
-                    $description->setAttribute('class', 'location-description');
-                    $description->textContent = $location['description']; // TODO: render md
-                    $li->appendChild($description);
-
-                    $int->appendChild($li);
-                }
-
-                $outerLi->appendChild($int);
-            }
         }
 
         return $ul;
@@ -145,6 +146,7 @@ class CongressLocations {
 
             {
                 $backLink = $this->doc->createElement('a');
+                $backLink->setAttribute('class', 'back-link');
                 $backLink->setAttribute('href', $this->plugin->getGrav()['uri']->path());
                 $backLink->textContent = '<';
                 $header->appendChild($backLink);
@@ -155,17 +157,66 @@ class CongressLocations {
             }
 
             if ($location['type'] === 'internal') {
-                // TODO: inside of
+                $externalLocId = $location['externalLoc'];
+                $eres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations/$externalLocId", array(
+                    'fields' => ['name', 'icon'],
+                ), 60);
+                if ($eres['k']) {
+                    $label = $this->doc->createElement('span');
+                    $label->textContent = $this->plugin->locale['congress_locations']['located_within'] . ' ';
+
+                    $extLink = $this->doc->createElement('a');
+                    $extLink->textContent = $eres['b']['name'];
+                    $extLink->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $externalLocId);
+
+                    $extLoc = $this->doc->createElement('div');
+                    $extLoc->setAttribute('class', 'external-loc');
+                    $extLoc->appendChild($label);
+                    $extLoc->appendChild($extLink);
+                    $container->appendChild($extLoc);
+                }
             }
 
-            // TODO: rating
+            if (isset($location['rating']) && $location['rating'] !== null) {
+                $rating = $location['rating'];
+
+                $ratingContainer = $this->doc->createElement('div');
+                $ratingContainer->setAttribute('class', 'location-rating');
+
+                // TODO
+
+                $container->appendChild($ratingContainer);
+            }
 
             $description = $this->doc->createElement('div');
             $description->setAttribute('class', 'location-description');
             $description->textContent = $location['description']; // TODO: render md
             $container->appendChild($description);
 
-            // TODO: open hours
+            if ($location['type'] === 'external') {
+                $eres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations", array(
+                    'fields' => ['id', 'name', 'description'],
+                    'filter' => array('externalLoc' => $locationId),
+                    'limit' => 100,
+                ), 60);
+
+                if ($eres['k'] && count($eres['b']) > 0) {
+                    $internalListContainer = $this->doc->createElement('div');
+                    $internalListContainer->setAttribute('class', 'internal-list-container');
+
+                    $title = $this->doc->createElement('h4');
+                    $title->setAttribute('class', 'internal-list-title');
+                    $title->textContent = $this->plugin->locale['congress_locations']['internal_locations_title'];
+                    $internalListContainer->appendChild($title);
+
+                    $internalListContainer->appendChild($this->renderInternalList($eres['b']));
+                    $container->appendChild($internalListContainer);
+                }
+            }
+
+            if (isset($location['openHours']) && $location['openHours'] !== null) {
+                // TODO
+            }
 
             return $container;
         }
