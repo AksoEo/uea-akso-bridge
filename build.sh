@@ -38,7 +38,7 @@ assert_ok
 cd ../..
 
 echo Building AKSO Bridge JS
-cd js-form
+cd js-src
 npm install
 assert_ok
 npm run build

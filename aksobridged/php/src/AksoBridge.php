@@ -53,7 +53,14 @@ class AksoBridge {
 
     public function recv() {
         $msglen = decode32LE(fread($this->conn, 4));
-        $msgdata = fread($this->conn, $msglen);
+        $msgdata = '';
+        $remaining = $msglen;
+        do {
+            $chunk = fread($this->conn, $remaining);
+            $remaining -= strlen($chunk);
+            $msgdata .= $chunk;
+        } while ($remaining > 0);
+
         $msg = MessagePack::unpack($msgdata);
         return $msg;
     }
@@ -274,5 +281,11 @@ class AksoBridge {
 
     public function currencies() {
         return $this->request('currencies', array());
+    }
+
+    public function getRaw(string $path) {
+        return $this->request('get_raw', array(
+            'p' => $path,
+        ));
     }
 }

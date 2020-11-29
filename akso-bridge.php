@@ -393,7 +393,8 @@ class AksoBridgePlugin extends Plugin {
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
             } else {
-                $this->grav['assets']->add('plugin://akso-bridge/css/congress-locations.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.js');
                 $app = new AppBridge($this->grav);
                 $app->open();
                 $locations = new CongressLocations($this, $app, $congressId, $instanceId);
@@ -561,7 +562,7 @@ class AksoBridgePlugin extends Plugin {
 
             if ($isRegistration) {
                 $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
-                $this->grav['assets']->add('plugin://akso-bridge/js/form/index.js');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/form.js');
 
                 $registration = new CongressRegistration($this, $app, $congressId, $instanceId, $paymentOrg, $formRes['b'], $congressName);
                 $twig->twig_vars['akso_congress_registration'] = $registration->run();
@@ -681,7 +682,7 @@ class AksoBridgePlugin extends Plugin {
 
         $csp = [
             "default-src 'self'",
-            "img-src 'self' " . $this->apiHost,
+            "img-src 'self' data: " . $this->apiHost . " https://maps.wikimedia.org",
             "script-src 'self' " . $scriptNonces,
             "style-src 'self' 'unsafe-inline' " . $styleNonces,
         ];

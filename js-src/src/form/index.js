@@ -1,7 +1,8 @@
 import { evaluate, stdlib, loadCountryFmt, loadPhoneFmt } from '@tejo/akso-script';
-import locale from '../../locale.ini';
+import locale from '../../../locale.ini';
 import Markdown from 'markdown-it';
 import { initDatePolyfill, initTimePolyfill, initDateTimePolyfill } from './date-editor';
+import './index.less';
 
 {
     const noscriptItems = document.querySelectorAll('.congress-form-noscript');

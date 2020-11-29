@@ -41,6 +41,10 @@ if (!window.define) {
     };
 
     window.define = function(reqs, run) {
+        if (typeof reqs === 'function') {
+            run = reqs;
+            reqs = [];
+        }
         var id = document.currentScript.dataset.id;
         if (modules[id]) return;
         var exports = {};

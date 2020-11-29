@@ -10,6 +10,7 @@ const { promisify } = require('util');
 const fs = require('fs');
 const crypto = require('crypto');
 const { Cashify } = require('cashify');
+const fetch = require('cross-fetch');
 
 process.on('uncaughtException', err => {
     error(`!!!! uncaught exception`);
@@ -675,6 +676,22 @@ const messageHandlers = {
 
         const cashify = new Cashify({ base: fc, rates: r });
         return { v: cashify.convert(v, { from: fc, to: tc }) };
+    },
+    get_raw: async (conn, { p }) => {
+        assertType(p, 'string', 'expected p to be a number');
+
+        const res = await conn.client.get(p, {});
+        let body = res.body;
+        if (body instanceof ArrayBuffer) {
+            body = Buffer.from(body).toString('base64');
+        }
+
+        return {
+            k: res.ok,
+            sc: res.status,
+            h: collectHeaders(res.res.headers),
+            b: body,
+        };
     },
     x: async (conn) => {
         conn.flushSendCookies();

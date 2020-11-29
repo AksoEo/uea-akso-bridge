@@ -7,11 +7,10 @@
     </div>
 {% endif %}
 
+{{akso_congress.header_figure}}
 <div class="congress-location-container">
     {{ akso_congress.contents }}
 </div>
 
-{% if not akso_congress.did_render_location %}
 {{ page.content }}
-{% endif %}
 {% endblock %}

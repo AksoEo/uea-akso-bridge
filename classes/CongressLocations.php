@@ -23,13 +23,17 @@ class CongressLocations {
 
     private $wantsPartial = false;
     private $locationId = null;
+    private $thumbnailId = null;
 
     function readQuery() {
         if (isset($_GET['partial'])) {
             $this->wantsPartial = true;
         }
-        if (isset($_GET['loc'])) {
-            $this->locationId = (int) $_GET['loc'];
+        if (isset($_GET[self::QUERY_LOC])) {
+            $this->locationId = (int) $_GET[self::QUERY_LOC];
+        }
+        if (isset($_GET['thumbnail'])) {
+            $this->thumbnailId = $_GET['thumbnail'];
         }
     }
 
@@ -45,6 +49,7 @@ class CongressLocations {
             $name = $this->doc->createElement('a');
             $name->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $location['id']);
             $name->setAttribute('class', 'location-name');
+            $name->setAttribute('data-loc-id', $location['id']);
             $name->textContent = $location['name'];
             $li->appendChild($name);
 
@@ -108,6 +113,7 @@ class CongressLocations {
             $name = $this->doc->createElement('a');
             $name->setAttribute('href', $path . '?' . self::QUERY_LOC . '=' . $location['id']);
             $name->setAttribute('class', 'location-name');
+            $name->setAttribute('data-loc-id', $location['id']);
             $name->textContent = $location['name'];
             $li->appendChild($name);
 
@@ -140,13 +146,37 @@ class CongressLocations {
         if ($res['k']) {
             $location = $res['b'];
 
+            $headerImage = null;
+            $hres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations/$locationId/thumbnail/32px", [], 60);
+            if ($hres['k']) {
+                // $imgPrefix = $this->plugin->apiHost . "/congresses/$congress/instances/$instance/locations/$locationId/thumbnail";
+                $imgPrefix = $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $locationId . '&thumbnail';
+
+                $headerImage = $this->doc->createElement('div');
+                $headerImage->setAttribute('class', 'location-header-image');
+                $img = $this->doc->createElement('img');
+                $img->setAttribute('src', $imgPrefix . '=512px');
+                $img->setAttribute('srcset', "$imgPrefix=128px 128w, $imgPrefix=256px 256w, $imgPrefix=512px 512w, $imgPrefix=1024px 1024w, $imgPrefix=2048px 2048w");
+
+                $headerImage->appendChild($img);
+            }
+
             $header = $this->doc->createElement('div');
             $header->setAttribute('class', 'location-header');
-            $container->appendChild($header);
+            if ($headerImage !== null) {
+                $headerContainer = $this->doc->createElement('div');
+                $headerContainer->setAttribute('class', 'location-header-container');
+                $headerContainer->appendChild($headerImage);
+                $headerContainer->appendChild($header);
+                $container->appendChild($headerContainer);
+            } else {
+                $container->appendChild($header);
+            }
 
             {
                 $backLink = $this->doc->createElement('a');
                 $backLink->setAttribute('class', 'back-link');
+                $backLink->setAttribute('data-loc-id', '');
                 $backLink->setAttribute('href', $this->plugin->getGrav()['uri']->path());
                 $backLink->textContent = '<';
                 $header->appendChild($backLink);
@@ -159,14 +189,17 @@ class CongressLocations {
             if ($location['type'] === 'internal') {
                 $externalLocId = $location['externalLoc'];
                 $eres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations/$externalLocId", array(
-                    'fields' => ['name', 'icon'],
+                    'fields' => ['name', 'icon', 'll'],
                 ), 60);
                 if ($eres['k']) {
+                    $container->setAttribute('data-ll', implode(',', $eres['b']['ll']));
+
                     $label = $this->doc->createElement('span');
                     $label->textContent = $this->plugin->locale['congress_locations']['located_within'] . ' ';
 
                     $extLink = $this->doc->createElement('a');
                     $extLink->textContent = $eres['b']['name'];
+                    $extLink->setAttribute('data-loc-id', $externalLocId);
                     $extLink->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $externalLocId);
 
                     $extLoc = $this->doc->createElement('div');
@@ -175,6 +208,8 @@ class CongressLocations {
                     $extLoc->appendChild($extLink);
                     $container->appendChild($extLoc);
                 }
+            } else if ($location['type'] === 'external') {
+                $container->setAttribute('data-ll', implode(',', $location['ll']));
             }
 
             if (isset($location['rating']) && $location['rating'] !== null) {
@@ -228,12 +263,18 @@ class CongressLocations {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'congress-locations-rendered');
 
+        $root->setAttribute('data-base-path', $this->plugin->getGrav()['uri']->path());
+        $root->setAttribute('data-query-loc', self::QUERY_LOC);
+
         $renderedLoc = false;
         if ($this->locationId != null) {
             $rendered = $this->renderDetail();
             if ($rendered !== null) {
                 $renderedLoc = true;
                 $root->appendChild($rendered);
+
+                $root->setAttribute('data-is-loc', 'true');
+                $root->setAttribute('data-loc-id', $this->locationId);
             }
         }
         $this->didRenderLocation = $renderedLoc;
@@ -245,7 +286,27 @@ class CongressLocations {
         return $this->doc->saveHtml($root);
     }
 
+    private function runThumbnail() {
+        $congress = $this->congressId;
+        $instance = $this->instanceId;
+        $locationId = $this->locationId;
+        $thumbnailId = $this->thumbnailId;
+        $path = "/congresses/$congress/instances/$instance/locations/$locationId/thumbnail/$thumbnailId";
+
+        $res = $this->app->bridge->getRaw($path);
+        if ($res['k']) {
+            // FIXME: content type header has already been sent
+            header('Content-Type', $res['h']['content-type']);
+            echo base64_decode($res['b']);
+            die();
+        }
+    }
+
     public function run() {
+        if ($this->thumbnailId !== null) {
+            $this->runThumbnail();
+        }
+
         $rendered = $this->render();
 
         if ($this->wantsPartial) {
