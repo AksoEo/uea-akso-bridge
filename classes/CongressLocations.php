@@ -23,7 +23,6 @@ class CongressLocations {
 
     private $wantsPartial = false;
     private $locationId = null;
-    private $thumbnailId = null;
 
     function readQuery() {
         if (isset($_GET['partial'])) {
@@ -31,9 +30,6 @@ class CongressLocations {
         }
         if (isset($_GET[self::QUERY_LOC])) {
             $this->locationId = (int) $_GET[self::QUERY_LOC];
-        }
-        if (isset($_GET['thumbnail'])) {
-            $this->thumbnailId = $_GET['thumbnail'];
         }
     }
 
@@ -150,7 +146,11 @@ class CongressLocations {
             $hres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations/$locationId/thumbnail/32px", [], 60);
             if ($hres['k']) {
                 // $imgPrefix = $this->plugin->apiHost . "/congresses/$congress/instances/$instance/locations/$locationId/thumbnail";
-                $imgPrefix = $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $locationId . '&thumbnail';
+                $imgPrefix = \Grav\Plugin\AksoBridgePlugin::CONGRESS_LOC_THUMBNAIL_PATH . '?' .
+                    self::TH_CONGRESS . '=' . $congress . '&' .
+                    self::TH_INSTANCE . '=' . $instance . '&' .
+                    self::TH_LOCATION . '=' . $locationId . '&' .
+                    self::TH_SIZE;
 
                 $headerImage = $this->doc->createElement('div');
                 $headerImage->setAttribute('class', 'location-header-image');
@@ -286,27 +286,29 @@ class CongressLocations {
         return $this->doc->saveHtml($root);
     }
 
-    private function runThumbnail() {
-        $congress = $this->congressId;
-        $instance = $this->instanceId;
-        $locationId = $this->locationId;
-        $thumbnailId = $this->thumbnailId;
-        $path = "/congresses/$congress/instances/$instance/locations/$locationId/thumbnail/$thumbnailId";
+    const TH_CONGRESS = 'c';
+    const TH_INSTANCE = 'i';
+    const TH_LOCATION = 'l';
+    const TH_SIZE = 's';
+    public function runThumbnail() {
+        $congress = isset($_GET[self::TH_CONGRESS]) ? $_GET[self::TH_CONGRESS] : '?';
+        $instance = isset($_GET[self::TH_INSTANCE]) ? $_GET[self::TH_INSTANCE] : '?';
+        $location = isset($_GET[self::TH_LOCATION]) ? $_GET[self::TH_LOCATION] : '?';
+        $size = isset($_GET[self::TH_SIZE]) ? $_GET[self::TH_SIZE] : '?';
+        $path = "/congresses/$congress/instances/$instance/locations/$location/thumbnail/$size";
 
-        $res = $this->app->bridge->getRaw($path);
+        $res = $this->app->bridge->getRaw($path, 60);
         if ($res['k']) {
-            // FIXME: content type header has already been sent
-            header('Content-Type', $res['h']['content-type']);
-            echo base64_decode($res['b']);
+            header('Content-Type: ' . $res['h']['content-type']);
+            readfile($res['ref']);
+            die();
+        } else {
+            // TODO: error?
             die();
         }
     }
 
     public function run() {
-        if ($this->thumbnailId !== null) {
-            $this->runThumbnail();
-        }
-
         $rendered = $this->render();
 
         if ($this->wantsPartial) {

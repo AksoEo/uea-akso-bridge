@@ -37,11 +37,16 @@ parentPort.on('message', message => {
 // The file contents will then hold the following msgpack-encoded data:
 //
 // ```json
-// { maxAge: max age in seconds, data: (data object) }
+// { maxAge: max age in seconds, data: (data object), raw: string? }
 // ```
+//
+// If raw is set to a file name, this item is associated with a raw data file.
 //
 // Temporary files are used for writing. They will always start with a $ character.
 const cachePath = workerData.cachePath;
+
+// The raw cache stores raw data files (such as images). They are referenced by cache files.
+const rawCachePath = workerData.rawCachePath;
 
 function alphaSortObject (value) {
     if (Array.isArray(value)) return value;
@@ -62,6 +67,7 @@ const fsStat = promisify(fs.stat);
 const fsReadFile = promisify(fs.readFile);
 const fsWriteFile = promisify(fs.writeFile);
 const fsRename = promisify(fs.rename);
+const fsUtimes = promisify(fs.utimes);
 
 const cache = {
     get: async (host, method, resPath, query) => {
@@ -88,7 +94,12 @@ const cache = {
         if (age > rootNode.maxAge) return null;
         else return rootNode.data; // otherwise return the data
     },
-    insert: async (host, method, resPath, query, maxCacheSecs, data) => {
+    touch: async (host, method, resPath, query) => {
+        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
+
+        await fsUtimes(filePath, new Date(), new Date());
+    },
+    insert: async (host, method, resPath, query, maxCacheSecs, data, raw = null) => {
         const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
 
         const tmpWritePath = path.join(cachePath, '$' + Math.random().toString(36));
@@ -96,6 +107,7 @@ const cache = {
         const fileData = encode({
             maxAge: maxCacheSecs,
             data,
+            raw,
         });
 
         // write the data into a new tmp file
@@ -677,21 +689,50 @@ const messageHandlers = {
         const cashify = new Cashify({ base: fc, rates: r });
         return { v: cashify.convert(v, { from: fc, to: tc }) };
     },
-    get_raw: async (conn, { p }) => {
-        assertType(p, 'string', 'expected p to be a number');
+    get_raw: async (conn, { p, c }) => {
+        assertType(p, 'string', 'expected p to be a string');
+        assertType(c, 'number', 'expected c to be a number');
+        if (c < 0) throw new Error('negative cache time');
 
-        const res = await conn.client.get(p, {});
-        let body = res.body;
-        if (body instanceof ArrayBuffer) {
-            body = Buffer.from(body).toString('base64');
+        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, {});
+        if (cachedResponse !== null) {
+            // to prevent the data file from being garbage-collected while it is being read by
+            // an external application, the mtime is updated.
+            // hence, c should be >= an estimate of how long it would take to read it.
+            await cache.touch(conn.apiHost, 'GET_RAW', p, {});
+            return {
+                ...cachedResponse,
+                ref: cachedResponse.ref && path.resolve(path.join(rawCachePath, cachedResponse.ref)),
+            };
         }
 
-        return {
+        const res = await conn.client.get(p, {});
+        let body = Buffer.from(res.body);
+
+        let refName = null;
+        if (res.ok) {
+            const hash = crypto.createHash('sha256');
+            hash.update(body);
+            refName = hash.digest('hex');
+        }
+
+        const response = {
             k: res.ok,
             sc: res.status,
             h: collectHeaders(res.res.headers),
-            b: body,
+            ref: refName,
         };
+
+        if (res.ok) {
+            const filePath = path.join(rawCachePath, refName);
+            await fsWriteFile(filePath, body);
+            await cache.insert(conn.apiHost, 'GET_RAW', p, {}, c, response, refName);
+        }
+
+        return {
+            ...response,
+            ref: response.ref && path.resolve(path.join(rawCachePath, response.ref)),
+        }
     },
     x: async (conn) => {
         conn.flushSendCookies();

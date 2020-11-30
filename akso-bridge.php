@@ -30,6 +30,7 @@ class AksoBridgePlugin extends Plugin {
     }
 
     const CONGRESS_REGISTRATION_PATH = 'alighilo';
+    const CONGRESS_LOC_THUMBNAIL_PATH = '/_/kongresa_loko/bildo';
 
     // allow access to protected property
     public function getGrav() {
@@ -74,6 +75,12 @@ class AksoBridgePlugin extends Plugin {
                 'onPagesInitialized' => ['addLoginPage', 0],
             ]);
             return;
+        } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $loc = new CongressLocations($this, $app, null, null);
+            $loc->runThumbnail();
+            $app->close();
         }
 
         $this->enable([

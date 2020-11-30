@@ -16,7 +16,9 @@ setThreadName('MAIN');
 
 // set up disk cache directory
 const cachePath = 'run/cache';
+const rawCachePath = 'run/cache_raw';
 fs.mkdirSync(cachePath, { recursive: true, mode: 0o755 });
+fs.mkdirSync(rawCachePath, { recursive: true, mode: 0o755 });
 
 // set up socket directory
 const bridgePath = 'aksobridge';
@@ -27,7 +29,7 @@ let isClosing = false;
 
 function createWorkerInSlot (id) {
     const worker = new Worker(path.join(__dirname, 'worker.js'), {
-        workerData: { path: bridgePath, id, userAgent, cachePath },
+        workerData: { path: bridgePath, id, userAgent, cachePath, rawCachePath },
     });
     const { port1: mainPort, port2: workerPort } = new MessageChannel();
     worker.postMessage({ type: 'init', channel: workerPort }, [workerPort]);
@@ -94,17 +96,26 @@ async function cacheGC () {
             const contents = await fsReadFile(filePath);
 
             let shouldDelete = false;
+            let rawDataFile = null;
             try {
                 const rootNode = decode(contents);
                 const age = (Date.now() - stats.mtimeMs) / 1000;
                 shouldDelete = age > rootNode.maxAge;
+                rawDataFile = rootNode.raw;
             } catch {
                 // decode error; file can’t be read anyway
                 shouldDelete = true;
             }
 
             if (shouldDelete) {
-                await fsUnlink(filePath);
+                try {
+                    await fsUnlink(filePath);
+                    if (rawDataFile) {
+                        await fsUnlink(path.join(rawCachePath, rawDataFile));
+                    }
+                } catch (err) {
+                    error(`Failed to delete cache for ${file}: ${err}`)
+                }
             }
         } catch (err) {
             error(`GC error for file ${file}: ${err}`);

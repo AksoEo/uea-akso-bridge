@@ -66,6 +66,7 @@ function init() {
             const anchor = anchors[i];
             if (typeof anchor.dataset.locId === 'string') {
                 anchor.addEventListener('click', e => {
+                    if (e.metaKey || e.ctrlKey || e.altKey) return;
                     e.preventDefault();
                     openLoc(anchor.dataset.locId);
                 });
