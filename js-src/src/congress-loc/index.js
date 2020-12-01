@@ -40,7 +40,7 @@ function init() {
 
     let rendered = initialRender;
 
-    const openLoc = locId => {
+    const openLoc = (locId, href) => {
         rendered.classList.add('is-loading');
         fetchPartial(locId).then(result => {
             rendered.parentNode.insertBefore(result, rendered);
@@ -55,7 +55,7 @@ function init() {
             console.error(err);
             // failed to load for some reason; fall back to browser navigation
             const a = document.createElement('a');
-            a.href = anchor.href;
+            a.href = href;
             a.click();
         });
     };
@@ -68,7 +68,7 @@ function init() {
                 anchor.addEventListener('click', e => {
                     if (e.metaKey || e.ctrlKey || e.altKey) return;
                     e.preventDefault();
-                    openLoc(anchor.dataset.locId);
+                    openLoc(anchor.dataset.locId, anchor.href);
                 });
             }
         }
@@ -77,9 +77,9 @@ function init() {
     window.addEventListener('popstate', () => {
         const locId = window.location.search.match(/[?&]loc=(\d+)\b/);
         if (locId) {
-            openLoc(locId[1]);
+            openLoc(locId[1], window.location.href);
         } else {
-            openLoc();
+            openLoc(null, window.location.href);
         }
     });
 

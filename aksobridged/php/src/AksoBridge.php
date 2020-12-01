@@ -289,4 +289,10 @@ class AksoBridge {
             'c' => $cacheTime
         ));
     }
+
+    public function releaseRaw(string $path) {
+        return $this->request('release_raw', array(
+            'p' => $path,
+        ));
+    }
 }

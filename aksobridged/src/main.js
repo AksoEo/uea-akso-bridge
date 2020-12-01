@@ -25,7 +25,17 @@ const bridgePath = 'aksobridge';
 fs.mkdirSync(bridgePath, { recursive: true, mode: 0o755 });
 const userAgent = `AKSOBridge/${version} (+https://github.com/AksoEo/aksobridged)`;
 
+try {
+    // if aksobridged crashed or was sigkilled, ipc pipes will still exist in the bridge path
+    // so first delete them here
+    const items = fs.readdirSync(bridgePath);
+    for (const item of items) {
+        if (item.startsWith('ipc')) fs.unlinkSync(path.join(bridgePath, item));
+    }
+} catch {}
+
 let isClosing = false;
+const writeLocks = new Map();
 
 function createWorkerInSlot (id) {
     const worker = new Worker(path.join(__dirname, 'worker.js'), {
@@ -33,6 +43,22 @@ function createWorkerInSlot (id) {
     });
     const { port1: mainPort, port2: workerPort } = new MessageChannel();
     worker.postMessage({ type: 'init', channel: workerPort }, [workerPort]);
+    worker.on('message', message => {
+        if (!message) return;
+        if (message.type === 'acquire') {
+            if (!writeLocks.has(message.path)) writeLocks.set(message.path, 0);
+            writeLocks.set(message.path, writeLocks.get(message.path) + 1);
+            worker.postMessage({ type: 'acquire-ack', id: message.id });
+            debug('Acquire lock on ' + message.path);
+        } else if (message.type === 'release') {
+            if (writeLocks.has(message.path)) {
+                writeLocks.set(message.path, writeLocks.get(message.path) - 1);
+                if (!writeLocks.get(message.path)) writeLocks.delete(message.path);
+            }
+            worker.postMessage({ type: 'release-ack', id: message.id });
+            debug('Release lock on ' + message.path + ' (remaining: ' + (writeLocks.get(message.path) || 0) + ')');
+        }
+    });
     worker.on('error', err => {
         mainPort.close();
         error(`worker ${id} terminated: ${err}`);
@@ -90,6 +116,10 @@ async function cacheGC () {
     for (const file of files) {
         if (file.startsWith('$')) continue; // tmp file
         const filePath = path.join(cachePath, file);
+        if (writeLocks.has(filePath)) {
+            debug(`skipping gc for ${filePath} because it’s locked`);
+            continue;
+        }
 
         try {
             const stats = await fsStat(filePath);
@@ -108,13 +138,9 @@ async function cacheGC () {
             }
 
             if (shouldDelete) {
-                try {
-                    await fsUnlink(filePath);
-                    if (rawDataFile) {
-                        await fsUnlink(path.join(rawCachePath, rawDataFile));
-                    }
-                } catch (err) {
-                    error(`Failed to delete cache for ${file}: ${err}`)
+                await fsUnlink(filePath);
+                if (rawDataFile) {
+                    await fsUnlink(path.join(rawCachePath, rawDataFile));
                 }
             }
         } catch (err) {

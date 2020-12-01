@@ -17,11 +17,24 @@ process.on('uncaughtException', err => {
     console.error(err);
 });
 
+const pendingAcquire = new Map();
+const pendingRelease = new Map();
+
 setThreadName(`W${workerData.id}`);
 parentPort.on('message', message => {
     if (!message) return;
     if (message.type === 'init') {
         init(message.channel);
+    } else if (message.type === 'acquire-ack') {
+        if (pendingAcquire.has(message.id)) {
+            pendingAcquire.get(message.id)();
+            pendingAcquire.delete(message.id);
+        }
+    } else if (message.type === 'release-ack') {
+        if (pendingRelease.has(message.id)) {
+            pendingRelease.get(message.id)();
+            pendingRelease.delete(message.id);
+        }
     }
 });
 
@@ -41,6 +54,7 @@ parentPort.on('message', message => {
 // ```
 //
 // If raw is set to a file name, this item is associated with a raw data file.
+// Raw files MUST be refcounted (using acquire & release).
 //
 // Temporary files are used for writing. They will always start with a $ character.
 const cachePath = workerData.cachePath;
@@ -67,7 +81,6 @@ const fsStat = promisify(fs.stat);
 const fsReadFile = promisify(fs.readFile);
 const fsWriteFile = promisify(fs.writeFile);
 const fsRename = promisify(fs.rename);
-const fsUtimes = promisify(fs.utimes);
 
 const cache = {
     get: async (host, method, resPath, query) => {
@@ -94,10 +107,21 @@ const cache = {
         if (age > rootNode.maxAge) return null;
         else return rootNode.data; // otherwise return the data
     },
-    touch: async (host, method, resPath, query) => {
+    acquire: async (host, method, resPath, query) => {
         const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
-
-        await fsUtimes(filePath, new Date(), new Date());
+        const id = Math.random().toString(36);
+        parentPort.postMessage({ type: 'acquire', id, path: filePath });
+        await new Promise(r => {
+            pendingAcquire.set(id, r);
+        });
+    },
+    release: async (host, method, resPath, query) => {
+        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
+        const id = Math.random().toString(36);
+        parentPort.postMessage({ type: 'release', id, path: filePath });
+        await new Promise(r => {
+            pendingRelease.set(id, r);
+        });
     },
     insert: async (host, method, resPath, query, maxCacheSecs, data, raw = null) => {
         const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
@@ -696,10 +720,7 @@ const messageHandlers = {
 
         const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, {});
         if (cachedResponse !== null) {
-            // to prevent the data file from being garbage-collected while it is being read by
-            // an external application, the mtime is updated.
-            // hence, c should be >= an estimate of how long it would take to read it.
-            await cache.touch(conn.apiHost, 'GET_RAW', p, {});
+            await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
             return {
                 ...cachedResponse,
                 ref: cachedResponse.ref && path.resolve(path.join(rawCachePath, cachedResponse.ref)),
@@ -727,12 +748,17 @@ const messageHandlers = {
             const filePath = path.join(rawCachePath, refName);
             await fsWriteFile(filePath, body);
             await cache.insert(conn.apiHost, 'GET_RAW', p, {}, c, response, refName);
+            await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
         }
 
         return {
             ...response,
             ref: response.ref && path.resolve(path.join(rawCachePath, response.ref)),
-        }
+        };
+    },
+    release_raw: async (conn, { p }) => {
+        assertType(p, 'string', 'expected p to be a string');
+        await cache.release(conn.apiHost, 'GET_RAW', p, {});
     },
     x: async (conn) => {
         conn.flushSendCookies();

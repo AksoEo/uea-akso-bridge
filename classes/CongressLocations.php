@@ -228,6 +228,27 @@ class CongressLocations {
             $description->textContent = $location['description']; // TODO: render md
             $container->appendChild($description);
 
+            if (isset($location['openHours']) && $location['openHours'] !== null) {
+                // TODO
+            }
+
+            if (isset($location['address']) && $location['address'] !== null) {
+                $addressContainer = $this->doc->createElement('div');
+                $addressContainer->setAttribute('class', 'address-container');
+                $label = $this->doc->createElement('label');
+                $label->setAttribute('class', 'address-field-label');
+                $label->textContent = $this->plugin->locale['congress_locations']['address'];
+                $addressContainer->appendChild($label);
+                $lines = explode("\n", $location['address']);
+                foreach ($lines as $line) {
+                    $ln = $this->doc->createElement('div');
+                    $ln->setAttribute('class', 'address-line');
+                    $ln->textContent = $line;
+                    $addressContainer->appendChild($ln);
+                }
+                $container->appendChild($addressContainer);
+            }
+
             if ($location['type'] === 'external') {
                 $eres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations", array(
                     'fields' => ['id', 'name', 'description'],
@@ -247,10 +268,6 @@ class CongressLocations {
                     $internalListContainer->appendChild($this->renderInternalList($eres['b']));
                     $container->appendChild($internalListContainer);
                 }
-            }
-
-            if (isset($location['openHours']) && $location['openHours'] !== null) {
-                // TODO
             }
 
             return $container;
@@ -300,7 +317,11 @@ class CongressLocations {
         $res = $this->app->bridge->getRaw($path, 60);
         if ($res['k']) {
             header('Content-Type: ' . $res['h']['content-type']);
-            readfile($res['ref']);
+            try {
+                readfile($res['ref']);
+            } finally {
+                $this->app->bridge->releaseRaw($path);
+            }
             die();
         } else {
             // TODO: error?
