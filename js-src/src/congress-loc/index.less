@@ -57,6 +57,31 @@
                 &:last-child {
                     border-bottom: none;
                 }
+
+                .location-inner-container {
+                    display: flex;
+                    align-items: center;
+
+                    .location-icon-container {
+                        flex-shrink: 0;
+                        background: #fff;
+                        padding: 0.2em;
+                        margin-right: 0.8em;
+                        border-radius: 50%;
+                        transition: opacity 0.3s;
+                        opacity: 0.6;
+                        line-height: 0;
+                    }
+                    .location-inner-details {
+                        flex: 1;
+                    }
+                }
+
+                &:hover {
+                    .location-icon-container {
+                        opacity: 1;
+                    }
+                }
             }
         }
 

@@ -1,0 +1,44 @@
+.a-map-pin-icon {
+    // this marker will have a size of 12 px
+    // (might this change in future versions of leaflet? we do not know)
+
+    .map-pin-inner {
+        position: relative;
+        width: 0;
+        height: 0;
+        margin-top: 6px;
+        margin-left: 6px;
+        pointer-events: none;
+
+        .pin-shape {
+            position: absolute;
+            bottom: -2px;
+            left: -18px;
+            overflow: visible;
+            z-index: initial;
+
+            .pin-shape-path {
+                pointer-events: all;
+                fill: var(--accent);
+                stroke: var(--light-accent);
+                stroke-width: 2px;
+            }
+        }
+
+        .pin-icon-container {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            top: -80px;
+            margin-left: -14px;
+            margin-top: -14px;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+
+            // must be white because the icons are always black
+            background: #fff;
+        }
+    }
+}

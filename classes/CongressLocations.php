@@ -3,6 +3,8 @@ namespace Grav\Plugin\AksoBridge;
 
 class CongressLocations {
     const QUERY_LOC = 'loc';
+    const ICONS_PATH_PREFIX = '/user/plugins/akso-bridge/assets/location_icons/';
+    const ICONS_PATH_SUFFIX = '.svg';
 
     private $plugin;
     private $app;
@@ -105,18 +107,36 @@ class CongressLocations {
 
             $li->setAttribute('data-id', $location['id']);
             $li->setAttribute('data-ll', implode(',', $location['ll']));
+            $li->setAttribute('data-icon', $location['icon']);
+
+            $liInner = $this->doc->createElement('div');
+            $liInner->setAttribute('class', 'location-inner-container');
+
+            $iconContainer = $this->doc->createElement('div');
+            $iconContainer->setAttribute('class', 'location-icon-container');
+            $iconImg = $this->doc->createElement('img');
+            $iconImg->setAttribute('class', 'location-icon');
+            $iconImg->setAttribute('src', self::ICONS_PATH_PREFIX . $location['icon'] . self::ICONS_PATH_SUFFIX);
+            $iconContainer->appendChild($iconImg);
+            $liInner->appendChild($iconContainer);
+
+            $liDetails = $this->doc->createElement('div');
+            $liDetails->setAttribute('class', 'location-inner-details');
 
             $name = $this->doc->createElement('a');
             $name->setAttribute('href', $path . '?' . self::QUERY_LOC . '=' . $location['id']);
             $name->setAttribute('class', 'location-name');
             $name->setAttribute('data-loc-id', $location['id']);
             $name->textContent = $location['name'];
-            $li->appendChild($name);
+            $liDetails->appendChild($name);
 
             $description = $this->doc->createElement('div');
             $description->setAttribute('class', 'location-description');
             $description->textContent = $location['description']; // TODO: render md
-            $li->appendChild($description);
+            $liDetails->appendChild($description);
+
+            $liInner->appendChild($liDetails);
+            $li->appendChild($liInner);
 
             if (isset($intLocations[$location['id']]) && count($intLocations[$location['id']]) > 0) {
                 $li->appendChild($this->renderInternalList($intLocations[$location['id']]));
@@ -193,6 +213,7 @@ class CongressLocations {
                 ), 60);
                 if ($eres['k']) {
                     $container->setAttribute('data-ll', implode(',', $eres['b']['ll']));
+                    $container->setAttribute('data-icon', $eres['b']['icon']);
 
                     $label = $this->doc->createElement('span');
                     $label->textContent = $this->plugin->locale['congress_locations']['located_within'] . ' ';
@@ -210,6 +231,7 @@ class CongressLocations {
                 }
             } else if ($location['type'] === 'external') {
                 $container->setAttribute('data-ll', implode(',', $location['ll']));
+                $container->setAttribute('data-icon', $location['icon']);
             }
 
             if (isset($location['rating']) && $location['rating'] !== null) {
@@ -282,6 +304,8 @@ class CongressLocations {
 
         $root->setAttribute('data-base-path', $this->plugin->getGrav()['uri']->path());
         $root->setAttribute('data-query-loc', self::QUERY_LOC);
+        $root->setAttribute('data-icons-path-prefix', self::ICONS_PATH_PREFIX);
+        $root->setAttribute('data-icons-path-suffix', self::ICONS_PATH_SUFFIX);
 
         $renderedLoc = false;
         if ($this->locationId != null) {

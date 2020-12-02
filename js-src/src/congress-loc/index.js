@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import { setIconsPath, Marker } from './map-marker';
 import './index.less';
 import 'leaflet/dist/leaflet.css';
 
@@ -21,6 +22,9 @@ function init() {
 
     const basePath = initialRender.dataset.basePath;
     const qLoc = initialRender.dataset.queryLoc;
+    const iconsPathPrefix = initialRender.dataset.iconsPathPrefix;
+    const iconsPathSuffix = initialRender.dataset.iconsPathSuffix;
+    setIconsPath(iconsPathPrefix, iconsPathSuffix);
 
     const fetchPartial = (locationId) => {
         let path = basePath + '?partial=true';
@@ -114,11 +118,32 @@ function init() {
             const ll = item.dataset.ll.split(',').map(x => +x);
             lls.push(ll);
 
-            const marker = L.marker(ll);
-            marker.on('click', () => {
+            const marker = new Marker();
+            marker.icon = item.dataset.icon;
+            marker.didMutate();
+
+            const lMarker = L.marker(ll, { icon: marker.portalIcon });
+            lMarker.on('click', () => {
                 item.querySelector('a[data-loc-id]').click();
-            })
-            addLayer(marker);
+            });
+            lMarker.on('mouseover', () => {
+                marker.highlighted = true;
+                marker.didMutate();
+            });
+            lMarker.on('mouseout', () => {
+                marker.highlighted = false;
+                marker.didMutate();
+            });
+            addLayer(lMarker);
+
+            item.addEventListener('mouseover', () => {
+                marker.highlighted = true;
+                marker.didMutate();
+            });
+            item.addEventListener('mouseout', () => {
+                marker.highlighted = false;
+                marker.didMutate();
+            });
         }
 
         mapView.fitBounds(L.latLngBounds(lls).pad(0.3), getMapAnimation());
@@ -131,7 +156,11 @@ function init() {
             if (!layers.length) {
                 // first render, probably
                 mapView.setView(ll, 12, getMapAnimation());
-                addLayer(L.marker(ll));
+
+                const marker = new Marker();
+                marker.icon = node.dataset.icon;
+                marker.didMutate();
+                addLayer(L.marker(ll, { icon: marker.portalIcon }));
             } else {
                 if (mapView.getZoom() < 10) {
                     mapView.setView(ll, 10, getMapAnimation());
