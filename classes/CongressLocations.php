@@ -53,7 +53,11 @@ class CongressLocations {
 
             $description = $this->doc->createElement('div');
             $description->setAttribute('class', 'location-description');
-            $description->textContent = $location['description']; // TODO: render md
+            if ($location['description']) {
+                $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table'];
+                $res = $this->app->bridge->renderMarkdown($location['description'], $rules);
+                $this->setInnerHTML($description, $res['c']);
+            }
             $li->appendChild($description);
 
             $int->appendChild($li);
@@ -132,7 +136,11 @@ class CongressLocations {
 
             $description = $this->doc->createElement('div');
             $description->setAttribute('class', 'location-description');
-            $description->textContent = $location['description']; // TODO: render md
+            if ($location['description']) {
+                $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table'];
+                $res = $this->app->bridge->renderMarkdown($location['description'], $rules);
+                $this->setInnerHTML($description, $res['c']);
+            }
             $liDetails->appendChild($description);
 
             $liInner->appendChild($liDetails);
@@ -147,6 +155,12 @@ class CongressLocations {
         }
 
         return $ul;
+    }
+
+    function setInnerHTML($node, $html) {
+        $fragment = $node->ownerDocument->createDocumentFragment();
+        $fragment->appendXML($html);
+        $node->appendChild($fragment);
     }
 
     function renderDetail() {
@@ -286,7 +300,11 @@ class CongressLocations {
 
             $description = $this->doc->createElement('div');
             $description->setAttribute('class', 'location-description');
-            $description->textContent = $location['description']; // TODO: render md
+            if ($location['description']) {
+                $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table'];
+                $res = $this->app->bridge->renderMarkdown($location['description'], $rules);
+                $this->setInnerHTML($description, $res['c']);
+            }
             $container->appendChild($description);
 
             if (isset($location['openHours']) && $location['openHours'] !== null) {

@@ -295,4 +295,11 @@ class AksoBridge {
             'p' => $path,
         ));
     }
+
+    public function renderMarkdown(string $contents, array $rules) {
+        return $this->request('render_md', array(
+            'c' => $contents,
+            'r' => $rules,
+        ));
+    }
 }

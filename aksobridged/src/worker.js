@@ -11,6 +11,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { Cashify } = require('cashify');
 const fetch = require('cross-fetch');
+const Markdown = require('markdown-it');
 
 process.on('uncaughtException', err => {
     error(`!!!! uncaught exception`);
@@ -759,6 +760,15 @@ const messageHandlers = {
     release_raw: async (conn, { p }) => {
         assertType(p, 'string', 'expected p to be a string');
         await cache.release(conn.apiHost, 'GET_RAW', p, {});
+    },
+    render_md: async (conn, { c, r }) => {
+        assertType(c, 'string', 'expected c to be a string');
+        assertType(r, 'array', 'expected r to be an array');
+
+        const md = new Markdown('zero');
+        md.enable('newline');
+        md.enable(r);
+        return { c: md.render(c) };
     },
     x: async (conn) => {
         conn.flushSendCookies();

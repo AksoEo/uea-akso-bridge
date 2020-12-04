@@ -75,7 +75,7 @@ class Spring {
         }
     }
     wantsUpdate() {
-        return Math.abs(this.target - this.value) + Math.abs(this.velocity) < 1 / 1000;
+        return Math.abs(this.target - this.value) + Math.abs(this.velocity) > 1 / 1000;
     }
 }
 
@@ -100,6 +100,7 @@ function animationLoop(id) {
     lastTime = Date.now();
 
     if (animationList.length) {
+        syncFrame = 0;
         for (const item of animationList) {
             try {
                 item.update(dt);
@@ -112,7 +113,7 @@ function animationLoop(id) {
     }
 
     if (syncFrame > 12) {
-        animationLoopId = -1;
+        animationLoopId = null;
     }
 }
 function startAnimation() {

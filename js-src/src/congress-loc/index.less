@@ -73,6 +73,7 @@
                         line-height: 0;
                     }
                     .location-inner-details {
+                        width: 0;
                         flex: 1;
                     }
                 }
@@ -94,6 +95,25 @@
             .internal-location-list-item {
                 border-top: 1px solid var(--light-separator);
                 padding: 0.5em 1em;
+            }
+        }
+
+        .locations-list, .internal-locations-list {
+            .location-description {
+                max-height: 2em;
+                font-size: small;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+
+                p {
+                    margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                p ~ * {
+                    display: none;
+                }
             }
         }
 
