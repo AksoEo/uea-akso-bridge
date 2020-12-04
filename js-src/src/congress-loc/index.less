@@ -177,6 +177,68 @@
                 margin-top: 0;
             }
 
+            .location-rating {
+                margin: 0 1em;
+
+                .rating-icon {
+                    position: relative;
+                    display: inline-block;
+                    vertical-align: -4px;
+
+                    img {
+                        width: 18px;
+                        height: 18px;
+                        max-width: none;
+                    }
+
+                    &.is-partial {
+                        .rating-icon-fill-container {
+                            position: absolute;
+                            overflow: hidden;
+                            --inset: 0px;
+                            --width: 1;
+                            left: var(--inset);
+                            --total-width: calc(18px - var(--inset) * 2);
+                            width: calc(var(--width) * var(--total-width));
+
+                            img {
+                                transform: translate(calc(var(--inset) * -1));
+                            }
+
+                            &.is-stars {
+                                --inset: 4px;
+                            }
+                            &.is-hearts {
+                                --inset: 3px;
+                            }
+
+                            &[data-fill-partial="0"] { --width: 0; }
+                            &[data-fill-partial="1"] { --width: 0.1; }
+                            &[data-fill-partial="2"] { --width: 0.2; }
+                            &[data-fill-partial="3"] { --width: 0.3; }
+                            &[data-fill-partial="4"] { --width: 0.4; }
+                            &[data-fill-partial="5"] { --width: 0.5; }
+                            &[data-fill-partial="6"] { --width: 0.6; }
+                            &[data-fill-partial="7"] { --width: 0.7; }
+                            &[data-fill-partial="8"] { --width: 0.8; }
+                            &[data-fill-partial="9"] { --width: 0.9; }
+                        }
+                    }
+                }
+
+                .rating-value {
+                    font-size: small;
+                    margin-left: 0.3em;
+
+                    &.is-stars {
+                        color: #faaa44;
+                    }
+                    &.is-hearts {
+                        color: #fe3a43;
+                    }
+                }
+            }
+
             .internal-list-container {
                 overflow: hidden;
             }
@@ -195,7 +257,7 @@
                 }
             }
 
-            .location-description {
+            & > .location-description {
                 margin: 1em;
             }
 
@@ -218,5 +280,16 @@
         flex: 2;
         width: 100%;
         height: @view-height;
+    }
+
+    @media (max-width: 900px) {
+        flex-direction: column-reverse;
+
+        .congress-locations-rendered {
+            max-height: none;
+        }
+        .map-container {
+            max-height: 40vh;
+        }
     }
 }

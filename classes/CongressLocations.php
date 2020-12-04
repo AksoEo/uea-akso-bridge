@@ -234,13 +234,52 @@ class CongressLocations {
                 $container->setAttribute('data-icon', $location['icon']);
             }
 
-            if (isset($location['rating']) && $location['rating'] !== null) {
+            if (isset($location['rating']) && $location['rating'] !== null && $location['rating']['max'] > 0) {
                 $rating = $location['rating'];
 
                 $ratingContainer = $this->doc->createElement('div');
                 $ratingContainer->setAttribute('class', 'location-rating');
 
-                // TODO
+                $rating = $location['rating']['rating'];
+                $max = $location['rating']['max'];
+                $type = $location['rating']['type'];
+
+                for ($i = 0; $i < $max; $i++) {
+                    $icon = $this->doc->createElement('span');
+                    $icon->setAttribute('class', 'rating-icon');
+                    if (floor($rating) !== $rating && (int) $rating === $i) {
+                        // partial icon
+                        $partial = $rating - floor($rating);
+
+                        $icon->setAttribute('class', 'rating-icon is-partial');
+                        $base = $this->doc->createElement('img');
+                        $base->setAttribute('class', 'rating-icon-base');
+                        $base->setAttribute('src', self::ICONS_PATH_PREFIX . 'rating-' . $type . '-empty.svg');
+                        $fill = $this->doc->createElement('span');
+                        $fill->setAttribute('class', 'rating-icon-fill-container is-' . $type);
+                        $fill->setAttribute('data-fill-partial', (int) ($partial * 10));
+                        $fillImg = $this->doc->createElement('img');
+                        $fillImg->setAttribute('src', self::ICONS_PATH_PREFIX . 'rating-' . $type . '-filled.svg');
+                        $fill->appendChild($fillImg);
+                        $icon->appendChild($base);
+                        $icon->appendChild($fill);
+                    } else if ($i <= $rating) {
+                        $img = $this->doc->createElement('img');
+                        $img->setAttribute('src', self::ICONS_PATH_PREFIX . 'rating-' . $type . '-filled.svg');
+                        $icon->appendChild($img);
+                    } else {
+                        $img = $this->doc->createElement('img');
+                        $img->setAttribute('src', self::ICONS_PATH_PREFIX . 'rating-' . $type . '-empty.svg');
+                        $icon->appendChild($img);
+                    }
+
+                    $ratingContainer->appendChild($icon);
+                }
+
+                $val = $this->doc->createElement('span');
+                $val->setAttribute('class', 'rating-value is-' . $type);
+                $val->textContent = round($rating * 10) / 10;
+                $ratingContainer->appendChild($val);
 
                 $container->appendChild($ratingContainer);
             }
