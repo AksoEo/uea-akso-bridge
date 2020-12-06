@@ -53,6 +53,7 @@
             .location-list-item {
                 padding: 0.5em 1em;
                 border-bottom: 1px solid var(--light-separator);
+                transition: background 0.3s;
 
                 &:last-child {
                     border-bottom: none;
@@ -82,6 +83,10 @@
                     .location-icon-container {
                         opacity: 1;
                     }
+                }
+
+                &.is-highlighted {
+                    background: var(--bg2);
                 }
             }
         }

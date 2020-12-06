@@ -4,7 +4,7 @@ import './index.less';
 import 'leaflet/dist/leaflet.css';
 
 const TILE_LAYER_URL = 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png?lang=eo';
-const TILE_LAYER_ATTRIB = '&copy <a href=&quot;https://osm.org/copyright&quot;>OpenStreetMap</a> contributors';
+const TILE_LAYER_ATTRIB = '&copy <a href="https://osm.org/copyright">OpenStreetMap</a> contributors';
 
 function init() {
     const container = document.querySelector('.congress-location-container');
@@ -129,10 +129,21 @@ function init() {
             lMarker.on('mouseover', () => {
                 marker.highlighted = true;
                 marker.didMutate();
+
+                item.classList.add('is-highlighted');
+                if (item.scrollIntoView) {
+                    item.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center',
+                    });
+                }
             });
             lMarker.on('mouseout', () => {
                 marker.highlighted = false;
                 marker.didMutate();
+
+                item.classList.remove('is-highlighted');
             });
             addLayer(lMarker);
 
