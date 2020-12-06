@@ -10,9 +10,12 @@
     .congress-locations-rendered {
         position: relative;
         flex: 3;
-        max-height: @view-height;
-        overflow-y: scroll;
-        overflow-x: hidden;
+
+        &.is-interactive {
+            max-height: @view-height;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
 
         &.is-loading {
             & > * {
@@ -39,6 +42,18 @@
                     0% {
                         opacity: 0;
                     }
+                }
+            }
+        }
+
+        .congress-location-filters {
+            .search-container {
+                padding: 0.5em;
+                display: flex;
+
+                .search-input {
+                    width: 100%;
+                    flex: 1;
                 }
             }
         }
@@ -79,10 +94,16 @@
                     }
                 }
 
-                &:hover {
+                .internal-locations-list {
+                    font-size: 0.9em;
+                }
+
+                &.is-interactive:hover {
                     .location-icon-container {
                         opacity: 1;
                     }
+
+                    background: var(--bg2);
                 }
 
                 &.is-highlighted {

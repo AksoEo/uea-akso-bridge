@@ -1,5 +1,9 @@
+if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitRequestAnimationFrame || (r => setTimeout(r, 16));
+
 import L from 'leaflet';
 import { setIconsPath, Marker } from './map-marker';
+import { SearchFilters } from './search-filters';
+import score from 'string-score';
 import './index.less';
 import 'leaflet/dist/leaflet.css';
 
@@ -106,17 +110,45 @@ function init() {
         layers = [];
     };
 
-    const initList = node => {
-        initLinks(node);
+    const searchFilterState = {};
+
+    const initList = list => {
+        initLinks(list);
         clearLayers();
 
+        const searchFilters = new SearchFilters(searchFilterState);
+        list.parentNode.insertBefore(searchFilters.node, list);
+
         let lls = [];
-        const items = node.querySelectorAll('.location-list-item');
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
+        const domItems = list.querySelectorAll('.location-list-item');
+        const items = [];
+        for (let i = 0; i < domItems.length; i++) {
+            const item = domItems[i];
             if (!item.dataset.ll) continue;
             const ll = item.dataset.ll.split(',').map(x => +x);
             lls.push(ll);
+
+            const internalList = item.querySelector('.internal-locations-list');
+            const internalItems = [];
+            const domInternalItems = item.querySelectorAll('.internal-location-list-item');
+            for (let j = 0; j < domInternalItems.length; j++) {
+                const ii = domInternalItems[j];
+                internalItems.push({
+                    internal: true,
+                    node: ii,
+                    name: ii.dataset.name,
+                });
+            }
+
+            items.push({
+                node: item,
+                ll,
+                name: item.dataset.name,
+                internalList,
+                internalItems,
+            });
+
+            item.classList.add('is-interactive');
 
             const marker = new Marker();
             marker.icon = item.dataset.icon;
@@ -158,6 +190,59 @@ function init() {
         }
 
         mapView.fitBounds(L.latLngBounds(lls).pad(0.3), getMapAnimation());
+
+        searchFilters.onFilter = (state) => {
+            let scoreThreshold = 0.3;
+            if (state.query.length < 2) scoreThreshold = 0.1;
+
+            const filterItem = item => {
+                return true;
+            };
+
+            const scoreItem = item => {
+                let score = filterItem(item) ? 1 : 0;
+                if (state.query) {
+                    score *= fuzzyScore(item.name, state.query);
+                }
+                return score;
+            };
+
+            list.innerHTML = '';
+            const scoreList = [];
+            for (const item of items) {
+                let innerScore = 0;
+                if (item.internalList) {
+                    item.internalList.innerHTML = '';
+
+                    const innerScoreList = [];
+                    for (const innerItem of item.internalItems) {
+                        const score = scoreItem(innerItem);
+                        if (score > scoreThreshold) {
+                            innerScore += score;
+                            innerScoreList.push({ node: innerItem.node, score, name: innerItem.name });
+                        }
+                    }
+
+                    if (state.query) {
+                        innerScoreList.sort((a, b) => b.score - a.score);
+                    } else {
+                        innerScoreList.sort((a, b) => a.name.localeCompare(b.name));
+                    }
+                    for (const x of innerScoreList) item.internalList.appendChild(x.node);
+                }
+
+                const score = innerScore + scoreItem(item);
+                if (score > scoreThreshold) {
+                    scoreList.push({ node: item.node, score, name: item.name });
+                }
+            }
+            if (state.query) {
+                scoreList.sort((a, b) => b.score - a.score);
+            } else {
+                scoreList.sort((a, b) => a.name.localeCompare(b.name));
+            }
+            for (const x of scoreList) list.appendChild(x.node);
+        };
     };
     const initDetail = node => {
         initLinks(node);
@@ -182,6 +267,7 @@ function init() {
         }
     };
     const init = rendered => {
+        rendered.classList.add('is-interactive');
         if (rendered.children[0].classList.contains('congress-location')) {
             initDetail(rendered.children[0]);
         } else {
@@ -192,6 +278,19 @@ function init() {
     init(initialRender);
 }
 
+function espNormalize(s) {
+    return s.toLowerCase()
+        .replace(/ch|cx|ĉ|ĉ/g, 'c')
+        .replace(/gh|gx|ĝ|ĝ/g, 'g')
+        .replace(/hh|hx|ĥ|ĥ/g, 'h')
+        .replace(/jh|jx|ĵ|ĵ/g, 'j')
+        .replace(/sh|sx|ŝ|ŝ/g, 's')
+        .replace(/uh|ux|ŭ|ŭ/g, 'u');
+}
+
+function fuzzyScore(a, b) {
+    return score(espNormalize(a), espNormalize(b), 0.5);
+}
+
 if (document.readyState === 'complete') init();
 else window.addEventListener('DOMContentLoaded', init);
-

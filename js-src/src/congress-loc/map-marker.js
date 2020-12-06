@@ -92,7 +92,6 @@ function unregisterAnimation(node) {
 }
 let lastTime = 0;
 let syncFrame = 0;
-if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitRequestAnimationFrame || (r => setTimeout(r, 16));
 function animationLoop(id) {
     if (id !== animationLoopId) return;
     requestAnimationFrame(() => animationLoop(id));

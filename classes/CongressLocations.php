@@ -43,6 +43,7 @@ class CongressLocations {
             $li = $this->doc->createElement('li');
             $li->setAttribute('class', 'internal-location-list-item');
             $li->setAttribute('data-id', $location['id']);
+            $li->setAttribute('data-name', $location['name']);
 
             $name = $this->doc->createElement('a');
             $name->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_LOC . '=' . $location['id']);
@@ -75,8 +76,10 @@ class CongressLocations {
             $congress = $this->congressId;
             $instance = $this->instanceId;
             $res = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations", array(
-                'fields' => ['id', 'type', 'name', 'description', 'll', 'icon', 'externalLoc'],
+                'fields' => ['id', 'type', 'name', 'description', 'll', 'icon', 'externalLoc',
+                    'rating.rating', 'rating.max', 'openHours'],
                 'limit' => 100,
+                'order' => [['name', 'asc']],
             ), 120);
             if ($res['k']) {
                 foreach ($res['b'] as $item) {
@@ -112,6 +115,14 @@ class CongressLocations {
             $li->setAttribute('data-id', $location['id']);
             $li->setAttribute('data-ll', implode(',', $location['ll']));
             $li->setAttribute('data-icon', $location['icon']);
+            $li->setAttribute('data-name', $location['name']);
+
+            if ($location['rating'] && $location['rating']['max'] > 0) {
+                $li->setAttribute('data-rating', $location['rating']['rating'] . '/' . $location['rating']['max']);
+            }
+            if ($location['openHours']) {
+                $li->setAttribute('data-open-hours', base64_encode(json_encode($location['openHours'])));
+            }
 
             $liInner = $this->doc->createElement('div');
             $liInner->setAttribute('class', 'location-inner-container');
