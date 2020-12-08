@@ -117,10 +117,10 @@ class CongressLocations {
             $li->setAttribute('data-icon', $location['icon']);
             $li->setAttribute('data-name', $location['name']);
 
-            if ($location['rating'] && $location['rating']['max'] > 0) {
+            if (isset($location['rating']) && $location['rating'] && $location['rating']['max'] > 0) {
                 $li->setAttribute('data-rating', $location['rating']['rating'] . '/' . $location['rating']['max']);
             }
-            if ($location['openHours']) {
+            if (isset($location['openHours']) && $location['openHours']) {
                 $li->setAttribute('data-open-hours', base64_encode(json_encode($location['openHours'])));
             }
 

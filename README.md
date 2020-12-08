@@ -4,11 +4,8 @@ This plugin handles UEA.org's connection to AKSO and specific markdown rendering
 This plugin is an extension for [Grav CMS](http://github.com/getgrav/grav).
 
 ## Building
-Javascript:
-
 ```sh
-cd js-form
-npm install && npm run build
+./build.sh
 ```
 
 ## UEA Markdown extensions

@@ -140,14 +140,6 @@ function init() {
                 });
             }
 
-            items.push({
-                node: item,
-                ll,
-                name: item.dataset.name,
-                internalList,
-                internalItems,
-            });
-
             item.classList.add('is-interactive');
 
             const marker = new Marker();
@@ -178,6 +170,15 @@ function init() {
                 item.classList.remove('is-highlighted');
             });
             addLayer(lMarker);
+
+            items.push({
+                node: item,
+                ll,
+                name: item.dataset.name,
+                layer: lMarker,
+                internalList,
+                internalItems,
+            });
 
             item.addEventListener('mouseover', () => {
                 marker.highlighted = true;
@@ -233,7 +234,12 @@ function init() {
 
                 const score = innerScore + scoreItem(item);
                 if (score > scoreThreshold) {
-                    scoreList.push({ node: item.node, score, name: item.name });
+                    scoreList.push({
+                        node: item.node,
+                        score,
+                        name: item.name,
+                        layer: item.layer,
+                    });
                 }
             }
             if (state.query) {
@@ -241,9 +247,15 @@ function init() {
             } else {
                 scoreList.sort((a, b) => a.name.localeCompare(b.name));
             }
-            for (const x of scoreList) list.appendChild(x.node);
+
+            clearLayers();
+            for (const x of scoreList) {
+                list.appendChild(x.node);
+                addLayer(x.layer);
+            }
         };
     };
+
     const initDetail = node => {
         initLinks(node);
 

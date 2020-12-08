@@ -1,5 +1,31 @@
 import { congress_locations as locale } from '../../../locale.ini';
 
+const FILTERS = {
+    // openAt
+    // - null
+    // - 'now' => open now
+    // - Date => open at date
+    openAt: {
+        default: () => null,
+        renderBlob: () => {
+            return {
+                update: state => void 0,
+            };
+        },
+        renderUI: () => {
+            return {
+                update: state => void 0,
+            };
+        },
+    },
+    // rating
+    // - null
+    // - (number) 0..1 => “above x%”
+    rating: {
+        default: () => null,
+    }
+};
+
 export class SearchFilters {
     constructor(state) {
         this.state = state;
@@ -30,6 +56,10 @@ export class SearchFilters {
         this.nodes.filterBar.appendChild(this.nodes.filterButton);
         this.node.appendChild(this.nodes.filterBar);
 
+        this.nodes.filterButton.addEventListener('click', () => {
+            // TODO
+        });
+
         this.render();
     }
 
@@ -42,7 +72,10 @@ export class SearchFilters {
     }
 
     render() {
-        if (!this.state.filters) this.state.filters = [];
+        if (!this.state.filters) {
+            this.state.filters = {};
+            for (const f in FILTERS) this.state.filters[f] = FILTERS[f].default();
+        }
 
         this.state.query = this.nodes.searchInput.value;
 
