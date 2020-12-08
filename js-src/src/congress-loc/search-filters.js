@@ -1,3 +1,4 @@
+import { stdlib } from '@tejo/akso-script';
 import { congress_locations as locale } from '../../../locale.ini';
 
 const FILTERS = {
@@ -7,13 +8,42 @@ const FILTERS = {
     // - Date => open at date
     openAt: {
         default: () => null,
-        renderBlob: () => {
+        showBlobByDefault: true,
+        renderBlob: (updateState) => {
+            const blob = document.createElement('div');
+            blob.className = 'filter-blob filter-open-at';
+
+            let currentState;
+            blob.addEventListener('click', () => {
+                if (currentState === null) {
+                    updateState('now');
+                } else {
+                    updateState(null);
+                }
+            });
+
+            const renderState = state => {
+                currentState = state;
+                if (state === null) {
+                    blob.classList.remove('is-active');
+                    blob.textContent = locale.f_open_at_now;
+                } else if (state === 'now') {
+                    blob.classList.add('is-active');
+                    blob.textContent = locale.f_open_at_now;
+                } else {
+                    // state is Date
+                    blob.textContent = locale.f_open_at_time + ' ' + stdlib.datetime_fmt.apply(null, [state]);
+                }
+            };
+
             return {
-                update: state => void 0,
+                node: blob,
+                update: renderState,
             };
         },
         renderUI: () => {
             return {
+                node: document.createElement('div'),
                 update: state => void 0,
             };
         },
@@ -23,7 +53,11 @@ const FILTERS = {
     // - (number) 0..1 => “above x%”
     rating: {
         default: () => null,
-    }
+        // TODO
+        renderBlob: () => ({ node: document.createElement('div'), update: () => {} }),
+        renderUI: () => ({ node: document.createElement('div'), update: () => {} }),
+    },
+    // TODO: tags
 };
 
 export class SearchFilters {
@@ -39,12 +73,15 @@ export class SearchFilters {
             searchContainer: document.createElement('div'),
             searchInput: document.createElement('input'),
             filterBar: document.createElement('div'),
+            filterBarTitle: document.createElement('label'),
             filterBarInner: document.createElement('div'),
             filterButton: document.createElement('button'),
         };
         this.nodes.searchContainer.className = 'search-container';
         this.nodes.searchInput.className = 'search-input';
         this.nodes.filterBar.className = 'filter-bar';
+        this.nodes.filterBarTitle.textContent = locale.f_title + ': ';
+        this.nodes.filterBarTitle.className = 'filter-bar-title';
         this.nodes.filterBarInner.className = 'filter-bar-inner';
         this.nodes.filterButton.className = 'filter-button';
         this.nodes.searchInput.placeholder = locale.search_placeholder;
@@ -52,6 +89,7 @@ export class SearchFilters {
         this.nodes.searchInput.addEventListener('input', this.didMutate);
         this.nodes.searchContainer.appendChild(this.nodes.searchInput);
         this.node.appendChild(this.nodes.searchContainer);
+        this.nodes.filterBar.appendChild(this.nodes.filterBarTitle);
         this.nodes.filterBar.appendChild(this.nodes.filterBarInner);
         this.nodes.filterBar.appendChild(this.nodes.filterButton);
         this.node.appendChild(this.nodes.filterBar);
@@ -78,6 +116,31 @@ export class SearchFilters {
         }
 
         this.state.query = this.nodes.searchInput.value;
+
+        if (!this._filterUI) this._filterUI = {};
+        for (const f in this.state.filters) {
+            if (!this._filterUI[f]) {
+                const ui = {
+                    blob: FILTERS[f].renderBlob(newState => {
+                        this.state.filters[f] = newState;
+                        this.didMutate();
+                    }),
+                    ui: FILTERS[f].renderUI(newState => {
+                        this.state.filters[f] = newState;
+                        this.didMutate();
+                    }),
+                };
+                this._filterUI[f] = ui;
+
+                if (FILTERS[f].showBlobByDefault) {
+                    this.nodes.filterBarInner.appendChild(ui.blob.node);
+                }
+            }
+
+            const ui = this._filterUI[f];
+            ui.blob.update(this.state.filters[f]);
+            ui.ui.update(this.state.filters[f]);
+        }
 
         this.onFilter(this.state);
     }

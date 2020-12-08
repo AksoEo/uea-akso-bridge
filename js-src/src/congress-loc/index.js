@@ -116,6 +116,8 @@ function init() {
         initLinks(list);
         clearLayers();
 
+        const tzOffsets = JSON.parse(atob(list.dataset.tzOffsets));
+
         const searchFilters = new SearchFilters(searchFilterState);
         list.parentNode.insertBefore(searchFilters.node, list);
 
@@ -178,6 +180,8 @@ function init() {
                 layer: lMarker,
                 internalList,
                 internalItems,
+                openHours: item.dataset.openHours ? JSON.parse(atob(item.dataset.openHours)) : {},
+                tz: item.dataset.tzOffset,
             });
 
             item.addEventListener('mouseover', () => {
@@ -192,16 +196,49 @@ function init() {
 
         mapView.fitBounds(L.latLngBounds(lls).pad(0.3), getMapAnimation());
 
+        const isLocationOpenAtTime = (loc, time) => {
+            if (!loc.openHours) return false;
+            for (const day in loc.openHours) {
+                const offset = tzOffsets[day] | 0;
+                const convertedTime = new Date(+time - offset * 60000);
+
+                const convertedDate = convertedTime.toISOString().split('T')[0];
+                if (day !== convertedDate) continue;
+                const convertedHour = convertedTime.getUTCHours() + convertedTime.getUTCMinutes() / 60;
+
+                for (const span of loc.openHours[day]) {
+                    const parts = span.split('-').map(p => p.split(':'));
+                    const start = +parts[0][0] + (+parts[0][1] / 60);
+                    const end = +parts[1][0] + (+parts[1][1] / 60);
+                    console.log(day, start, convertedHour, end);
+
+                    if (start <= convertedHour && convertedHour <= end) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
         searchFilters.onFilter = (state) => {
             let scoreThreshold = 0.3;
             if (state.query.length < 2) scoreThreshold = 0.1;
 
             const filterItem = item => {
+                if (!state.filters) return true;
+                if (!item.internal && state.filters.openAt) {
+                    const openAt = state.filters.openAt;
+                    if (openAt === 'now') {
+                        if (!isLocationOpenAtTime(item, new Date())) return false;
+                    } else if (openAt instanceof Date) {
+                        if (!isLocationOpenAtTime(item, openAt)) return false;
+                    }
+                }
                 return true;
             };
 
-            const scoreItem = item => {
-                let score = filterItem(item) ? 1 : 0;
+            const scoreItem = (item, outerScore) => {
+                let score = filterItem(item) ? outerScore : 0;
                 if (state.query) {
                     score *= fuzzyScore(item.name, state.query);
                 }
@@ -211,13 +248,14 @@ function init() {
             list.innerHTML = '';
             const scoreList = [];
             for (const item of items) {
+                const outerScore = filterItem(item) ? 1 : 0;
                 let innerScore = 0;
                 if (item.internalList) {
                     item.internalList.innerHTML = '';
 
                     const innerScoreList = [];
                     for (const innerItem of item.internalItems) {
-                        const score = scoreItem(innerItem);
+                        const score = scoreItem(innerItem, outerScore);
                         if (score > scoreThreshold) {
                             innerScore += score;
                             innerScoreList.push({ node: innerItem.node, score, name: innerItem.name });
@@ -232,7 +270,7 @@ function init() {
                     for (const x of innerScoreList) item.internalList.appendChild(x.node);
                 }
 
-                const score = innerScore + scoreItem(item);
+                const score = innerScore + scoreItem(item, 1);
                 if (score > scoreThreshold) {
                     scoreList.push({
                         node: item.node,

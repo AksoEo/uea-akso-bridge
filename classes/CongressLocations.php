@@ -67,7 +67,34 @@ class CongressLocations {
         return $int;
     }
 
+    function congressTzOffsets() {
+        $congressId = $this->congressId;
+        $instanceId = $this->instanceId;
+        $res = $this->app->bridge->get("/congresses/$congressId/instances/$instanceId", array(
+            'fields' => ['dateFrom', 'dateTo', 'tz'],
+        ), 240);
+        if ($res['k']) {
+            try {
+                // day-by-day granularity is probably enough to mitigate most time zone nonsense
+                $tz = new \DateTimeZone($res['b']['tz']);
+                $days = array();
+                $cursor = \DateTime::createFromFormat("Y-m-d", $res['b']['dateFrom'], $tz);
+                $endDate = \DateTime::createFromFormat("Y-m-d", $res['b']['dateTo'], $tz);
+                while (!$cursor->diff($endDate)->invert) {
+                    $days[$cursor->format("Y-m-d")] = $tz->getOffset($cursor);
+                    $cursor = $cursor->add(new \DateInterval("P1D"));
+                }
+                return $days;
+            } catch (Exception $e) {
+                // ???
+            }
+        }
+        return array();
+    }
+
     function renderList() {
+        $tzOffsets = $this->congressTzOffsets();
+
         $extLocations = [];
         $intLocations = [];
         $locCount = 0;
@@ -105,6 +132,7 @@ class CongressLocations {
 
         $ul = $this->doc->createElement('ul');
         $ul->setAttribute('class', 'locations-list');
+        $ul->setAttribute('data-tz-offsets', base64_encode(json_encode($tzOffsets)));
 
         $path = $this->plugin->getGrav()['uri']->path();
 
@@ -260,8 +288,6 @@ class CongressLocations {
             }
 
             if (isset($location['rating']) && $location['rating'] !== null && $location['rating']['max'] > 0) {
-                $rating = $location['rating'];
-
                 $ratingContainer = $this->doc->createElement('div');
                 $ratingContainer->setAttribute('class', 'location-rating');
 

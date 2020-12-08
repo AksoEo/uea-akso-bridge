@@ -52,8 +52,30 @@
                 display: flex;
 
                 .search-input {
+                    margin: 0;
                     width: 100%;
                     flex: 1;
+                }
+            }
+
+            .filter-bar {
+                .filter-bar-inner {
+                    padding: 0.5em;
+                    padding-top: 0;
+
+                    .filter-blob {
+                        display: inline-block;
+                        padding: 0.2em 0.4em;
+                        border: 1px solid var(--light-accent);
+                        border-radius: var(--radius);
+                        font-size: small;
+                        cursor: default;
+
+                        &.is-active {
+                            background: var(--light-accent);
+                            color: var(--light-accent-fg);
+                        }
+                    }
                 }
             }
         }
