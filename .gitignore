@@ -2,4 +2,4 @@
 .composer
 vendor/*
 # compiled output
-js/form
+js/dist

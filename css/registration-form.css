@@ -96,6 +96,12 @@
     margin-bottom: 1em;
     padding: 0.5em 1em;
 }
+.registration-form .registration-suggestion-banner {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    margin-bottom: 1em;
+    padding: 0.5em 1em;
+}
 .registration-form .field-error {
     background: var(--error-bg);
     color: var(--error-fg);
@@ -161,6 +167,9 @@
     margin: 1em 0;
     text-align: left;
 }
+.registration-form.is-payment .payment-methods .payment-method .method-type {
+    font-size: small;
+}
 .registration-form.is-payment .payment-methods .payment-method .method-name {
     margin-top: 0;
 }
@@ -180,6 +189,13 @@
     .registration-form.is-payment .payment-methods .payment-method .method-form {
         display: block;
     }
+}
+.registration-form.is-intent-page .payment-amount {
+    margin-bottom: 0;
+}
+.registration-form.is-intent-page .payment-min-upfront {
+    margin-bottom: 0.5em;
+    opacity: 0.7;
 }
 .registration-form .form-small-print {
     margin: 0;

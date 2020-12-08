@@ -8,6 +8,7 @@ use Grav\Common\Page\Page;
 use Grav\Common\Helpers\Excerpts;
 use Grav\Plugin\AksoBridge\MarkdownExt;
 use Grav\Plugin\AksoBridge\AppBridge;
+use Grav\Plugin\AksoBridge\CongressLocations;
 use Grav\Plugin\AksoBridge\CongressRegistration;
 
 // TODO: pass host to bridge as Host header
@@ -29,6 +30,7 @@ class AksoBridgePlugin extends Plugin {
     }
 
     const CONGRESS_REGISTRATION_PATH = 'alighilo';
+    const CONGRESS_LOC_THUMBNAIL_PATH = '/_/kongresa_loko/bildo';
 
     // allow access to protected property
     public function getGrav() {
@@ -73,6 +75,12 @@ class AksoBridgePlugin extends Plugin {
                 'onPagesInitialized' => ['addLoginPage', 0],
             ]);
             return;
+        } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $loc = new CongressLocations($this, $app, null, null);
+            $loc->runThumbnail();
+            $app->close();
         }
 
         $this->enable([
@@ -375,10 +383,31 @@ class AksoBridgePlugin extends Plugin {
             }
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            } else {
+                $isRegistration = $templateId === 'akso_congress_registration';
+                $this->handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration);
+            }
+        } else if ($templateId === 'akso_congress_locations') {
+            $head = $this->grav['page']->header();
+            $congressId = null;
+            $instanceId = null;
+            if (isset($head->congress_instance)) {
+                $parts = explode("/", $head->congress_instance, 2);
+                $congressId = intval($parts[0], 10);
+                $instanceId = intval($parts[1], 10);
             }
 
-            $isRegistration = $templateId === 'akso_congress_registration';
-            $this->handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration);
+            if ($congressId == null || $instanceId == null) {
+                $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            } else {
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.js');
+                $app = new AppBridge($this->grav);
+                $app->open();
+                $locations = new CongressLocations($this, $app, $congressId, $instanceId);
+                $twig->twig_vars['akso_congress'] = $locations->run();
+                $app->close();
+            }
         }
 
         if ($this->grav['uri']->path() === $this->loginPath) {
@@ -540,7 +569,7 @@ class AksoBridgePlugin extends Plugin {
 
             if ($isRegistration) {
                 $this->grav['assets']->add('plugin://akso-bridge/css/registration-form.css');
-                $this->grav['assets']->add('plugin://akso-bridge/js/form/index.js');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/form.js');
 
                 $registration = new CongressRegistration($this, $app, $congressId, $instanceId, $paymentOrg, $formRes['b'], $congressName);
                 $twig->twig_vars['akso_congress_registration'] = $registration->run();
@@ -660,7 +689,7 @@ class AksoBridgePlugin extends Plugin {
 
         $csp = [
             "default-src 'self'",
-            "img-src 'self' " . $this->apiHost,
+            "img-src 'self' data: " . $this->apiHost . " https://maps.wikimedia.org",
             "script-src 'self' " . $scriptNonces,
             "style-src 'self' 'unsafe-inline' " . $styleNonces,
         ];

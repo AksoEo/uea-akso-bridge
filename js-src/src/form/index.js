@@ -1,7 +1,8 @@
 import { evaluate, stdlib, loadCountryFmt, loadPhoneFmt } from '@tejo/akso-script';
-import locale from '../../locale.ini';
+import locale from '../../../locale.ini';
 import Markdown from 'markdown-it';
 import { initDatePolyfill, initTimePolyfill, initDateTimePolyfill } from './date-editor';
+import './index.less';
 
 {
     const noscriptItems = document.querySelectorAll('.congress-form-noscript');
@@ -321,16 +322,18 @@ class FormInput {
         } else if (type === 'boolean_table') {
             const { cols, rows } = this.node.dataset;
             const value = [];
+            let isNull = true;
             for (let y = 0; y < rows; y++) {
                 const row = [];
                 for (let x = 0; x < cols; x++) {
                     const box = this.node.querySelector(`input[data-index="${x}-${y}"]`)
+                    if (box && box.checked) isNull = false;
                     if (!box) row.push(null);
                     else row.push(box.checked);
                 }
                 value.push(row);
             }
-            return value;
+            return isNull ? null : value;
         }
     }
 
@@ -572,6 +575,8 @@ function init() {
     if (!form) return;
     const submitButton = form.querySelector('.submit-button')
 
+    const meta = form.querySelector('.form-meta') || ({ dataset: {} });
+
     // these are probably in the correct order
     const qaFormItems = form.querySelectorAll('.form-item');
     const formItems = [];
@@ -585,10 +590,9 @@ function init() {
 
         const scriptStack = [];
         const formVars = {
-            // TODO: get actual values
-            '@created_time': null,
-            '@edited_time': null,
-            '@is_member': false,
+            '@created_time': meta.dataset.createdTime ? new Date(meta.dataset.createdTime * 1000) : null,
+            '@edited_time': meta.dataset.editedTime ? new Date(meta.dataset.editedTime * 1000) : null,
+            '@is_member': meta.dataset.isMember || false,
         };
 
         const getFormValue = id => {

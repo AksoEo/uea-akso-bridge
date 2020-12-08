@@ -12,6 +12,7 @@ class CongressRegistration {
     const PAYMENT = 'payment';
     const PAYMENT_METHOD = 'method';
     const PAYMENT_CURRENCY = 'currency';
+    const PAYMENT_SUCCESS_RETURN = 'payment_success_return';
     const NONCES = 'crf_nonces';
 
     private $plugin;
@@ -42,6 +43,7 @@ class CongressRegistration {
     private $isPayment = false;
     private $paymentMethod = null;
     private $paymentCurrency = null;
+    private $paymentSuccessReturn = false;
 
     private function readReq() {
         if (isset($_GET[self::VALIDATE])) {
@@ -66,6 +68,11 @@ class CongressRegistration {
         if (isset($_GET[self::PAYMENT_CURRENCY])) {
             $this->paymentCurrency = $_GET[self::PAYMENT_CURRENCY];
         }
+        if (isset($_GET[self::PAYMENT_SUCCESS_RETURN])) {
+            $_SESSION[self::PAYMENT_SUCCESS_RETURN] = true;
+            $target = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $this->dataId;
+            $this->plugin->getGrav()->redirectLangSafe($target, 302);
+        }
     }
 
     private $participant = null;
@@ -79,7 +86,7 @@ class CongressRegistration {
         $this->isEditable = $this->form['editable'];
         $this->isCancelable = $this->form['cancellable'];
 
-        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum', 'codeholderId'];
+        $fields = ['cancelledTime', 'price', 'amountPaid', 'hasPaidMinimum', 'codeholderId', 'createdTime', 'editedTime'];
         foreach ($this->form['form'] as $formItem) {
             if ($formItem['el'] === 'input') $fields[] = 'data.' . $formItem['name'];
         }
@@ -167,26 +174,23 @@ class CongressRegistration {
                     $value = $post['amount'];
                     $notes = $post['notes'];
                     if (gettype($value) !== 'string' || gettype($notes) !== 'string' || gettype($currency) !== 'string') {
-                        // TODO: bad request
-                        $error = '[[bad request]]';
+                        $error = $this->locale['registration_form']['payment_err_bad_request'];
                         break;
                     }
                     $value = floatval($value);
                     if ($value < $min || $value > $max) {
-                        // TODO: bad request
-                        $error = '[[value out of bounds]]';
+                        $error = $this->plugin->locale['registration_form']['payment_err_bad_request'];
                         break;
                     }
                     $value = floor($value * $multiplier);
                     if (!in_array($currency, $method['currencies'])) {
-                        $error = '[[invalid currency]]';
+                        $error = $this->plugin->locale['registration_form']['payment_err_bad_request'];
                         $value = $value / $multiplier;
                         break;
                     }
 
                     if (!$nonceValid) {
-                        // TODO: bad request
-                        $error = '[[invalid nonce]]';
+                        $error = $this->plugin->locale['registration_form']['err_nonce_invalid'];
                         $value = $value / $multiplier;
                         break;
                     }
@@ -322,7 +326,9 @@ class CongressRegistration {
         {
             $methodTarget = $this->plugin->getGrav()['uri']->path();
 
-            $paymentMethods = [];
+            $autoPaymentMethods = [];
+            $otherPaymentMethods = [];
+
             if ($this->paymentOrg) {
                 $res = $this->app->bridge->get('/aksopay/payment_orgs/' . $this->paymentOrg . '/methods', array(
                     'fields' => ['id', 'type', 'stripeMethods', 'name', 'description', 'currencies',
@@ -333,10 +339,16 @@ class CongressRegistration {
                 if ($res['k']) {
                     // put recommended methods first
                     foreach ($res['b'] as $method) {
-                        if ($method['isRecommended']) $paymentMethods[] = $method;
+                        if ($method['isRecommended']) {
+                            if ($method['type'] === 'stripe') $autoPaymentMethods[] = $method;
+                            else $otherPaymentMethods[] = $method;
+                        }
                     }
                     foreach ($res['b'] as $method) {
-                        if (!$method['isRecommended']) $paymentMethods[] = $method;
+                        if (!$method['isRecommended']) {
+                            if ($method['type'] === 'stripe') $autoPaymentMethods[] = $method;
+                            else $otherPaymentMethods[] = $method;
+                        }
                     }
                 }
             }
@@ -344,7 +356,10 @@ class CongressRegistration {
             return array(
                 'is_payment' => true,
                 'payment' => $paymentInfo,
-                'payment_methods' => $paymentMethods,
+                'payment_methods' => array(
+                    'auto' => $autoPaymentMethods,
+                    'other' => $otherPaymentMethods,
+                ),
                 'edit_target' => $editTarget,
                 'data_id' => $this->dataId,
                 'method_target' => $methodTarget,
@@ -532,6 +547,11 @@ class CongressRegistration {
             if (!isset($_SESSION[self::NONCES])) $_SESSION[self::NONCES] = [];
             $_SESSION[self::NONCES][] = $nonce;
 
+            if (isset($_SESSION[self::PAYMENT_SUCCESS_RETURN]) && $_SESSION[self::PAYMENT_SUCCESS_RETURN]) {
+                $_SESSION[self::PAYMENT_SUCCESS_RETURN] = false;
+                $form->message = $this->plugin->locale['registration_form']['payment_success_return_msg'];
+            }
+
             return array(
                 'data_id' => $this->dataId,
                 'payment' => $payment,
@@ -566,7 +586,7 @@ class CongressRegistration {
     public static function getDataIdForCodeholder($app, $congressId, $instanceId, $codeholderId) {
         $res = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/participants', array(
             'filter' => array('codeholderId' => $codeholderId),
-            'fields' => ['codeholderId', 'dataId', 'cancelledTime'],
+            'fields' => ['codeholderId', 'dataId', 'cancelledTime', 'createdTime', 'editedTime'],
             'limit' => 100,
         ));
 

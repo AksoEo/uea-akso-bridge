@@ -1,4 +1,4 @@
-import locale from '../../locale.ini';
+import locale from '../../../locale.ini';
 
 const months = ['januaro', 'februaro', 'marto', 'aprilo', 'majo', 'junio', 'julio', 'aŭgusto', 'septembro', 'oktobro', 'novembro', 'decembro'];
 

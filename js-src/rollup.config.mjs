@@ -6,6 +6,7 @@ import { babel } from '@rollup/plugin-babel';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
+import lessModules from 'rollup-plugin-less-modules';
 import { terser } from 'rollup-plugin-terser';
 import ini from 'ini';
 import { dataToEsm } from '@rollup/pluginutils';
@@ -13,33 +14,51 @@ import { dataToEsm } from '@rollup/pluginutils';
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 
-export default {
-    input: 'src/index.js',
-    plugins: [
-        iniPlugin(),
-        alias({
-            entries: [
-                { find: 'punycode', replacement: path.join(__dirname, 'node_modules/punycode2/index.js') },
-            ],
-        }),
-        json(),
-        amdDefine(),
-        babel({
-            presets: ['@babel/preset-env'],
-            babelHelpers: 'bundled',
-            exclude: ['node_modules/**'],
-        }),
-        resolve(),
-        commonjs(),
-        isProd && terser(),
-    ].filter(x => x),
-    preserveEntrySignatures: false,
-    output: {
-        dir: path.join(__dirname, '../js/form/'),
-        chunkFileNames: '[name].js',
-        format: 'amd',
+const plugins = lessOut => [
+    iniPlugin(),
+    lessModules({
+        output: lessOut,
+        exclude: [],
+    }),
+    alias({
+        entries: [
+            { find: 'punycode', replacement: path.join(__dirname, 'node_modules/punycode2/index.js') },
+        ],
+    }),
+    json(),
+    amdDefine(),
+    babel({
+        presets: ['@babel/preset-env'],
+        babelHelpers: 'bundled',
+        exclude: ['node_modules/**'],
+    }),
+    resolve(),
+    commonjs(),
+    isProd && terser(),
+].filter(x => x);
+
+export default [
+    {
+        input: 'src/form.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/form.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'f_[name].js',
+            format: 'amd',
+        },
     },
-};
+    {
+        input: 'src/congress-loc.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/congress-loc.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'c_[name].js',
+            format: 'amd',
+        },
+    },
+];
 
 function iniPlugin() {
     return {

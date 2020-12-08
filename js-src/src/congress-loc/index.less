@@ -1,0 +1,341 @@
+.congress-location-container {
+    display: flex;
+    text-align: left;
+    @view-height: 70vh;
+    margin: 1em 0;
+    background: var(--bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+
+    .congress-locations-rendered {
+        position: relative;
+        flex: 3;
+
+        &.is-interactive {
+            max-height: @view-height;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+
+        &.is-loading {
+            & > * {
+                animation: location-rendered-loading-begin 1s;
+                pointer-events: none;
+                opacity: 0;
+
+                @keyframes location-rendered-loading-begin {
+                    0% {
+                        opacity: 1;
+                    }
+                }
+            }
+
+            &::before {
+                content: 'Ŝargas...';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                animation: location-rendered-loading-text 1s 1s backwards;
+
+                @keyframes location-rendered-loading-text {
+                    0% {
+                        opacity: 0;
+                    }
+                }
+            }
+        }
+
+        .congress-location-filters {
+            .search-container {
+                padding: 0.5em;
+                display: flex;
+
+                .search-input {
+                    width: 100%;
+                    flex: 1;
+                }
+            }
+        }
+
+        .locations-list {
+            padding: 0;
+            margin: 0;
+            list-style-type: none;
+            background: var(--bg);
+            border-radius: var(--radius);
+
+            .location-list-item {
+                padding: 0.5em 1em;
+                border-bottom: 1px solid var(--light-separator);
+                transition: background 0.3s;
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                .location-inner-container {
+                    display: flex;
+                    align-items: center;
+
+                    .location-icon-container {
+                        flex-shrink: 0;
+                        background: #fff;
+                        padding: 0.2em;
+                        margin-right: 0.8em;
+                        border-radius: 50%;
+                        transition: opacity 0.3s;
+                        opacity: 0.6;
+                        line-height: 0;
+                    }
+                    .location-inner-details {
+                        width: 0;
+                        flex: 1;
+                    }
+                }
+
+                .internal-locations-list {
+                    font-size: 0.9em;
+                }
+
+                &.is-interactive:hover {
+                    .location-icon-container {
+                        opacity: 1;
+                    }
+
+                    background: var(--bg2);
+                }
+
+                &.is-highlighted {
+                    background: var(--bg2);
+                }
+            }
+        }
+
+        .internal-locations-list {
+            margin: 0;
+            margin-top: 0.5em;
+            padding: 0;
+            list-style-type: none;
+
+            .internal-location-list-item {
+                border-top: 1px solid var(--light-separator);
+                padding: 0.5em 1em;
+            }
+        }
+
+        .locations-list, .internal-locations-list {
+            .location-description {
+                max-height: 2em;
+                font-size: small;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+
+                p {
+                    margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                p ~ * {
+                    display: none;
+                }
+            }
+        }
+
+        .congress-location {
+            .location-header {
+                display: block;
+                font-size: 1.4em;
+                margin: 0.5em 0;
+                padding-left: 0.5em;
+
+                .back-link {
+                    display: inline-block;
+                    position: relative;
+                    width: 1.5em;
+                    color: transparent;
+
+                    &::before,
+                    &::after {
+                        content: '';
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        width: 0.4em;
+                        height: 0.1em;
+                        background: var(--accent);
+                        transform-origin: 0.05em 0.05em;
+                        transform: translate(-0.4em, -0.05em) rotate(45deg);
+                    }
+
+                    &::after {
+                        transform: translate(-0.4em, -0.05em) rotate(-45deg);
+                    }
+                }
+
+                h1 {
+                    margin: 0;
+                    margin-left: 0.5em;
+                    display: inline-block;
+                    font: inherit;
+                    font-weight: 600;
+                }
+            }
+
+            .location-header-container {
+                min-height: 10em;
+                position: relative;
+                line-height: 0;
+                margin-bottom: 1em;
+                border-radius: var(--radius);
+                overflow: hidden;
+
+                .location-header-image img {
+                    width: 100%;
+                }
+
+                .location-header {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    width: 100%;
+                    background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
+                    line-height: 1.25;
+                    margin: 0;
+                    padding: 1em 0 0.5em 0.5em;
+                    box-sizing: border-box;
+
+                    h1 {
+                        color: #fff;
+                        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+                    }
+
+                    .back-link::before,
+                    .back-link::after {
+                        background: #fff;
+                    }
+                }
+
+            }
+            .external-loc {
+                margin: 1em;
+                margin-top: 0;
+            }
+
+            .location-rating {
+                margin: 0 1em;
+
+                .rating-icon {
+                    position: relative;
+                    display: inline-block;
+                    vertical-align: -4px;
+
+                    img {
+                        width: 18px;
+                        height: 18px;
+                        max-width: none;
+                    }
+
+                    &.is-partial {
+                        .rating-icon-fill-container {
+                            position: absolute;
+                            overflow: hidden;
+                            --inset: 0px;
+                            --width: 1;
+                            left: var(--inset);
+                            --total-width: calc(18px - var(--inset) * 2);
+                            width: calc(var(--width) * var(--total-width));
+
+                            img {
+                                transform: translate(calc(var(--inset) * -1));
+                            }
+
+                            &.is-stars {
+                                --inset: 4px;
+                            }
+                            &.is-hearts {
+                                --inset: 3px;
+                            }
+
+                            &[data-fill-partial="0"] { --width: 0; }
+                            &[data-fill-partial="1"] { --width: 0.1; }
+                            &[data-fill-partial="2"] { --width: 0.2; }
+                            &[data-fill-partial="3"] { --width: 0.3; }
+                            &[data-fill-partial="4"] { --width: 0.4; }
+                            &[data-fill-partial="5"] { --width: 0.5; }
+                            &[data-fill-partial="6"] { --width: 0.6; }
+                            &[data-fill-partial="7"] { --width: 0.7; }
+                            &[data-fill-partial="8"] { --width: 0.8; }
+                            &[data-fill-partial="9"] { --width: 0.9; }
+                        }
+                    }
+                }
+
+                .rating-value {
+                    font-size: small;
+                    margin-left: 0.3em;
+
+                    &.is-stars {
+                        color: #faaa44;
+                    }
+                    &.is-hearts {
+                        color: #fe3a43;
+                    }
+                }
+            }
+
+            .internal-list-container {
+                overflow: hidden;
+            }
+            .internal-list-title {
+                margin: 1em;
+                margin-bottom: 0.2em;
+            }
+            .internal-locations-list {
+                margin: 1em;
+                margin-top: 0;
+                background: var(--bg1);
+                border-radius: var(--radius);
+
+                .internal-location-list-item:first-child {
+                    border-top: none;
+                }
+            }
+
+            & > .location-description {
+                margin: 1em;
+            }
+
+            .address-container {
+                margin: 1em;
+                background: var(--bg1);
+                border-radius: var(--radius);
+                padding: 0.5em 1em;
+
+                .address-field-label {
+                    font-size: small;
+                    text-transform: uppercase;
+                    font-weight: bold;
+                }
+            }
+        }
+    }
+
+    .map-container {
+        flex: 2;
+        width: 100%;
+        height: @view-height;
+    }
+
+    @media (max-width: 900px) {
+        flex-direction: column-reverse;
+
+        .congress-locations-rendered {
+            max-height: none;
+        }
+        .map-container {
+            max-height: 40vh;
+        }
+    }
+}

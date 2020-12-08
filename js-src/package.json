@@ -24,7 +24,10 @@
   },
   "dependencies": {
     "@tejo/akso-script": "^0.2.2",
+    "leaflet": "^1.7.1",
     "markdown-it": "^12.0.2",
-    "punycode2": "^1.0.0"
+    "punycode2": "^1.0.0",
+    "rollup-plugin-less-modules": "^0.1.11",
+    "string-score": "^1.0.1"
   }
 }

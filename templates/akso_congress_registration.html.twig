@@ -44,7 +44,7 @@
         </div>
     {% endif %}
     {% if akso_congress_registration.is_payment %}
-    <div class="registration-form is-payment">
+    <div class="registration-form is-payment is-intent-page">
         <div class="registration-congress-name">
             {{ akso_congress.name|e }}
         </div>
@@ -66,6 +66,14 @@
                 {{akso_locale.registration_form.payment_outstanding}}
                 {{akso_congress_registration.payment.remaining_rendered|e}}
             </h2>
+            <div class="payment-min-upfront">
+                {% if akso_congress_registration.payment.is_min_payment %}
+                    {{akso_locale.registration_form.payment_box_min_upfront}}
+                    {{akso_congress_registration.payment.min_upfront_rendered|e}}
+                {% else %}
+                    {{akso_locale.registration_form.payment_box_min_upfront_paid}}
+                {% endif %}
+            </div>
             {% if akso_congress_registration.payment_error %}
                 <div class="registration-error">
                     {{akso_congress_registration.payment_error|e}}
@@ -161,13 +169,19 @@
                     {{akso_locale.registration_form.payment_methods_none}}
                 </p>
             {% else %}
-                <ul class="payment-methods">
-                {% for method in akso_congress_registration.payment_methods %}
+                {% macro render_payment_method(method, akso_locale, akso_congress_registration) %}
                     {% if method.isRecommended %}
                     <li class="payment-method is-recommended">
                     {% else %}
                     <li class="payment-method">
                     {% endif %}
+                        <div class="method-type">
+                            {% if method.type == 'manual' %}
+                                {{akso_locale.registration_form.payment_type_manual}}
+                            {% elseif method.type == 'stripe' %}
+                                {{akso_locale.registration_form.payment_type_stripe}}
+                            {% endif %}
+                        </div>
                         <h3 class="method-name">
                             {{method.name|e}}
 
@@ -199,7 +213,22 @@
                             </button>
                         </form>
                     </li>
+                {% endmacro %}
+                {% if akso_congress_registration.payment_methods.other is not empty %}
+                <h4>{{akso_locale.registration_form.payment_methods_section_auto}}</h4>
+                <ul class="payment-methods">
+                {% for method in akso_congress_registration.payment_methods.auto %}
+                    {{_self.render_payment_method(method, akso_locale, akso_congress_registration)}}
                 {% endfor %}
+                </ul>
+                {% endif %}
+                {% if akso_congress_registration.payment_methods.other is not empty %}
+                <h4>{{akso_locale.registration_form.payment_methods_section_other}}</h4>
+                <ul class="payment-methods">
+                {% for method in akso_congress_registration.payment_methods.other %}
+                    {{_self.render_payment_method(method, akso_locale, akso_congress_registration)}}
+                {% endfor %}
+                {% endif %}
                 </ul>
             {% endif %}
             <a class="link-button" href="{{ akso_congress_registration.edit_target|e('html_attr') }}">
