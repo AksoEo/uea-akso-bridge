@@ -1,5 +1,6 @@
 import { stdlib } from '@tejo/akso-script';
 import { congress_locations as locale } from '../../../locale.ini';
+import { initDateTimePolyfill } from '../form/date-editor';
 
 const FILTERS = {
     // openAt
@@ -8,32 +9,37 @@ const FILTERS = {
     // - Date => open at date
     openAt: {
         default: () => null,
-        showBlobByDefault: true,
+        shouldShowBlob: () => true,
         renderBlob: (updateState) => {
-            const blob = document.createElement('div');
+            const blob = document.createElement('button');
             blob.className = 'filter-blob filter-open-at';
 
+            let lastActiveState = 'now';
             let currentState;
             blob.addEventListener('click', () => {
                 if (currentState === null) {
-                    updateState('now');
+                    updateState(lastActiveState);
                 } else {
                     updateState(null);
                 }
             });
 
+            let lastActiveStateLabel = locale.f_open_at_now;
+
             const renderState = state => {
                 currentState = state;
                 if (state === null) {
                     blob.classList.remove('is-active');
-                    blob.textContent = locale.f_open_at_now;
                 } else if (state === 'now') {
                     blob.classList.add('is-active');
-                    blob.textContent = locale.f_open_at_now;
+                    lastActiveStateLabel = locale.f_open_at_now;
                 } else {
                     // state is Date
-                    blob.textContent = locale.f_open_at_time + ' ' + stdlib.datetime_fmt.apply(null, [state]);
+                    blob.classList.add('is-active');
+                    lastActiveStateLabel = locale.f_open_at_time + ' ' + stdlib.ts_fmt.apply(null, [state]);
                 }
+                if (state) lastActiveState = state;
+                blob.textContent = lastActiveStateLabel;
             };
 
             return {
@@ -41,10 +47,85 @@ const FILTERS = {
                 update: renderState,
             };
         },
-        renderUI: () => {
+        renderUI: (updateState) => {
+            const node = document.createElement('div');
+            node.className = 'filter-item';
+
+            let currentState;
+
+            const stateSwitch = document.createElement('div');
+            stateSwitch.className = 'state-switch';
+            node.appendChild(stateSwitch);
+
+            const switchNow = document.createElement('button');
+            switchNow.className = 'switch-item';
+            switchNow.textContent = locale.f_open_at_now;
+            stateSwitch.appendChild(switchNow);
+
+            switchNow.addEventListener('click', () => {
+                if (currentState === 'now') {
+                    updateState(null);
+                    return;
+                }
+                updateState('now');
+            });
+
+            const switchTime = document.createElement('button');
+            switchNow.className = 'switch-item';
+            switchTime.textContent = locale.f_open_at_time;
+            stateSwitch.appendChild(switchTime);
+
+            switchTime.addEventListener('click', () => {
+                if (currentState instanceof Date) {
+                    updateState(null);
+                    return;
+                }
+                updateState(new Date());
+            });
+
+            const dateEditor = document.createElement('div');
+            dateEditor.className = 'date-editor-container';
+            const innerDateEditor = document.createElement('input');
+            innerDateEditor.className = 'native-date-editor';
+            dateEditor.appendChild(innerDateEditor);
+            innerDateEditor.type = 'datetime-local';
+            const onDateChange = (localDate) => {
+                const lDate = new Date(innerDateEditor.value + 'Z');
+                const off = new Date().getTimezoneOffset();
+                const date = new Date(+lDate + off * 60000);
+                if (Number.isFinite(date.getFullYear())) updateState(date);
+            };
+            if (innerDateEditor.type !== 'datetime-local') {
+                initDateTimePolyfill(innerDateEditor, () => {
+                    onDateChange(innerDateEditor.value);
+                });
+            } else {
+                innerDateEditor.addEventListener('input', () => {
+                    onDateChange(innerDateEditor.value);
+                });
+            }
+
+            const update = (state) => {
+                currentState = state;
+
+                switchNow.classList.remove('is-selected');
+                switchTime.classList.remove('is-selected');
+                if (state === 'now') {
+                    switchNow.classList.add('is-selected');
+                } else if (state instanceof Date) {
+                    switchTime.classList.add('is-selected');
+                }
+
+                if (state instanceof Date && !dateEditor.parentNode) {
+                    node.appendChild(dateEditor);
+                } else if (!(state instanceof Date) && dateEditor.parentNode) {
+                    node.removeChild(dateEditor);
+                }
+            };
+
             return {
-                node: document.createElement('div'),
-                update: state => void 0,
+                node,
+                update,
             };
         },
     },
@@ -53,11 +134,39 @@ const FILTERS = {
     // - (number) 0..1 => “above x%”
     rating: {
         default: () => null,
+        shouldShowBlob: (state) => !!state,
+        renderBlob: (updateState) => {
+            const blob = document.createElement('button');
+            blob.className = 'filter-blob filter-rating';
+
+            let lastActiveState = 0.5;
+            let currentState;
+            blob.addEventListener('click', () => {
+                if (currentState === null) {
+                    updateState(lastActiveState);
+                } else {
+                    updateState(null);
+                }
+            });
+
+            const update = (state) => {
+                currentState = state;
+                if (state === null) {
+                    blob.classList.remove('is-active');
+                } else {
+                    blob.classList.add('is-active');
+                }
+            };
+
+            return {
+                node: blob,
+                update,
+            };
+        },
         // TODO
-        renderBlob: () => ({ node: document.createElement('div'), update: () => {} }),
         renderUI: () => ({ node: document.createElement('div'), update: () => {} }),
     },
-    // TODO: tags
+    // TODO: location tags
 };
 
 export class SearchFilters {
@@ -76,6 +185,7 @@ export class SearchFilters {
             filterBarTitle: document.createElement('label'),
             filterBarInner: document.createElement('div'),
             filterButton: document.createElement('button'),
+            fullFilters: document.createElement('div'),
         };
         this.nodes.searchContainer.className = 'search-container';
         this.nodes.searchInput.className = 'search-input';
@@ -84,6 +194,7 @@ export class SearchFilters {
         this.nodes.filterBarTitle.className = 'filter-bar-title';
         this.nodes.filterBarInner.className = 'filter-bar-inner';
         this.nodes.filterButton.className = 'filter-button';
+        this.nodes.fullFilters.className = 'full-filters';
         this.nodes.searchInput.placeholder = locale.search_placeholder;
         this.nodes.searchInput.type = 'text';
         this.nodes.searchInput.addEventListener('input', this.didMutate);
@@ -95,7 +206,8 @@ export class SearchFilters {
         this.node.appendChild(this.nodes.filterBar);
 
         this.nodes.filterButton.addEventListener('click', () => {
-            // TODO
+            this.state.filtersOpen = !this.state.filtersOpen;
+            this.didMutate();
         });
 
         this.render();
@@ -132,14 +244,33 @@ export class SearchFilters {
                 };
                 this._filterUI[f] = ui;
 
-                if (FILTERS[f].showBlobByDefault) {
-                    this.nodes.filterBarInner.appendChild(ui.blob.node);
-                }
+                this.nodes.fullFilters.appendChild(ui.ui.node);
             }
 
             const ui = this._filterUI[f];
             ui.blob.update(this.state.filters[f]);
             ui.ui.update(this.state.filters[f]);
+
+            const showBlob = FILTERS[f].shouldShowBlob(this.state.filters[f]);
+            if (showBlob && !ui.blob.node.parentNode) {
+                this.nodes.filterBarInner.appendChild(ui.blob.node);
+            } else if (!showBlob && ui.blob.node.parentNode) {
+                this.nodes.filterBarInner.removeChild(ui.blob.node);
+            }
+        }
+
+        if (this.state.filtersOpen) {
+            if (!this.nodes.fullFilters.parentNode) {
+                this.node.appendChild(this.nodes.fullFilters);
+                this.nodes.filterBar.classList.add('full-filters-open');
+                this.nodes.filterButton.classList.add('is-open');
+            }
+        } else {
+            if (this.nodes.fullFilters.parentNode) {
+                this.node.removeChild(this.nodes.fullFilters);
+                this.nodes.filterBar.classList.remove('full-filters-open');
+                this.nodes.filterButton.classList.remove('is-open');
+            }
         }
 
         this.onFilter(this.state);

@@ -267,6 +267,8 @@ export function initDateTimePolyfill(input, onUpdate) {
             dateOpts.loadValue('');
             timeOpts.loadValue('');
         }
+
+        onUpdate();
     }, dateOpts);
     const time = createTimeInput(currentTime, value => {
         if (value) {
@@ -282,6 +284,8 @@ export function initDateTimePolyfill(input, onUpdate) {
             dateOpts.loadValue('');
             timeOpts.loadValue('');
         }
+
+        onUpdate();
     }, timeOpts);
 
     const editor = document.createElement('div');

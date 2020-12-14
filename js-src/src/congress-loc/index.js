@@ -152,20 +152,26 @@ function init() {
             lMarker.on('click', () => {
                 item.querySelector('a[data-loc-id]').click();
             });
+            let scrollIntoViewTimeout = null;
             lMarker.on('mouseover', () => {
                 marker.highlighted = true;
                 marker.didMutate();
 
+                scrollIntoViewTimeout = setTimeout(() => {
+                    // don't scroll immediately, in case the user is just moving their mouse through
+                    // the map without meaning to select a marker
+                    if (item.scrollIntoView) {
+                        item.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest',
+                            inline: 'center',
+                        });
+                    }
+                }, 300);
                 item.classList.add('is-highlighted');
-                if (item.scrollIntoView) {
-                    item.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'nearest',
-                        inline: 'center',
-                    });
-                }
             });
             lMarker.on('mouseout', () => {
+                clearTimeout(scrollIntoViewTimeout);
                 marker.highlighted = false;
                 marker.didMutate();
 
