@@ -1,6 +1,7 @@
 {
     "require": {
-        "imangazaliev/didom": "^1.12"
+        "imangazaliev/didom": "^1.12",
+        "php-ds/php-ds": "^1.3"
     },
     "autoload": {
         "psr-4": {

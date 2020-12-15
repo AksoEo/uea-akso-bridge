@@ -9,6 +9,7 @@ use Grav\Common\Helpers\Excerpts;
 use Grav\Plugin\AksoBridge\MarkdownExt;
 use Grav\Plugin\AksoBridge\AppBridge;
 use Grav\Plugin\AksoBridge\CongressLocations;
+use Grav\Plugin\AksoBridge\CongressPrograms;
 use Grav\Plugin\AksoBridge\CongressRegistration;
 
 // TODO: pass host to bridge as Host header
@@ -406,6 +407,30 @@ class AksoBridgePlugin extends Plugin {
                 $app->open();
                 $locations = new CongressLocations($this, $app, $congressId, $instanceId);
                 $twig->twig_vars['akso_congress'] = $locations->run();
+                $app->close();
+            }
+        } else if ($templateId === 'akso_congress_programs') {
+            $head = $this->grav['page']->header();
+            $congressId = null;
+            $instanceId = null;
+            if (isset($head->congress_instance)) {
+                $parts = explode("/", $head->congress_instance, 2);
+                $congressId = intval($parts[0], 10);
+                $instanceId = intval($parts[1], 10);
+            }
+            $locationsPath = null;
+            if (isset($head->congress_locations_path)) {
+                $locationsPath = $head->congress_locations_path;
+            }
+
+            if ($congressId == null || $instanceId == null) {
+                $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            } else {
+                $app = new AppBridge($this->grav);
+                $app->open();
+                $programs = new CongressPrograms($this, $app, $congressId, $instanceId);
+                $programs->locationsPath = $locationsPath;
+                $twig->twig_vars['akso_congress'] = $programs->run();
                 $app->close();
             }
         }
