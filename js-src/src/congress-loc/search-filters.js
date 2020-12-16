@@ -1,6 +1,7 @@
 import { stdlib } from '@tejo/akso-script';
 import { congress_locations as locale } from '../../../locale.ini';
 import { initDateTimePolyfill } from '../form/date-editor';
+import { renderRating } from './rating';
 
 const FILTERS = {
     // openAt
@@ -134,12 +135,12 @@ const FILTERS = {
     // - (number) 0..1 => “above x%”
     rating: {
         default: () => null,
-        shouldShowBlob: (state) => !!state,
+        shouldShowBlob: (state) => true,
         renderBlob: (updateState) => {
             const blob = document.createElement('button');
             blob.className = 'filter-blob filter-rating';
 
-            let lastActiveState = 0.5;
+            let lastActiveState = 3 / 5;
             let currentState;
             blob.addEventListener('click', () => {
                 if (currentState === null) {
@@ -155,7 +156,13 @@ const FILTERS = {
                     blob.classList.remove('is-active');
                 } else {
                     blob.classList.add('is-active');
+                    lastActiveState = state;
                 }
+
+                blob.innerHTML = '';
+                const rendered = renderRating(lastActiveState * 5, 5, 'stars');
+                rendered.classList.add('filter-rating');
+                blob.appendChild(rendered);
             };
 
             return {
@@ -163,8 +170,56 @@ const FILTERS = {
                 update,
             };
         },
-        // TODO
-        renderUI: () => ({ node: document.createElement('div'), update: () => {} }),
+        renderUI: (updateState) => {
+            const node = document.createElement('div');
+            node.className = 'filter-item';
+
+            let currentState;
+
+            const stateSwitch = document.createElement('div');
+            stateSwitch.className = 'state-switch';
+            node.appendChild(stateSwitch);
+
+            const switchAny = document.createElement('button');
+            switchAny.className = 'switch-item';
+            switchAny.textContent = locale.f_rating_any;
+            stateSwitch.appendChild(switchAny);
+            const switchAbove = document.createElement('button');
+            switchAbove.className = 'switch-item';
+            switchAbove.textContent = locale.f_rating_above;
+            stateSwitch.appendChild(switchAbove);
+
+            switchAny.addEventListener('click', () => updateState(null));
+            switchAbove.addEventListener('click', () => {
+                if (currentState === null) updateState(3 / 5);
+            });
+
+            const ratingContainer = document.createElement('div');
+            ratingContainer.className = 'rating-container';
+
+            const update = state => {
+                currentState = state;
+
+                switchAny.classList.remove('is-selected');
+                switchAbove.classList.remove('is-selected');
+                if (state === null) {
+                    switchAny.classList.add('is-selected');
+                    if (ratingContainer.parentNode) node.removeChild(ratingContainer);
+                } else {
+                    switchAbove.classList.add('is-selected');
+                    if (!ratingContainer.parentNode) node.appendChild(ratingContainer);
+                }
+
+                ratingContainer.innerHTML = '';
+                const rendered = renderRating(state * 5, 5, 'stars', value => updateState(value / 5));
+                ratingContainer.appendChild(rendered);
+            };
+
+            return {
+                node,
+                update,
+            };
+        },
     },
     // TODO: location tags
 };

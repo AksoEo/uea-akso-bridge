@@ -1,11 +1,6 @@
 import L from 'leaflet';
 import './map-marker.less';
-
-let ICONS_PATH_PREFIX, ICONS_PATH_SUFFIX;
-export function setIconsPath(pre, suf) {
-    ICONS_PATH_PREFIX = pre;
-    ICONS_PATH_SUFFIX = suf;
-}
+import { iconsPathPrefix, iconsPathSuffix } from './globals';
 
 function pinShape (midY = 16, bottomY = 52) {
     // One half of the shape:
@@ -182,7 +177,7 @@ export class Marker {
             this.mapPinInnerPinIconContainer.classList.remove('is-empty');
             if (!this.mapPinInnerPinIcon) {
                 this.mapPinInnerPinIcon = new Image();
-                this.mapPinInnerPinIcon.src = ICONS_PATH_PREFIX + this.icon + ICONS_PATH_SUFFIX;
+                this.mapPinInnerPinIcon.src = iconsPathPrefix + this.icon + iconsPathSuffix;
                 this.mapPinInnerPinIconContainer.appendChild(this.mapPinInnerPinIcon);
             }
         } else {

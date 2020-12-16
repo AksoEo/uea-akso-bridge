@@ -104,7 +104,7 @@ class CongressLocations {
             $instance = $this->instanceId;
             $res = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations", array(
                 'fields' => ['id', 'type', 'name', 'description', 'll', 'icon', 'externalLoc',
-                    'rating.rating', 'rating.max', 'openHours'],
+                    'rating.rating', 'rating.max', 'rating.type', 'openHours'],
                 'limit' => 100,
                 'order' => [['name', 'asc']],
             ), 120);
@@ -147,6 +147,7 @@ class CongressLocations {
 
             if (isset($location['rating']) && $location['rating'] && $location['rating']['max'] > 0) {
                 $li->setAttribute('data-rating', $location['rating']['rating'] . '/' . $location['rating']['max']);
+                $li->setAttribute('data-rating-type', $location['rating']['type']);
             }
             if (isset($location['openHours']) && $location['openHours']) {
                 $li->setAttribute('data-open-hours', base64_encode(json_encode($location['openHours'])));
@@ -314,7 +315,7 @@ class CongressLocations {
                         $fill->appendChild($fillImg);
                         $icon->appendChild($base);
                         $icon->appendChild($fill);
-                    } else if ($i <= $rating) {
+                    } else if ($i < $rating) {
                         $img = $this->doc->createElement('img');
                         $img->setAttribute('src', self::ICONS_PATH_PREFIX . 'rating-' . $type . '-filled.svg');
                         $icon->appendChild($img);

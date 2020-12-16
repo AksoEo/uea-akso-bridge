@@ -1,8 +1,10 @@
 if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitRequestAnimationFrame || (r => setTimeout(r, 16));
 
 import L from 'leaflet';
-import { setIconsPath, Marker } from './map-marker';
+import { Marker } from './map-marker';
 import { SearchFilters } from './search-filters';
+import { initGlobals } from './globals';
+import { renderRating } from './rating';
 import score from 'string-score';
 import './index.less';
 import 'leaflet/dist/leaflet.css';
@@ -28,7 +30,7 @@ function init() {
     const qLoc = initialRender.dataset.queryLoc;
     const iconsPathPrefix = initialRender.dataset.iconsPathPrefix;
     const iconsPathSuffix = initialRender.dataset.iconsPathSuffix;
-    setIconsPath(iconsPathPrefix, iconsPathSuffix);
+    initGlobals(iconsPathPrefix, iconsPathSuffix);
 
     const fetchPartial = (locationId) => {
         let path = basePath + '?partial=true';
@@ -187,6 +189,7 @@ function init() {
                 internalList,
                 internalItems,
                 openHours: item.dataset.openHours ? JSON.parse(atob(item.dataset.openHours)) : {},
+                rating: item.dataset.rating ? item.dataset.rating.split('/').map(x => +x) : [0, 0],
                 tz: item.dataset.tzOffset,
             });
 
@@ -240,6 +243,10 @@ function init() {
                         if (!isLocationOpenAtTime(item, openAt)) return false;
                     }
                 }
+                if (!item.internal && state.filters.rating) {
+                    const rating = state.filters.rating;
+                    if (!item.rating[1] || item.rating[0] / item.rating[1] < rating) return false;
+                }
                 return true;
             };
 
@@ -250,6 +257,8 @@ function init() {
                 }
                 return score;
             };
+
+            const renderRatings = !!state.filters.rating;
 
             list.innerHTML = '';
             const scoreList = [];
@@ -278,6 +287,15 @@ function init() {
 
                 const score = innerScore + scoreItem(item, 1);
                 if (score > scoreThreshold) {
+                    if (renderRatings) {
+                        if (!item.ratingNode) {
+                            item.ratingNode = renderRating(item.rating[0], item.rating[1], item.node.dataset.ratingType);
+                        }
+                        if (!item.ratingNode.parentNode) item.node.querySelector('.location-name').appendChild(item.ratingNode);
+                    } else if (item.ratingNode && item.ratingNode.parentNode) {
+                        item.ratingNode.parentNode.removeChild(item.ratingNode);
+                    }
+
                     scoreList.push({
                         node: item.node,
                         score,
