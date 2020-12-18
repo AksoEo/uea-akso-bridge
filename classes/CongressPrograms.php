@@ -6,6 +6,7 @@ use Grav\Plugin\AksoBridge\Utils;
 
 class CongressPrograms {
     const QUERY_DATE = 'd';
+    const QUERY_LOC = 'loc';
     const QUERY_PROG = 'prog';
 
     private $plugin;
@@ -92,26 +93,8 @@ class CongressPrograms {
             $locationPre->textContent = $this->plugin->locale['congress_programs']['program_location_pre'] . ' ';
             $locationContainer->appendChild($locationPre);
 
-            $locationLink = $this->doc->createElement('a');
-            $locationLink->setAttribute('class', 'location-link');
+            $locationLink = $this->renderLocationLink($location);
             $locationContainer->appendChild($locationLink);
-
-            if ($location['icon']) {
-                $locationIcon = $this->doc->createElement('img');
-                $locationIcon->setAttribute('class', 'location-icon');
-                $locationIcon->setAttribute('src', CongressLocations::ICONS_PATH_PREFIX . $location['icon'] . CongressLocations::ICONS_PATH_SUFFIX);
-                $locationLink->appendChild($locationIcon);
-            }
-
-            $locationName = $this->doc->createElement('span');
-            $locationName->setAttribute('class', 'location-name');
-            $locationName->textContent = $location['name'];
-            $locationLink->appendChild($locationName);
-
-            if ($this->locationsPath) {
-                $locationLink->setAttribute('href', $this->locationsPath . '?' . CongressLocations::QUERY_LOC . '=' . $location['id']);
-            }
-
             $titleContainer->appendChild($locationContainer);
         }
 
@@ -119,16 +102,10 @@ class CongressPrograms {
         $description->setAttribute('class', 'program-description');
         $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table', 'image'];
         $res = $this->app->bridge->renderMarkdown($program['description'], $rules);
-        $this->setInnerHTML($description, $res['c']);
+        Utils::setInnerHTML($description, $res['c']);
         $node->appendChild($description);
 
         return $node;
-    }
-
-    function setInnerHTML($node, $html) {
-        $fragment = $node->ownerDocument->createDocumentFragment();
-        $fragment->appendXML($html);
-        $node->appendChild($fragment);
     }
 
     function batchLoadLocations($ids) {
@@ -156,7 +133,7 @@ class CongressPrograms {
     }
 
     /// - $date: string like 2020-01-02
-    function renderDayAgenda($date, $showNoItems = false) {
+    function renderDayAgenda($date, $showNoItems = false, $extraFilter = []) {
         $unixFrom = \DateTime::createFromFormat("Y-m-d", $date, $this->tz);
         $unixFrom->setTime(0, 0, 0);
         $unixTo = \DateTime::createFromFormat("Y-m-d", $date, $this->tz);
@@ -171,10 +148,10 @@ class CongressPrograms {
             $instanceId = $this->instanceId;
             $res = $this->app->bridge->get("/congresses/$congressId/instances/$instanceId/programs", array(
                 'fields' => ['id', 'title', 'description', 'timeFrom', 'timeTo', 'location'],
-                'filter' => array(
+                'filter' => array_merge(array(
                     'timeTo' => ['$gte' => $unixFrom],
                     'timeFrom' => ['$lt' => $unixTo],
-                ),
+                ), $extraFilter),
                 'offset' => count($programs),
                 'order' => [['timeFrom', 'asc']],
                 'limit' => 100,
@@ -214,6 +191,8 @@ class CongressPrograms {
             $noItems->setAttribute('class', 'no-items');
             $noItems->textContent = $this->plugin->locale['congress_programs']['no_items_on_this_day'];
             $root->appendChild($noItems);
+        } else if (!$showNoItems && count($programs) === 0) {
+            return null;
         }
 
         return $root;
@@ -255,7 +234,7 @@ class CongressPrograms {
             $isCurrent = $date == $currentDate;
             $button = $this->doc->createElement('a');
             $button->setAttribute('class', 'program-day link-button' . ($isCurrent ? ' is-primary' : ''));
-            $button->textContent = $date;
+            $button->textContent = Utils::formatDayMonth($date);
             $node->appendChild($button);
 
             $button->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_DATE . '=' . $date);
@@ -341,25 +320,8 @@ class CongressPrograms {
 
                 $container->appendChild($this->doc->createTextNode(' '));
 
-                $locationLink = $this->doc->createElement('a');
-                $locationLink->setAttribute('class', 'location-link');
+                $locationLink = $this->renderLocationLink($location);
                 $container->appendChild($locationLink);
-
-                if ($location['icon']) {
-                    $locationIcon = $this->doc->createElement('img');
-                    $locationIcon->setAttribute('class', 'location-icon');
-                    $locationIcon->setAttribute('src', CongressLocations::ICONS_PATH_PREFIX . $location['icon'] . CongressLocations::ICONS_PATH_SUFFIX);
-                    $locationLink->appendChild($locationIcon);
-                }
-
-                $locationName = $this->doc->createElement('span');
-                $locationName->setAttribute('class', 'location-name');
-                $locationName->textContent = $location['name'];
-                $locationLink->appendChild($locationName);
-
-                if ($this->locationsPath) {
-                    $locationLink->setAttribute('href', $this->locationsPath . '?' . CongressLocations::QUERY_LOC . '=' . $location['id']);
-                }
             }
         }
 
@@ -385,8 +347,85 @@ class CongressPrograms {
         $description->setAttribute('class', 'program-description');
         $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table', 'image'];
         $res = $this->app->bridge->renderMarkdown($program['description'], $rules);
-        $this->setInnerHTML($description, $res['c']);
+        Utils::setInnerHTML($description, $res['c']);
         $root->appendChild($description);
+
+        return $root;
+    }
+
+    function renderLocationLink($location) {
+        $locationLink = $this->doc->createElement('a');
+        $locationLink->setAttribute('class', 'location-link');
+
+        if ($location['icon']) {
+            $locationIcon = $this->doc->createElement('img');
+            $locationIcon->setAttribute('class', 'location-icon');
+            $locationIcon->setAttribute('src', CongressLocations::ICONS_PATH_PREFIX . $location['icon'] . CongressLocations::ICONS_PATH_SUFFIX);
+            $locationLink->appendChild($locationIcon);
+        }
+
+        $locationName = $this->doc->createElement('span');
+        $locationName->setAttribute('class', 'location-name');
+        $locationName->textContent = $location['name'];
+        $locationLink->appendChild($locationName);
+
+        if ($this->locationsPath) {
+            $locationLink->setAttribute('href', $this->locationsPath . '?' . CongressLocations::QUERY_LOC . '=' . $location['id']);
+        }
+
+        return $locationLink;
+    }
+
+    function renderEventsInLocation($locationId) {
+        $congressId = $this->congressId;
+        $instanceId = $this->instanceId;
+        $res = $this->app->bridge->get("/congresses/$congressId/instances/$instanceId/locations/$locationId", array(
+            'fields' => ['id', 'icon', 'name'],
+        ));
+        if (!$res['k']) {
+            return null;
+        }
+        $location = $res['b'];
+
+        $root = $this->doc->createElement('div');
+        $root->setAttribute('class', 'location-program');
+
+        {
+            $title = $this->doc->createElement('div');
+            $title->setAttribute('class', 'location-program-title');
+            $title->appendChild($this->doc->createTextNode($this->plugin->locale['congress_programs']['location_program_title_pre']));
+            $title->appendChild($this->doc->createTextNode(' '));
+
+            $locationLink = $this->renderLocationLink($location);
+            $title->appendChild($locationLink);
+            $root->appendChild($title);
+        }
+        $hasAnyDay = false;
+
+        $cursor = \DateTime::createFromFormat('Y-m-d', $this->congress['dateFrom']);
+        for ($i = 0; $i < 255; $i++) {
+            $date = $cursor->format('Y-m-d');
+
+            $day = $this->renderDayAgenda($date, false, array(
+                'location' => $locationId,
+            ));
+            if ($day) {
+                $root->appendChild($day);
+                $hasAnyDay = true;
+            }
+
+            $cursor->setDate($cursor->format('Y'), $cursor->format('m'), $cursor->format('d') + 1);
+            if ($cursor->format('Y-m-d') == $this->congress['dateTo']) {
+                break;
+            }
+        }
+
+        if (!$hasAnyDay) {
+            $noItems = $this->doc->createElement('div');
+            $noItems->setAttribute('class', 'location-no-items');
+            $noItems->textContent = $this->plugin->locale['congress_programs']['no_items_in_this_loc'];
+            $root->appendChild($noItems);
+        }
 
         return $root;
     }
@@ -416,6 +455,12 @@ class CongressPrograms {
 
     public function run() {
         $contents;
+
+        if (isset($_GET[self::QUERY_LOC]) && gettype($_GET[self::QUERY_LOC]) === 'string') {
+            $locationId = (int) $_GET[self::QUERY_LOC];
+
+            $contents = $this->doc->saveHtml($this->renderEventsInLocation($locationId));
+        }
 
         if (isset($_GET[self::QUERY_PROG]) && gettype($_GET[self::QUERY_PROG]) === 'string') {
             $programId = (int) $_GET[self::QUERY_PROG];

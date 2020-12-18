@@ -397,6 +397,10 @@ class AksoBridgePlugin extends Plugin {
                 $congressId = intval($parts[0], 10);
                 $instanceId = intval($parts[1], 10);
             }
+            $programsPath = null;
+            if (isset($head->congress_programs_path)) {
+                $programsPath = $head->congress_programs_path;
+            }
 
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
@@ -406,6 +410,7 @@ class AksoBridgePlugin extends Plugin {
                 $app = new AppBridge($this->grav);
                 $app->open();
                 $locations = new CongressLocations($this, $app, $congressId, $instanceId);
+                $locations->programsPath = $programsPath;
                 $twig->twig_vars['akso_congress'] = $locations->run();
                 $app->close();
             }

@@ -1,6 +1,9 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 
+use Grav\Plugin\AksoBridge\CongressPrograms;
+use Grav\Plugin\AksoBridge\Utils;
+
 class CongressLocations {
     const QUERY_LOC = 'loc';
     const ICONS_PATH_PREFIX = '/user/plugins/akso-bridge/assets/location_icons/';
@@ -22,6 +25,8 @@ class CongressLocations {
 
         $this->readQuery();
     }
+
+    public $programsPath = null;
 
     private $wantsPartial = false;
     private $locationId = null;
@@ -57,7 +62,7 @@ class CongressLocations {
             if ($location['description']) {
                 $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table'];
                 $res = $this->app->bridge->renderMarkdown($location['description'], $rules);
-                $this->setInnerHTML($description, $res['c']);
+                Utils::setInnerHTML($description, $res['c']);
             }
             $li->appendChild($description);
 
@@ -179,7 +184,7 @@ class CongressLocations {
             if ($location['description']) {
                 $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table'];
                 $res = $this->app->bridge->renderMarkdown($location['description'], $rules);
-                $this->setInnerHTML($description, $res['c']);
+                Utils::setInnerHTML($description, $res['c']);
             }
             $liDetails->appendChild($description);
 
@@ -195,12 +200,6 @@ class CongressLocations {
         }
 
         return $ul;
-    }
-
-    function setInnerHTML($node, $html) {
-        $fragment = $node->ownerDocument->createDocumentFragment();
-        $fragment->appendXML($html);
-        $node->appendChild($fragment);
     }
 
     function renderDetail() {
@@ -341,7 +340,7 @@ class CongressLocations {
             if ($location['description']) {
                 $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table'];
                 $res = $this->app->bridge->renderMarkdown($location['description'], $rules);
-                $this->setInnerHTML($description, $res['c']);
+                Utils::setInnerHTML($description, $res['c']);
             }
             $container->appendChild($description);
 
@@ -385,6 +384,14 @@ class CongressLocations {
                     $internalListContainer->appendChild($this->renderInternalList($eres['b']));
                     $container->appendChild($internalListContainer);
                 }
+            }
+
+            if ($this->programsPath) {
+                $viewPrograms = $this->doc->createElement('a');
+                $viewPrograms->setAttribute('class', 'view-programs-link');
+                $viewPrograms->setAttribute('href', $this->programsPath . '?' . CongressPrograms::QUERY_LOC . '=' . $locationId);
+                $viewPrograms->textContent = $this->plugin->locale['congress_locations']['view_programs_here'];
+                $container->appendChild($viewPrograms);
             }
 
             return $container;

@@ -2,6 +2,12 @@
 namespace Grav\Plugin\AksoBridge;
 
 class Utils {
+    static function setInnerHTML($node, $html) {
+        $fragment = $node->ownerDocument->createDocumentFragment();
+        $fragment->appendXML($html);
+        $node->appendChild($fragment);
+    }
+
     static function formatDate($dateString) {
         $date = \DateTime::createFromFormat('Y-m-d', $dateString);
         $formatted = $date->format('d') . '-a de ' . Utils::formatMonth($date->format('m')) . ' ' . $date->format('Y');

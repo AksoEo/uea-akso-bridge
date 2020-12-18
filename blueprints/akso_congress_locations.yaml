@@ -8,3 +8,6 @@ form:
     header.congress_instance:
       type: akso_congress_instance_id
       label: 'Kongresa okazigo'
+    header.congress_programs_path:
+      type: string
+      label: 'Relative path to programs'
