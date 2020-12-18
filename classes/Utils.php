@@ -4,7 +4,13 @@ namespace Grav\Plugin\AksoBridge;
 class Utils {
     static function formatDate($dateString) {
         $date = \DateTime::createFromFormat('Y-m-d', $dateString);
-        $formatted = $date->format('d') . ' ' . Utils::formatMonth($date->format('m')) . ' ' . $date->format('Y');
+        $formatted = $date->format('d') . '-a de ' . Utils::formatMonth($date->format('m')) . ' ' . $date->format('Y');
+        return $formatted;
+    }
+
+    static function formatDayMonth($dateString) {
+        $date = \DateTime::createFromFormat('Y-m-d', $dateString);
+        $formatted = $date->format('d') . '-a de ' . Utils::formatMonth($date->format('m'));
         return $formatted;
     }
 

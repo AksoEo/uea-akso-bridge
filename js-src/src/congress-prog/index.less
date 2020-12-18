@@ -1,0 +1,117 @@
+@import '../prelude.less';
+
+.congress-program-container {
+    .program-day-agenda {
+        .program-day-title {
+            background: var(--bg1);
+            border-bottom: var(--border-width) solid var(--accent);
+            padding: 0.5em 1em;
+        }
+
+        .no-items {
+            opacity: 0.7;
+            text-align: center;
+        }
+    }
+
+    .program-item, .program-page {
+        padding: 0.5em 1em;
+        margin-bottom: 1em;
+        border-radius: var(--radius);
+        background: var(--bg);
+        box-shadow: @shade-both;
+
+        .item-time-span {
+            .time-span {
+                margin: 0 0.3em;
+            }
+        }
+
+        .location-container {
+            font-size: 0.9em;
+
+            .location-itext {
+                opacity: 0.7;
+            }
+
+            .location-link {
+                .location-icon {
+                    vertical-align: middle;
+                    opacity: 0.6;
+                    margin-right: 0.2em;
+                }
+            }
+        }
+
+        .program-title-container {
+            .program-title {
+                margin: 0;
+            }
+
+            @media (min-width: 900px) {
+                display: flex;
+                white-space: nowrap;
+                align-items: center;
+
+                .program-title {
+                    flex: 1;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .location-container {
+                    margin-left: 0.5em;
+
+                    .location-itext {
+                        display: none;
+                    }
+                }
+            }
+        }
+
+        .program-description {
+            margin-top: 0.5em;
+
+            p:first-child {
+                margin-top: 0;
+            }
+            p:last-child {
+                margin-bottom: 0;
+            }
+        }
+    }
+
+    .program-page {
+        margin-top: 1em;
+
+        .program-time {
+            .time-date {
+                display: block;
+                float: right;
+            }
+            .time-span-container {
+                .time-span-span {
+                    margin: 0 0.2em;
+                }
+            }
+        }
+
+        .program-title {
+            margin-top: 0.1em;
+            margin-bottom: 0.3em;
+        }
+        .program-owner {
+            font-size: small;
+            opacity: 0.7;
+        }
+
+        .program-description {
+            margin: 1em 0;
+        }
+    }
+
+    .whole-program .program-day-title {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+}

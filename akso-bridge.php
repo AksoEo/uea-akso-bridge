@@ -426,6 +426,8 @@ class AksoBridgePlugin extends Plugin {
             if ($congressId == null || $instanceId == null) {
                 $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
             } else {
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-prog.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-prog.js');
                 $app = new AppBridge($this->grav);
                 $app->open();
                 $programs = new CongressPrograms($this, $app, $congressId, $instanceId);

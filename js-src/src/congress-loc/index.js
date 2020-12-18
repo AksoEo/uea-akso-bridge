@@ -316,6 +316,9 @@ function init() {
                 addLayer(x.layer);
             }
         };
+
+        // run filter once at the beginning
+        searchFilters.onFilter(searchFilters.state);
     };
 
     const initDetail = node => {

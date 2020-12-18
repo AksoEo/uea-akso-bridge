@@ -58,6 +58,16 @@ export default [
             format: 'amd',
         },
     },
+    {
+        input: 'src/congress-prog.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/congress-prog.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'cp_[name].js',
+            format: 'amd',
+        },
+    },
 ];
 
 function iniPlugin() {
