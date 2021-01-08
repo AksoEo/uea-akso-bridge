@@ -248,6 +248,7 @@ class AksoBridgePlugin extends Plugin {
                 $this->redirectStatus = 303;
             }
         } else if ($this->path === $this->accountPath) {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/account.css');
             $acc = new UserAccount($this, $this->bridge);
             $this->pageState = $acc->run();
         }

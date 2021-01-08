@@ -1,7 +1,7 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 
-use \Grav\Common\Utils;
+use Grav\Plugin\AksoBridge\Utils;
 
 class UserAccount {
     private $plugin, $bridge;
@@ -9,7 +9,8 @@ class UserAccount {
     public function __construct($plugin, $bridge) {
         $this->plugin = $plugin;
         $this->bridge = $bridge;
-        // TODO
+
+        $this->doc = new \DOMDocument();
     }
 
     private function renderDetails() {
@@ -34,9 +35,9 @@ class UserAccount {
                 'address.sortingCode',
                 'feeCountry',
                 'email',
-                'officePhone',
-                'cellphone',
-                'landlinePhone',
+                'officePhoneFormatted',
+                'cellphoneFormatted',
+                'landlinePhoneFormatted',
             ],
         ));
 
@@ -50,16 +51,111 @@ class UserAccount {
                 $details['fmtLegalName'] = $details['firstNameLegal'] . ' ' . $details['lastNameLegal'];
             }
 
+            $details['fmtBirthdate'] = '—';
+            if ($details['birthdate']) {
+                $details['fmtBirthdate'] = Utils::formatDate($details['birthdate']);
+            }
+
+            $phoneNumbers = [];
+            if ($details['cellphoneFormatted']) {
+                $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberCell'], $details['cellphoneFormatted']];
+            }
+            if ($details['landlinePhoneFormatted']) {
+                $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberLandline'], $details['landlinePhoneFormatted']];
+            }
+            if ($details['officePhoneFormatted']) {
+                $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberOffice'], $details['officePhoneFormatted']];
+            }
+            if (!empty($phoneNumbers)) {
+                $phoneNumbersList = $this->doc->createElement('ul');
+                $phoneNumbersList->setAttribute('class', 'phone-numbers-list');
+                foreach ($phoneNumbers as $entry) {
+                    $li = $this->doc->createElement('li');
+                    $label = $this->doc->createElement('span');
+                    $label->setAttribute('class', 'number-label');
+                    $label->textContent = $entry[0] . ': ';
+                    $li->appendChild($label);
+                    $value = $this->doc->createElement('span');
+                    $value->setAttribute('class', 'number-value');
+                    $value->textContent = $entry[1];
+                    $li->appendChild($value);
+                    $phoneNumbersList->appendChild($li);
+                }
+                $details['phoneNumbersFormatted'] = $this->doc->saveHtml($phoneNumbersList);
+            } else $details['phoneNumbersFormatted'] = '—';
+
+            $details['fmtAddress'] = '—';
+            if ($details['address']) {
+                $addr = $details['address'];
+                $fmtAddress = $this->doc->createElement('div');
+                $countryName = $this->formatCountry($addr['country']);
+                $formatted = $this->bridge->renderAddress(array(
+                    'countryCode' => $addr['country'],
+                    'countryArea' => $addr['countryArea'],
+                    'city' => $addr['city'],
+                    'cityArea' => $addr['cityArea'],
+                    'streetAddress' => $addr['streetAddress'],
+                    'postalCode' => $addr['postalCode'],
+                    'sortingCode' => $addr['sortingCode'],
+                ), $countryName)['c'];
+                foreach (explode("\n", $formatted) as $line) {
+                    $ln = $this->doc->createElement('div');
+                    $ln->textContent = $line;
+                    $fmtAddress->appendChild($ln);
+                }
+                $details['fmtAddress'] = $this->doc->saveHtml($fmtAddress);
+            }
+
+            $details['fmtFeeCountry'] = '—';
+            if ($details['feeCountry']) {
+                $details['fmtFeeCountry'] = $this->formatCountry($details['feeCountry']);
+            }
+
             return $details;
+        }
+        return null;
+    }
+
+    private function renderMembership() {
+        $res = $this->bridge->get('/codeholders/self/membership', array(
+            'fields' => ['categoryId', 'year', 'nameAbbrev', 'name', 'description', 'lifetime', 'givesMembership'],
+            'order' => [['year', 'desc']],
+            'limit' => 2,
+        ));
+
+        if ($res['k']) {
+            $totalCount = $res['h']['x-total-items'];
+            $hasMore = $totalCount > count($res['b']);
+
+            return array(
+                'history' => $res['b'],
+                'historyHasMore' => $hasMore,
+            );
+        }
+
+        return null;
+    }
+
+    function formatCountry($code) {
+        $res = $this->bridge->get('/countries', array(
+            'limit' => 300,
+            'fields' => ['code', 'name_eo'],
+        ), 600);
+        if ($res['k']) {
+            foreach ($res['b'] as $item) {
+                if ($item['code'] === $code) return $item['name_eo'];
+            }
         }
         return null;
     }
 
     public function run() {
         $details = $this->renderDetails();
+        $membership = $this->renderMembership();
 
         return array(
             'details' => $details,
+            'membership' => $membership,
             // TODO
         );
     }

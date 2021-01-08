@@ -4,34 +4,68 @@
     {% else %}
         <h1>{{ akso_locale.account.title }}</h1>
         <div class="account-details">
-            <h2>{{ account.details.fmtName }}</h2>
+            <h2 class="account-formatted-name">{{ account.details.fmtName|e }}</h2>
             {% if account.details.fmtLegalName %}
-                <h3>{{ akso_locale.account.legal_name }} {{ account.details.fmtLegalName }}</h3>
+                <div class="account-legal-name">
+                    {{ akso_locale.account.legal_name }}:
+                    <b>{{ account.details.fmtLegalName|e }}</b>
+                </div>
             {% endif %}
-            <table>
+            <table class="details-table">
                 <tbody>
                     <tr>
-                        <th>{{ akso_locale.account.newCode }}</th>
-                        <td>{{ account.details.newCode }}</td>
+                        <th class="field-label">{{ akso_locale.account.newCode }}</th>
+                        <td>{{ account.details.newCode|e }}</td>
                     </tr>
                     <tr>
-                        <th>{{ akso_locale.account.email }}</th>
-                        <td>{{ account.details.email }}</td>
+                        <th class="field-label">{{ akso_locale.account.email }}</th>
+                        <td>{{ account.details.email|e }}</td>
                     </tr>
                     <tr>
-                        <th>{{ akso_locale.account.birthdate }}</th>
-                        <td>{{ account.details.birthdate }}</td>
+                        <th class="field-label">{{ akso_locale.account.birthdate }}</th>
+                        <td>{{ account.details.fmtBirthdate|e }}</td>
+                    </tr>
+                    <tr>
+                        <th class="field-label">{{ akso_locale.account.phoneNumbers }}</th>
+                        <td>
+                            {{ account.details.phoneNumbersFormatted }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="field-label">{{ akso_locale.account.address }}</th>
+                        <td>{{ account.details.fmtAddress }}</td>
+                    </tr>
+                    <tr>
+                        <th class="field-label">{{ akso_locale.account.feeCountry }}</th>
+                        <td>{{ account.details.fmtFeeCountry|e }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div class="account-management">
             <button>
-                {{ akso_locale.account.change_email }}
+                [[request changes?]]
             </button>
             <button>
                 {{ akso_locale.account.reset_password }}
             </button>
+        </div>
+        <div class="account-memberships">
+            <h2>{{ akso_locale.account.memberships_title }}</h2>
+            {% if account.membership.history is empty %}
+                [[no items]]
+            {% else %}
+                <ul class="memberships-list">
+                    {% for membership in account.membership.history %}
+                    <li class="membership-item">
+
+                    </li>
+                    {% endfor %}
+                    {% if account.membership.historyHasMore %}
+                        [[more items...]]
+                    {% endif %}
+                </ul>
+            {% endif %}
         </div>
     {% endif %}
 {% endblock %}

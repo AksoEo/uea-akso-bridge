@@ -68,6 +68,16 @@ export default [
             format: 'amd',
         },
     },
+    {
+        input: 'src/account.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/account.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'acc_[name].js',
+            format: 'amd',
+        },
+    },
 ];
 
 function iniPlugin() {

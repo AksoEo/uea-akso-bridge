@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/AksoEo/aksobridged#readme",
   "dependencies": {
+    "@cpsdqs/google-i18n-address": "^1.0.2",
     "@msgpack/msgpack": "^1.12.0",
     "@tejo/akso-client": "^0.1.16",
     "@tejo/akso-script": "^0.2.2",

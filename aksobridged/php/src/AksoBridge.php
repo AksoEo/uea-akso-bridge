@@ -302,4 +302,8 @@ class AksoBridge {
             'r' => $rules,
         ));
     }
+
+    public function renderAddress(array $fields, string $countryName) {
+        return $this->request('render_addr', array('f' => $fields, 'c' => $countryName));
+    }
 }
