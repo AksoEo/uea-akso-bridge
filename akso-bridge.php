@@ -11,6 +11,7 @@ use Grav\Plugin\AksoBridge\AppBridge;
 use Grav\Plugin\AksoBridge\CongressLocations;
 use Grav\Plugin\AksoBridge\CongressPrograms;
 use Grav\Plugin\AksoBridge\CongressRegistration;
+use Grav\Plugin\AksoBridge\UserAccount;
 
 // TODO: pass host to bridge as Host header
 
@@ -55,6 +56,7 @@ class AksoBridgePlugin extends Plugin {
         // get config variables
         $this->loginPath = $this->grav['config']->get('plugins.akso-bridge.login_path');
         $this->logoutPath = $this->grav['config']->get('plugins.akso-bridge.logout_path');
+        $this->accountPath = $this->grav['config']->get('plugins.akso-bridge.account_path');
         $this->apiHost = $this->grav['config']->get('plugins.akso-bridge.api_host');
 
         // Don't proceed if we are in the admin plugin
@@ -74,6 +76,11 @@ class AksoBridgePlugin extends Plugin {
             // path matches; add the login page
             $this->enable([
                 'onPagesInitialized' => ['addLoginPage', 0],
+            ]);
+            return;
+        } else if ($this->aksoUser && $this->path === $this->accountPath) {
+            $this->enable([
+                'onPagesInitialized' => ['addAccountPage', 0],
             ]);
             return;
         } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
@@ -104,7 +111,7 @@ class AksoBridgePlugin extends Plugin {
     // if set, will contain info on the akso user
     // an array with keys 'id', 'uea'
     public $aksoUser = null;
-    private $aksoUserFormattedName = null;
+    public $aksoUserFormattedName = null;
 
     // will redirect after closing the bridge and setting cookies if not null
     private $redirectStatus = null;
@@ -145,7 +152,6 @@ class AksoBridgePlugin extends Plugin {
             }
 
             $this->updateAksoState();
-
             $this->updateFormattedName();
 
             $this->bridge->close();
@@ -241,11 +247,14 @@ class AksoBridgePlugin extends Plugin {
                 $this->redirectTarget = $this->getReferrerPath();
                 $this->redirectStatus = 303;
             }
+        } else if ($this->path === $this->accountPath) {
+            $acc = new UserAccount($this, $this->bridge);
+            $this->pageState = $acc->run();
         }
     }
 
-    private function updateFormattedName() {
-        if ($this->aksoUser) {
+    public function updateFormattedName() {
+        if ($this->aksoUser && !$this->aksoUserFormattedName) {
             $res = $this->bridge->get('codeholders/self', array(
                 'fields' => [
                     'firstName',
@@ -325,6 +334,18 @@ class AksoBridgePlugin extends Plugin {
             $page->init(new \SplFileInfo(__DIR__ . '/pages/akso_login.md'));
             $page->slug(basename($this->loginPath));
             $pages->addPage($page, $this->loginPath);
+        }
+    }
+
+    public function addAccountPage() {
+        $pages = $this->grav['pages'];
+        $page = $pages->dispatch($this->accountPath);
+
+        if (!$page) {
+            $page = new Page();
+            $page->init(new \SplFileInfo(__DIR__ . '/pages/akso_account.md'));
+            $page->slug(basename($this->accountPath));
+            $pages->addPage($page, $this->accountPath);
         }
     }
 
@@ -440,6 +461,8 @@ class AksoBridgePlugin extends Plugin {
                 $twig->twig_vars['akso_congress'] = $programs->run();
                 $app->close();
             }
+        } else if ($templateId === 'akso_account') {
+            $twig->twig_vars['account'] = $state;
         }
 
         if ($this->grav['uri']->path() === $this->loginPath) {

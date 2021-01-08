@@ -23,15 +23,12 @@ form:
     login_path:
       type: text
       label: Login Path
-    login_label:
-      type: text
-      label: Login Label
     logout_path:
       type: text
       label: Logout Path
-    logout_label:
+    account_path:
       type: text
-      label: Logout Label
+      label: Account Path
     api_host:
       type: text
       label: API host

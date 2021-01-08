@@ -3,12 +3,28 @@
         <div class="akso-user">
             {{ akso_user_fmt_name|e }}
         </div>
-        <a class="link-button" href="{{ config.plugins['akso-bridge'].logout_path|e('html_attr') }}">
-            {{ config.plugins['akso-bridge'].logout_label|e }}
-        </a>
+        <div class="akso-user-options">
+            <input class="user-options-switch" type="checkbox" id="akso-bridge-login-options" />
+            <label tabindex="0" aria-label="Agordoj" class="link-button user-options-button" for="akso-bridge-login-options">
+                <img src="/user/plugins/akso-bridge/assets/settings.svg" draggable="false" />
+            </label>
+            <label class="bridge-options-backdrop" for="akso-bridge-login-options"></label>
+            <ul class="bridge-options-popup">
+                <li>
+                    <a href="{{ config.plugins['akso-bridge'].account_path|e('html_attr') }}">
+                        {{ akso_locale.login.account_options|e }}
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ config.plugins['akso-bridge'].logout_path|e('html_attr') }}">
+                        {{ akso_locale.login.logout_label|e }}
+                    </a>
+                </li>
+            </ul>
+        </div>
     {% else %}
         <a class="link-button" href="{{ config.plugins['akso-bridge'].login_path|e('html_attr') }}">
-            {{ config.plugins['akso-bridge'].login_label|e }}
+            {{ akso_locale.login.login_label|e }}
         </a>
     {% endif %}
 </div>

@@ -1,0 +1,37 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+    {% if account.editing %}
+    {% else %}
+        <h1>{{ akso_locale.account.title }}</h1>
+        <div class="account-details">
+            <h2>{{ account.details.fmtName }}</h2>
+            {% if account.details.fmtLegalName %}
+                <h3>{{ akso_locale.account.legal_name }} {{ account.details.fmtLegalName }}</h3>
+            {% endif %}
+            <table>
+                <tbody>
+                    <tr>
+                        <th>{{ akso_locale.account.newCode }}</th>
+                        <td>{{ account.details.newCode }}</td>
+                    </tr>
+                    <tr>
+                        <th>{{ akso_locale.account.email }}</th>
+                        <td>{{ account.details.email }}</td>
+                    </tr>
+                    <tr>
+                        <th>{{ akso_locale.account.birthdate }}</th>
+                        <td>{{ account.details.birthdate }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="account-management">
+            <button>
+                {{ akso_locale.account.change_email }}
+            </button>
+            <button>
+                {{ akso_locale.account.reset_password }}
+            </button>
+        </div>
+    {% endif %}
+{% endblock %}
