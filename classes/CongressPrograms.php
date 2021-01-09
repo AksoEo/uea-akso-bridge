@@ -357,7 +357,7 @@ class CongressPrograms {
         $locationLink = $this->doc->createElement('a');
         $locationLink->setAttribute('class', 'location-link');
 
-        if ($location['icon']) {
+        if (isset($location['icon']) && $location['icon']) {
             $locationIcon = $this->doc->createElement('img');
             $locationIcon->setAttribute('class', 'location-icon');
             $locationIcon->setAttribute('src', CongressLocations::ICONS_PATH_PREFIX . $location['icon'] . CongressLocations::ICONS_PATH_SUFFIX);

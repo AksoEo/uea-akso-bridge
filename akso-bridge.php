@@ -493,24 +493,26 @@ class AksoBridgePlugin extends Plugin {
             }
         }
 
-        if ($state['state'] === 'login-error') {
-            $twig->twig_vars['akso_login_username'] = $state['username'];
-            if (isset($state['isBad'])) {
-                $twig->twig_vars['akso_login_error'] = 'loginbad';
-            } else if ($state['noPassword']) {
-                $twig->twig_vars['akso_login_error'] = 'nopw';
-            } else if ($state['isEmail']) {
-                $twig->twig_vars['akso_login_error'] = 'authemail';
-            } else {
-                $twig->twig_vars['akso_login_error'] = 'authuea';
-            }
-        } else if ($state['state'] === 'totp-error') {
-            if ($state['nosx']) {
-                $twig->twig_vars['akso_login_error'] = 'totpnosx';
-            } else if ($state['bad']) {
-                $twig->twig_vars['akso_login_error'] = 'totpbad';
-            } else {
-                $twig->twig_vars['akso_login_error'] = 'totpauth';
+        if (isset($state['state'])) {
+            if ($state['state'] === 'login-error') {
+                $twig->twig_vars['akso_login_username'] = $state['username'];
+                if (isset($state['isBad'])) {
+                    $twig->twig_vars['akso_login_error'] = 'loginbad';
+                } else if ($state['noPassword']) {
+                    $twig->twig_vars['akso_login_error'] = 'nopw';
+                } else if ($state['isEmail']) {
+                    $twig->twig_vars['akso_login_error'] = 'authemail';
+                } else {
+                    $twig->twig_vars['akso_login_error'] = 'authuea';
+                }
+            } else if ($state['state'] === 'totp-error') {
+                if ($state['nosx']) {
+                    $twig->twig_vars['akso_login_error'] = 'totpnosx';
+                } else if ($state['bad']) {
+                    $twig->twig_vars['akso_login_error'] = 'totpbad';
+                } else {
+                    $twig->twig_vars['akso_login_error'] = 'totpauth';
+                }
             }
         }
     }
