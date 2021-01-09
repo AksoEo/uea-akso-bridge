@@ -53,7 +53,9 @@
         <div class="account-memberships">
             <h2 class="memberships-title">{{ akso_locale.account.memberships_title }}</h2>
             {% if account.membership.categories is empty %}
-                [[no items]]
+                <div class="memberships-none">
+                    {{ akso_locale.account.memberships_none }}
+                </div>
             {% else %}
                 <ul class="memberships-list">
                     {% for category in account.membership.categories %}
