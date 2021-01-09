@@ -1,12 +1,13 @@
 .account-details, .account-memberships {
     background: var(--bg);
     border-radius: var(--radius);
-    padding: 0.5em 1em;
     margin: 1em 0;
     text-align: left;
 }
 
 .account-details {
+    padding: 0.5em 1em;
+
     .account-formatted-name {
         margin-bottom: 0.1em;
     }
@@ -43,5 +44,54 @@
                 }
             }
         }
+    }
+}
+
+.account-memberships {
+    .memberships-title {
+        padding: 0.5em 1em;
+        margin: 0;
+    }
+
+    .memberships-list {
+        margin: 0;
+        padding: 0;
+        list-style-type: none;
+
+        .membership-category {
+            padding: 0.5em 1em;
+            border-bottom: 1px solid var(--light-separator);
+
+            &:last-child {
+                border-bottom: none;
+            }
+
+            .membership-years {
+                margin: 0;
+                padding: 0;
+                list-style-type: none;
+
+                .membership-year {
+                    display: inline-block;
+                    font-size: 0.8em;
+                    padding: 0 0.2em;
+                    border-radius: var(--radius);
+                    background: var(--bg2);
+
+                    &.is-lifetime {
+                        display: block;
+                        background: none;
+                        padding: 0;
+                    }
+                }
+            }
+        }
+    }
+
+    .memberships-has-more {
+        text-align: center;
+        padding: 0.5em 1em;
+        font-size: 0.8em;
+        border-top: 1px solid var(--light-separator);
     }
 }

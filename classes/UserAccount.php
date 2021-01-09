@@ -116,18 +116,50 @@ class UserAccount {
         return null;
     }
 
-    private function renderMembership() {
+    function renderMoreItems($offset) {
         $res = $this->bridge->get('/codeholders/self/membership', array(
-            'fields' => ['categoryId', 'year', 'nameAbbrev', 'name', 'description', 'lifetime', 'givesMembership'],
+            'fields' => ['categoryId', 'year', 'name', 'lifetime'],
             'order' => [['year', 'desc']],
-            'limit' => 2,
+            'offset' => $offset,
+            'limit' => 100,
         ));
 
         if ($res['k']) {
             $totalCount = $res['h']['x-total-items'];
+            $hasMore = $totalCount > ($offset + count($res['b']));
+
+            echo json_encode(array(
+                'items' => $res['b'],
+                'hasMore' => $hasMore,
+            ));
+        } else echo '!';
+        die();
+    }
+
+    private function renderMembership() {
+        $res = $this->bridge->get('/codeholders/self/membership', array(
+            'fields' => ['categoryId', 'year', 'name', 'lifetime'],
+            'order' => [['year', 'desc']],
+            'limit' => 10,
+        ));
+
+        if ($res['k']) {
+            $categories = [];
+
+            foreach ($res['b'] as $item) {
+                $catId = $item['categoryId'];
+                if (!isset($categories[$catId])) {
+                    $categories[$catId] = $item;
+                    $categories[$catId]['years'] = [];
+                }
+                $categories[$catId]['years'][] = $item['year'];
+            }
+
+            $totalCount = $res['h']['x-total-items'];
             $hasMore = $totalCount > count($res['b']);
 
             return array(
+                'categories' => $categories,
                 'history' => $res['b'],
                 'historyHasMore' => $hasMore,
             );
@@ -150,6 +182,11 @@ class UserAccount {
     }
 
     public function run() {
+        if (isset($_GET['fetch_more_items_offset']) && gettype($_GET['fetch_more_items_offset']) === 'string') {
+            $offset = (int) $_GET['fetch_more_items_offset'];
+            $this->renderMoreItems($offset);
+        }
+
         $details = $this->renderDetails();
         $membership = $this->renderMembership();
 

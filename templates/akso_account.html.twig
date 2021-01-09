@@ -51,20 +51,32 @@
             </button>
         </div>
         <div class="account-memberships">
-            <h2>{{ akso_locale.account.memberships_title }}</h2>
-            {% if account.membership.history is empty %}
+            <h2 class="memberships-title">{{ akso_locale.account.memberships_title }}</h2>
+            {% if account.membership.categories is empty %}
                 [[no items]]
             {% else %}
                 <ul class="memberships-list">
-                    {% for membership in account.membership.history %}
-                    <li class="membership-item">
-
+                    {% for category in account.membership.categories %}
+                    <li class="membership-category">
+                        <div class="category-name">{{ category.name|e }}</div>
+                        <ul class="membership-years">
+                            {% for year in category.years %}
+                                <li class="membership-year {{ category.lifetime ? 'is-lifetime' : '' }}">
+                                    {% if category.lifetime %}
+                                        {{ akso_locale.account.membership_lifetime_prefix }}
+                                    {% endif %}
+                                    {{ year|e }}
+                                </li>
+                            {% endfor %}
+                        </ul>
                     </li>
                     {% endfor %}
-                    {% if account.membership.historyHasMore %}
-                        [[more items...]]
-                    {% endif %}
                 </ul>
+                {% if account.membership.historyHasMore %}
+                <div class="memberships-has-more">
+                    {{ akso_locale.account.memberships_has_more_items }}
+                </div>
+                {% endif %}
             {% endif %}
         </div>
     {% endif %}
