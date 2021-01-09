@@ -454,7 +454,7 @@ class CongressPrograms {
     }
 
     public function run() {
-        $contents;
+        $contents = null;
 
         if (isset($_GET[self::QUERY_LOC]) && gettype($_GET[self::QUERY_LOC]) === 'string') {
             $locationId = (int) $_GET[self::QUERY_LOC];
