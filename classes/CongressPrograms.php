@@ -6,6 +6,7 @@ use Grav\Plugin\AksoBridge\Utils;
 
 class CongressPrograms {
     const QUERY_DATE = 'd';
+    const QUERY_DATE_ALL = '';
     const QUERY_LOC = 'loc';
     const QUERY_PROG = 'prog';
 
@@ -101,8 +102,10 @@ class CongressPrograms {
         $description = $this->doc->createElement('div');
         $description->setAttribute('class', 'program-description');
         $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table', 'image'];
-        $res = $this->app->bridge->renderMarkdown($program['description'], $rules);
-        Utils::setInnerHTML($description, $res['c']);
+        if ($program['description']) {
+            $res = $this->app->bridge->renderMarkdown($program['description'], $rules);
+            Utils::setInnerHTML($description, $res['c']);
+        }
         $node->appendChild($description);
 
         return $node;
@@ -223,7 +226,7 @@ class CongressPrograms {
 
         $button = $this->doc->createElement('a');
         $button->setAttribute('class', 'program-day link-button' . (!$currentDate ? ' is-primary' : ''));
-        $button->setAttribute('href', $this->plugin->getGrav()['uri']->path());
+        $button->setAttribute('href', $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_DATE . '=' . urlencode(self::QUERY_DATE_ALL));
         $button->textContent = $this->plugin->locale['congress_programs']['day_switcher_all'];
         $node->appendChild($button);
 
@@ -436,10 +439,23 @@ class CongressPrograms {
         $dateTo = \DateTime::createFromFormat('Y-m-d', $this->congress['dateTo']);
 
         $currentDate = null;
+        $forceNull = false;
 
         if (isset($_GET[self::QUERY_DATE]) && gettype($_GET[self::QUERY_DATE]) === 'string') {
-            $qdate = \DateTime::createFromFormat('Y-m-d', $_GET[self::QUERY_DATE]);
-            if ($qdate !== false) $currentDate = $qdate;
+            if ($_GET[self::QUERY_DATE] === self::QUERY_DATE_ALL) {
+                $forceNull = true;
+            } else {
+                $qdate = \DateTime::createFromFormat('Y-m-d', $_GET[self::QUERY_DATE]);
+                if ($qdate !== false) $currentDate = $qdate;
+            }
+        }
+        if (!$currentDate && !$forceNull) {
+            // default to current date if congress is ongoing
+            $currentDate = new \DateTime();
+            if ($dateFrom->diff($currentDate)->invert || $currentDate->diff($dateTo)->invert) {
+                // out of bounds
+                $currentDate = null;
+            }
         }
         if (!$currentDate) return null;
 
