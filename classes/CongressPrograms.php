@@ -349,8 +349,10 @@ class CongressPrograms {
         $description = $this->doc->createElement('div');
         $description->setAttribute('class', 'program-description');
         $rules = ['emphasis', 'strikethrough', 'link', 'list', 'table', 'image'];
-        $res = $this->app->bridge->renderMarkdown($program['description'], $rules);
-        Utils::setInnerHTML($description, $res['c']);
+        if ($program['description']) {
+            $res = $this->app->bridge->renderMarkdown($program['description'], $rules);
+            Utils::setInnerHTML($description, $res['c']);
+        }
         $root->appendChild($description);
 
         return $root;

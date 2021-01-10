@@ -4,6 +4,8 @@ namespace Grav\Plugin\AksoBridge;
 use Grav\Plugin\AksoBridge\Utils;
 
 class UserAccount {
+    const QUERY_PROFILE_PICTURE = 'profile_picture';
+
     private $plugin, $bridge;
 
     public function __construct($plugin, $bridge) {
@@ -16,6 +18,7 @@ class UserAccount {
     private function renderDetails() {
         $res = $this->bridge->get('codeholders/self', array(
             'fields' => [
+                'codeholderType',
                 'firstName',
                 'lastName',
                 'firstNameLegal',
@@ -25,6 +28,7 @@ class UserAccount {
                 'fullNameLocal',
                 'nameAbbrev',
                 'newCode',
+                'oldCode',
                 'birthdate',
                 'address.country',
                 'address.countryArea',
@@ -38,29 +42,49 @@ class UserAccount {
                 'officePhoneFormatted',
                 'cellphoneFormatted',
                 'landlinePhoneFormatted',
+
+                'profilePictureHash',
+                'profession',
+                'website',
+                'biography',
             ],
         ));
 
         if ($res['k']) {
-            // TODO
             $this->plugin->updateFormattedName();
             $details = $res['b'];
 
-            $details['fmtName'] = $this->plugin->aksoUserFormattedName;
-            if ($details['firstName'] || $details['lastName']) {
-                $details['fmtLegalName'] = $details['firstNameLegal'] . ' ' . $details['lastNameLegal'];
+            if ($details['profilePictureHash']) {
+                $path = $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_PROFILE_PICTURE
+                    . '=1&s=';
+                $details['profilePicturePath'] = $path . '128px';
+                $details['profilePictureSizes'] = $path . '32px 32w,' . $path . '64px 64w,'
+                    . $path . '128px 128w,' . $path . '256px 256w,' . $path . '512px 512w';
             }
 
-            $details['fmtBirthdate'] = '—';
-            if ($details['birthdate']) {
-                $details['fmtBirthdate'] = Utils::formatDate($details['birthdate']);
+            if ($details['codeholderType'] === 'human') {
+                $details['fmtName'] = $this->plugin->aksoUserFormattedName;
+                if ($details['firstName'] || $details['lastName']) {
+                    $details['fmtLegalName'] = $details['firstNameLegal'] . ' ' . $details['lastNameLegal'];
+                }
+
+                $details['fmtBirthdate'] = '—';
+                if ($details['birthdate']) {
+                    $details['fmtBirthdate'] = Utils::formatDate($details['birthdate']);
+                }
+            } else {
+                $details['fmtName'] = $details['fullName'];
+                if ($details['nameAbbrev']) {
+                    $details['fmtName'] .= ' (' . $details['nameAbbrev'] . ')';
+                }
+                $details['fmtLocalName'] = $details['fullNameLocal'];
             }
 
             $phoneNumbers = [];
-            if ($details['cellphoneFormatted']) {
+            if ($details['codeholderType'] === 'human' && $details['cellphoneFormatted']) {
                 $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberCell'], $details['cellphoneFormatted']];
             }
-            if ($details['landlinePhoneFormatted']) {
+            if ($details['codeholderType'] === 'human' && $details['landlinePhoneFormatted']) {
                 $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberLandline'], $details['landlinePhoneFormatted']];
             }
             if ($details['officePhoneFormatted']) {
@@ -116,9 +140,9 @@ class UserAccount {
         return null;
     }
 
-    function renderMoreItems($offset) {
+    function renderMoreMembershipItems($offset) {
         $res = $this->bridge->get('/codeholders/self/membership', array(
-            'fields' => ['categoryId', 'year', 'name', 'lifetime'],
+            'fields' => ['categoryId', 'year', 'name', 'lifetime', 'availableTo'],
             'order' => [['year', 'desc']],
             'offset' => $offset,
             'limit' => 100,
@@ -127,6 +151,13 @@ class UserAccount {
         if ($res['k']) {
             $totalCount = $res['h']['x-total-items'];
             $hasMore = $totalCount > ($offset + count($res['b']));
+
+            $currentYear = (int) (new \DateTime())->format('Y');
+            foreach ($res['b'] as &$item) {
+                $item['availableThisYear'] = $item['availableTo'] >= $currentYear;
+                $item['availableNextYear'] = $item['availableTo'] >= $currentYear + 1;
+                unset($item['availableTo']);
+            }
 
             echo json_encode(array(
                 'items' => $res['b'],
@@ -138,7 +169,7 @@ class UserAccount {
 
     private function renderMembership() {
         $res = $this->bridge->get('/codeholders/self/membership', array(
-            'fields' => ['categoryId', 'year', 'name', 'lifetime'],
+            'fields' => ['categoryId', 'year', 'name', 'lifetime', 'availableTo'],
             'order' => [['year', 'desc']],
             'limit' => 10,
         ));
@@ -151,8 +182,23 @@ class UserAccount {
                 if (!isset($categories[$catId])) {
                     $categories[$catId] = $item;
                     $categories[$catId]['years'] = [];
+                    $categories[$catId]['canBeRenewed'] = false;
                 }
                 $categories[$catId]['years'][] = $item['year'];
+            }
+
+            $currentYear = (int) (new \DateTime())->format('Y');
+            foreach ($categories as &$category) {
+                if ($category['lifetime']) continue;
+                $newestYear = 0;
+                foreach ($category['years'] as $y) if ($y > $newestYear) $newestYear = $y;
+
+                $wouldRenewToYear = $newestYear == $currentYear ? $currentYear + 1 : $currentYear;
+                $couldBeRenewed = $category['availableTo'] >= $wouldRenewToYear;
+
+                if ($couldBeRenewed && $newestYear <= $currentYear) {
+                    $category['canBeRenewed'] = true;
+                }
             }
 
             $totalCount = $res['h']['x-total-items'];
@@ -181,10 +227,36 @@ class UserAccount {
         return null;
     }
 
+    public function runProfilePicture() {
+        $res = $this->bridge->get('codeholders/self', array('fields' => ['profilePictureHash']));
+        if (!$res['k'] || !$res['b']['profilePictureHash'] || !isset($_GET['s'])) die();
+        $hash = bin2hex($res['b']['profilePictureHash']);
+        $size = $_GET['s'];
+        // TODO: check if this is safe
+        $path = "/codeholders/self/profile_picture/$size";
+        $res = $this->bridge->getRaw($path, 10, array('noop' => $hash));
+        if ($res['k']) {
+            header('Content-Type: ' . $res['h']['content-type']);
+            try {
+                readfile($res['ref']);
+            } finally {
+                $this->bridge->releaseRaw($path);
+            }
+            die();
+        } else {
+            // TODO: error?
+            die();
+        }
+    }
+
     public function run() {
-        if (isset($_GET['fetch_more_items_offset']) && gettype($_GET['fetch_more_items_offset']) === 'string') {
-            $offset = (int) $_GET['fetch_more_items_offset'];
-            $this->renderMoreItems($offset);
+        if (isset($_GET[self::QUERY_PROFILE_PICTURE])) {
+            $this->runProfilePicture();
+        }
+
+        if (isset($_GET['membership_more_items_offset']) && gettype($_GET['membership_more_items_offset']) === 'string') {
+            $offset = (int) $_GET['membership_more_items_offset'];
+            $this->renderMoreMembershipItems($offset);
         }
 
         $details = $this->renderDetails();
@@ -193,7 +265,6 @@ class UserAccount {
         return array(
             'details' => $details,
             'membership' => $membership,
-            // TODO
         );
     }
 }

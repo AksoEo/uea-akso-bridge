@@ -8,12 +8,28 @@
 .account-details {
     padding: 0.5em 1em;
 
+    .account-profile-picture {
+        float: left;
+        width: 50vw;
+        max-width: 5em;
+        margin-right: 1em;
+
+        img {
+            border-radius: 50%;
+            overflow: hidden;
+        }
+    }
+
     .account-formatted-name {
         margin-bottom: 0.1em;
     }
-    .account-legal-name {
+    .account-legal-name, .account-local-name {
         font-size: 0.9em;
         margin-bottom: 0.5em;
+    }
+
+    .table-clear {
+        clear: both;
     }
 
     .details-table {
@@ -28,6 +44,16 @@
             tbody, tr, th, td {
                 display: block;
             }
+        }
+
+        .old-code-field {
+            display: block;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .biography-field {
+            white-space: pre-wrap;
         }
 
         .phone-numbers-list {
@@ -71,6 +97,10 @@
 
             &:last-child {
                 border-bottom: none;
+            }
+
+            .category-renew-button {
+                float: right;
             }
 
             .membership-years {

@@ -4,6 +4,13 @@
     {% else %}
         <h1>{{ akso_locale.account.title }}</h1>
         <div class="account-details">
+            {% if account.details.profilePictureHash %}
+                <div class="account-profile-picture">
+                    <img
+                        src="{{ account.details.profilePicturePath }}"
+                        srcset="{{ account.details.profilePictureSizes }}" />
+                </div>
+            {% endif %}
             <h2 class="account-formatted-name">{{ account.details.fmtName|e }}</h2>
             {% if account.details.fmtLegalName %}
                 <div class="account-legal-name">
@@ -11,20 +18,36 @@
                     <b>{{ account.details.fmtLegalName|e }}</b>
                 </div>
             {% endif %}
+            {% if account.details.fmtLocalName %}
+                <div class="account-local-name">
+                    {{ akso_locale.account.local_name }}:
+                    <b>{{ account.details.fmtLocalName|e }}</b>
+                </div>
+            {% endif %}
+            <div class="table-clear" />
             <table class="details-table">
                 <tbody>
                     <tr>
                         <th class="field-label">{{ akso_locale.account.newCode }}</th>
-                        <td>{{ account.details.newCode|e }}</td>
+                        <td>
+                            {{ account.details.newCode|e }}
+                            {% if account.details.oldCode %}
+                                <span class="old-code-field">
+                                    {{ akso_locale.account.oldCode }}: {{ account.details.oldCode|e }}
+                                </span>
+                            {% endif %}
+                        </td>
                     </tr>
                     <tr>
                         <th class="field-label">{{ akso_locale.account.email }}</th>
                         <td>{{ account.details.email|e }}</td>
                     </tr>
-                    <tr>
-                        <th class="field-label">{{ akso_locale.account.birthdate }}</th>
-                        <td>{{ account.details.fmtBirthdate|e }}</td>
-                    </tr>
+                    {% if account.details.codeholderType == 'human' %}
+                        <tr>
+                            <th class="field-label">{{ akso_locale.account.birthdate }}</th>
+                            <td>{{ account.details.fmtBirthdate|e }}</td>
+                        </tr>
+                    {% endif %}
                     <tr>
                         <th class="field-label">{{ akso_locale.account.phoneNumbers }}</th>
                         <td>
@@ -39,6 +62,24 @@
                         <th class="field-label">{{ akso_locale.account.feeCountry }}</th>
                         <td>{{ account.details.fmtFeeCountry|e }}</td>
                     </tr>
+                    {% if account.details.profession %}
+                        <tr>
+                            <th class="field-label">{{ akso_locale.account.profession }}</th>
+                            <td>{{ account.details.profession|e }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if account.details.website %}
+                        <tr>
+                            <th class="field-label">{{ akso_locale.account.website }}</th>
+                            <td>{{ account.details.website|e }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if account.details.biography %}
+                        <tr>
+                            <th class="field-label">{{ akso_locale.account.biography }}</th>
+                            <td class="biography-field">{{ account.details.biography|e }}</td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -60,6 +101,12 @@
                 <ul class="memberships-list">
                     {% for category in account.membership.categories %}
                     <li class="membership-category">
+                        {{ category.meow }}
+                        {% if category.canBeRenewed %}
+                            <button class="category-renew-button">
+                                {{ akso_locale.account.membership_category_renew }}
+                            </button>
+                        {% endif %}
                         <div class="category-name">{{ category.name|e }}</div>
                         <ul class="membership-years">
                             {% for year in category.years %}

@@ -715,21 +715,21 @@ const messageHandlers = {
         const cashify = new Cashify({ base: fc, rates: r });
         return { v: cashify.convert(v, { from: fc, to: tc }) };
     },
-    get_raw: async (conn, { p, c }) => {
+    get_raw: async (conn, { p, o, c }) => {
         assertType(p, 'string', 'expected p to be a string');
         assertType(c, 'number', 'expected c to be a number');
         if (c < 0) throw new Error('negative cache time');
 
-        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, {});
+        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, o || {});
         if (cachedResponse !== null) {
-            await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
+            await cache.acquire(conn.apiHost, 'GET_RAW', p, o || {});
             return {
                 ...cachedResponse,
                 ref: cachedResponse.ref && path.resolve(path.join(rawCachePath, cachedResponse.ref)),
             };
         }
 
-        const res = await conn.client.get(p, {});
+        const res = await conn.client.get(p, o || {});
         let body = Buffer.from(res.body);
 
         let refName = null;
