@@ -7,6 +7,21 @@ function daysInMonth(year, month) {
 }
 
 function createDateInput(value, onUpdate, opts = {}) {
+    const nativeInput = document.createElement('input');
+    nativeInput.type = 'date';
+    if (nativeInput.type === 'date') {
+        const handleUpdate = () => {
+            if (nativeInput.value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                onUpdate(nativeInput.value);
+            } else {
+                onUpdate('');
+            }
+        };
+        nativeInput.addEventListener('input', handleUpdate);
+        nativeInput.addEventListener('change', handleUpdate);
+        return nativeInput;
+    }
+
     const editor = document.createElement('div');
     editor.className = 'js-date-editor';
 

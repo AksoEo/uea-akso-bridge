@@ -62,24 +62,20 @@
                         <th class="field-label">{{ akso_locale.account.feeCountry }}</th>
                         <td>{{ account.details.fmtFeeCountry|e }}</td>
                     </tr>
-                    {% if account.details.profession %}
+                    {% if account.details.codeholderType == 'human' %}
                         <tr>
                             <th class="field-label">{{ akso_locale.account.profession }}</th>
-                            <td>{{ account.details.profession|e }}</td>
+                            <td>{{ account.details.profession ? account.details.profession|e : '—' }}</td>
                         </tr>
                     {% endif %}
-                    {% if account.details.website %}
-                        <tr>
-                            <th class="field-label">{{ akso_locale.account.website }}</th>
-                            <td>{{ account.details.website|e }}</td>
-                        </tr>
-                    {% endif %}
-                    {% if account.details.biography %}
-                        <tr>
-                            <th class="field-label">{{ akso_locale.account.biography }}</th>
-                            <td class="biography-field">{{ account.details.biography|e }}</td>
-                        </tr>
-                    {% endif %}
+                    <tr>
+                        <th class="field-label">{{ akso_locale.account.website }}</th>
+                        <td>{{ account.details.website ? account.details.website|e : '—' }}</td>
+                    </tr>
+                    <tr>
+                        <th class="field-label">{{ akso_locale.account.biography }}</th>
+                        <td class="biography-field">{{ account.details.biography ? account.details.biography|e : '—' }}</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
