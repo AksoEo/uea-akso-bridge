@@ -4,7 +4,9 @@ namespace Grav\Plugin\AksoBridge;
 use Grav\Plugin\AksoBridge\CongressLocations;
 use Grav\Plugin\AksoBridge\Utils;
 
+// Handles the congress programs page type.
 class CongressPrograms {
+    // query parameters
     const QUERY_DATE = 'd';
     const QUERY_DATE_ALL = '';
     const QUERY_LOC = 'loc';
@@ -27,11 +29,13 @@ class CongressPrograms {
         $this->load();
     }
 
+    // set this to a relative path to enable location links
     public $locationsPath = null;
 
     private $congress = null;
     private $tz = null;
 
+    // loads congress info ($congress, $tz)
     function load() {
         $congressId = $this->congressId;
         $instanceId = $this->instanceId;
@@ -46,6 +50,7 @@ class CongressPrograms {
         }
     }
 
+    /// Renders a single program item in the list
     function renderProgramItem($program, $locations) {
         $node = $this->doc->createElement('div');
         $node->setAttribute('class', 'program-item');
@@ -111,6 +116,7 @@ class CongressPrograms {
         return $node;
     }
 
+    // loads all locations with the given ids
     function batchLoadLocations($ids) {
         $locations = [];
         for ($i = 0; true; $i += 100) {
@@ -135,7 +141,8 @@ class CongressPrograms {
         return $locations;
     }
 
-    /// - $date: string like 2020-01-02
+    // Renders the program list for a single day
+    // - $date: string like 2020-01-02
     function renderDayAgenda($date, $showNoItems = false, $extraFilter = []) {
         $unixFrom = \DateTime::createFromFormat("Y-m-d", $date, $this->tz);
         $unixFrom->setTime(0, 0, 0);
@@ -201,6 +208,7 @@ class CongressPrograms {
         return $root;
     }
 
+    // Renders the program for all days
     function renderWholeAgenda() {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'whole-program');
@@ -220,6 +228,7 @@ class CongressPrograms {
         return $root;
     }
 
+    // Renders the day switcher at the top
     function renderDaySwitcher($currentDate) {
         $node = $this->doc->createElement('div');
         $node->setAttribute('class', 'program-day-switcher');
@@ -251,6 +260,7 @@ class CongressPrograms {
         return $node;
     }
 
+    // Renders the detail page for a program item
     function renderProgramPage($programId) {
         $congressId = $this->congressId;
         $instanceId = $this->instanceId;
@@ -358,6 +368,7 @@ class CongressPrograms {
         return $root;
     }
 
+    // Renders a link to a congress location with an icon
     function renderLocationLink($location) {
         $locationLink = $this->doc->createElement('a');
         $locationLink->setAttribute('class', 'location-link');
@@ -381,6 +392,7 @@ class CongressPrograms {
         return $locationLink;
     }
 
+    // Renders the “events in this location” page for the given location
     function renderEventsInLocation($locationId) {
         $congressId = $this->congressId;
         $instanceId = $this->instanceId;
@@ -435,6 +447,7 @@ class CongressPrograms {
         return $root;
     }
 
+    // Returns the date the user has requested, or null for all days.
     // returns YYYY-MM-DD string or null.
     function readCurrentDate() {
         $dateFrom = \DateTime::createFromFormat('Y-m-d', $this->congress['dateFrom']);

@@ -13,6 +13,7 @@ class CongressFields {
         $this->bridge = $bridge;
     }
 
+    // Renders an HTML descriptor for the given congress field
     private function getCongressField($congress, $field) {
         $id = $congress;
         if (!isset($this->cache[$id])) {
@@ -47,6 +48,7 @@ class CongressFields {
         )];
     }
 
+    // Renders an HTML descriptor for the given congress instance field
     private function getInstanceField($congress, $instance, $field) {
         $id = $congress . '/' . $instance;
         if (!isset($this->cache[$id])) {
@@ -114,6 +116,8 @@ class CongressFields {
         )];
     }
 
+    // Renders a congress/instance field. (Set instance to null for congress field).
+    // Returns an HTML node descriptor.
     public function renderField($extent, $field, $congress, $instance) {
         $isInstance = $instance !== null;
 
@@ -137,6 +141,7 @@ class CongressFields {
         );
     }
 
+    // HTML post-processing.
     public function handleHTMLCongressStuff($doc) {
         $countdowns = $doc->find('.congress-countdown');
         foreach ($countdowns as $countdown) {

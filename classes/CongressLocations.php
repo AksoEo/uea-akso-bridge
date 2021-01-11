@@ -4,8 +4,11 @@ namespace Grav\Plugin\AksoBridge;
 use Grav\Plugin\AksoBridge\CongressPrograms;
 use Grav\Plugin\AksoBridge\Utils;
 
+// Handles the congress locations page type.
 class CongressLocations {
+    // url query parameter to identify a location
     const QUERY_LOC = 'loc';
+    // for location icons
     const ICONS_PATH_PREFIX = '/user/plugins/akso-bridge/assets/location_icons/';
     const ICONS_PATH_SUFFIX = '.svg';
 
@@ -26,9 +29,13 @@ class CongressLocations {
         $this->readQuery();
     }
 
+    // Set this to a relative path to enable program links
     public $programsPath = null;
 
+    // If true, then this is a JS request that only needs a partial HTML render and not the full
+    // page.
     private $wantsPartial = false;
+    // If not null, then the request is for a single location.
     private $locationId = null;
 
     function readQuery() {
@@ -40,6 +47,7 @@ class CongressLocations {
         }
     }
 
+    // Renders a list of internal locations.
     function renderInternalList($intLoc) {
         $int = $this->doc->createElement('ul');
         $int->setAttribute('class', 'internal-locations-list');
@@ -72,6 +80,7 @@ class CongressLocations {
         return $int;
     }
 
+    // Creates a table mapping dates to timezone offset for each congress day.
     function congressTzOffsets() {
         $congressId = $this->congressId;
         $instanceId = $this->instanceId;
@@ -97,11 +106,13 @@ class CongressLocations {
         return array();
     }
 
+    // Renders a list of external locations.
     function renderList() {
         $tzOffsets = $this->congressTzOffsets();
 
-        $extLocations = [];
-        $intLocations = [];
+        // first, collect all locations into two bins
+        $extLocations = []; // array of locations
+        $intLocations = []; // map (external loc id -> item array)
         $locCount = 0;
         $error = false;
         while (true) {
@@ -135,8 +146,10 @@ class CongressLocations {
             }
         }
 
+        // now, render just the external locations
         $ul = $this->doc->createElement('ul');
         $ul->setAttribute('class', 'locations-list');
+        // used in JS
         $ul->setAttribute('data-tz-offsets', base64_encode(json_encode($tzOffsets)));
 
         $path = $this->plugin->getGrav()['uri']->path();
@@ -191,6 +204,7 @@ class CongressLocations {
             $liInner->appendChild($liDetails);
             $li->appendChild($liInner);
 
+            // render internal locations list if it exists
             if (isset($intLocations[$location['id']]) && count($intLocations[$location['id']]) > 0) {
                 $li->appendChild($this->renderInternalList($intLocations[$location['id']]));
             }
@@ -202,6 +216,7 @@ class CongressLocations {
         return $ul;
     }
 
+    // Renders the detail page for a location.
     function renderDetail() {
         $container = $this->doc->createElement('div');
         $container->setAttribute('class', 'congress-location');
@@ -265,6 +280,8 @@ class CongressLocations {
                     'fields' => ['name', 'icon', 'll'],
                 ), 60);
                 if ($eres['k']) {
+                    // render info about the external location that contains this item
+
                     $container->setAttribute('data-ll', implode(',', $eres['b']['ll']));
                     $container->setAttribute('data-icon', $eres['b']['icon']);
 
@@ -283,6 +300,7 @@ class CongressLocations {
                     $container->appendChild($extLoc);
                 }
             } else if ($location['type'] === 'external') {
+                // add map metadata
                 $container->setAttribute('data-ll', implode(',', $location['ll']));
                 $container->setAttribute('data-icon', $location['icon']);
             }
@@ -345,7 +363,36 @@ class CongressLocations {
             $container->appendChild($description);
 
             if (isset($location['openHours']) && $location['openHours'] !== null) {
-                // TODO
+                $openHoursContainer = $this->doc->createElement('div');
+                $openHoursContainer->setAttribute('class', 'location-open-hours-container');
+                $openHoursTitle = $this->doc->createElement('div');
+                $openHoursTitle->textContent = $this->plugin->locale['congress_locations']['open_hours'];
+                $openHoursTitle->setAttribute('class', 'open-hours-title');
+                $openHoursContainer->appendChild($openHoursTitle);
+                $openHours = $this->doc->createElement('ul');
+                $openHours->setAttribute('class', 'open-hours-list');
+                foreach (array_keys($location['openHours']) as $k) {
+                    $li = $this->doc->createElement('li');
+                    $li->setAttribute('class', 'open-hours-day');
+                    $dayLabel = $this->doc->createElement('span');
+                    $dayLabel->setAttribute('class', 'day-label');
+                    $dayLabel->textContent = Utils::formatDayMonth($k);
+                    $li->appendChild($dayLabel);
+                    $li->appendChild($this->doc->createTextNode(': '));
+
+                    $hoursText = '';
+                    foreach ($location['openHours'][$k] as $timeSpan) {
+                        if ($hoursText) $hoursText .= ', ';
+                        $hoursText .= $timeSpan;
+                    }
+
+                    $hours = $this->doc->createElement('san');
+                    $hours->textContent = $hoursText;
+                    $li->appendChild($hours);
+                    $openHours->appendChild($li);
+                }
+                $openHoursContainer->appendChild($openHours);
+                $container->appendChild($openHoursContainer);
             }
 
             if (isset($location['address']) && $location['address'] !== null) {
@@ -366,6 +413,8 @@ class CongressLocations {
             }
 
             if ($location['type'] === 'external') {
+                // NOTE: this only renders the first 100 internal locations, which should be
+                // plenty for basically all use cases, but in case it isn’t, this is why
                 $eres = $this->app->bridge->get("/congresses/$congress/instances/$instance/locations", array(
                     'fields' => ['id', 'name', 'description'],
                     'filter' => array('externalLoc' => $locationId),
@@ -399,7 +448,10 @@ class CongressLocations {
         return null;
     }
 
+    // Will be set to true after render() call if a location was rendered
     private $didRenderLocation = false;
+
+    // Renders page contents.
     function render() {
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'congress-locations-rendered');
@@ -429,7 +481,8 @@ class CongressLocations {
         return $this->doc->saveHtml($root);
     }
 
-    const TH_CONGRESS = 'c';
+    // Thumbnail handling (early entry; see akso-bridge.php)
+    const TH_CONGRESS = 'c'; // query parameters
     const TH_INSTANCE = 'i';
     const TH_LOCATION = 'l';
     const TH_SIZE = 's';
@@ -455,6 +508,7 @@ class CongressLocations {
         }
     }
 
+    // Renders the locations page.
     public function run() {
         $rendered = $this->render();
 

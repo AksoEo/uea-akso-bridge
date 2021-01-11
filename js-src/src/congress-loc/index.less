@@ -63,7 +63,7 @@
         }
 
         .rating-value {
-            font-size: small;
+            font-size: 0.87em;
             margin-left: 0.3em;
 
             &.is-stars {
@@ -149,7 +149,7 @@
                         box-shadow: none;
                         border: 1px solid var(--light-accent);
                         border-radius: var(--radius);
-                        font-size: small;
+                        font-size: 0.87em;
                         cursor: default;
 
                         &::before {
@@ -274,7 +274,7 @@
                     }
 
                     .js-date-time-editor {
-                        font-size: small;
+                        font-size: 0.87em;
                         text-align: center;
 
                         .inner-input {
@@ -385,13 +385,13 @@
                 .location-rating {
                     // will be rendered here if user filters for ratings
                     float: right;
-                    font-size: small;
+                    font-size: 0.87em;
                 }
             }
 
             .location-description {
                 max-height: 2em;
-                font-size: small;
+                font-size: 0.87em;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
@@ -509,6 +509,29 @@
                 margin: 1em;
             }
 
+            .location-open-hours-container {
+                margin: 1em;
+                background: var(--bg1);
+                padding: 0.5em 1em;
+
+                .open-hours-title {
+                    text-transform: uppercase;
+                    font-weight: 600;
+                    font-size: 0.87em;
+                }
+
+                .open-hours-list {
+                    margin: 0;
+                    padding: 0;
+                    list-style-type: none;
+                    font-size: 0.8em;
+
+                    .day-label {
+                        font-weight: 600;
+                    }
+                }
+            }
+
             .address-container {
                 margin: 1em;
                 background: var(--bg1);
@@ -516,7 +539,7 @@
                 padding: 0.5em 1em;
 
                 .address-field-label {
-                    font-size: small;
+                    font-size: 0.87em;
                     text-transform: uppercase;
                     font-weight: bold;
                 }

@@ -3,7 +3,9 @@ namespace Grav\Plugin\AksoBridge;
 
 use Grav\Plugin\AksoBridge\Utils;
 
+// Handles the user’s “my account” page.
 class UserAccount {
+    // query parameter used for loading the profile picture
     const QUERY_PROFILE_PICTURE = 'profile_picture';
 
     private $plugin, $bridge;
@@ -15,6 +17,7 @@ class UserAccount {
         $this->doc = new \DOMDocument();
     }
 
+    // Renders the codeholders/self details section
     private function renderDetails() {
         $res = $this->bridge->get('codeholders/self', array(
             'fields' => [
@@ -140,6 +143,7 @@ class UserAccount {
         return null;
     }
 
+    // Renders more membership items (as requested by JS)
     function renderMoreMembershipItems($offset) {
         $res = $this->bridge->get('/codeholders/self/membership', array(
             'fields' => ['categoryId', 'year', 'name', 'lifetime', 'availableTo'],
@@ -167,6 +171,7 @@ class UserAccount {
         die();
     }
 
+    // Renders the membership section
     private function renderMembership() {
         $res = $this->bridge->get('/codeholders/self/membership', array(
             'fields' => ['categoryId', 'year', 'name', 'lifetime', 'availableTo'],
@@ -214,6 +219,7 @@ class UserAccount {
         return null;
     }
 
+    // Formats a country code
     function formatCountry($code) {
         $res = $this->bridge->get('/countries', array(
             'limit' => 300,
@@ -227,6 +233,7 @@ class UserAccount {
         return null;
     }
 
+    // Streams the user’s profile picture and quits
     public function runProfilePicture() {
         $res = $this->bridge->get('codeholders/self', array('fields' => ['profilePictureHash']));
         if (!$res['k'] || !$res['b']['profilePictureHash'] || !isset($_GET['s'])) die();
