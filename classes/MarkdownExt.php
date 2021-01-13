@@ -550,16 +550,17 @@ class MarkdownExt {
 
         $markdown->addBlockType('[', 'AksoCongresses');
         $markdown->blockAksoCongresses = function($line, $block) use ($self) {
-            if (preg_match('/^\[\[kongreso\s+(\d+)\/(\d+)\s+([^\s]+)(?:\s+([^\s]+))?\]\]/', $line['text'], $matches)) {
-                $congressId = $matches[1];
-                $instanceId = $matches[2];
-                $href = $matches[3];
-                $imgHref = isset($matches[4]) ? $matches[4] : null;
+            if (preg_match('/^\[\[kongreso(\s+tempokalkulo)?\s+(\d+)\/(\d+)\s+([^\s]+)(?:\s+([^\s]+))?\]\]/', $line['text'], $matches)) {
+                $showCountdown = isset($matches[1]) && $matches[1];
+                $congressId = $matches[2];
+                $instanceId = $matches[3];
+                $href = $matches[4];
+                $imgHref = isset($matches[5]) ? $matches[5] : null;
                 $error = null;
                 $renderedCongresses = '';
 
                 $res = $self->bridge->get("/congresses/$congressId/instances/$instanceId", array(
-                    'fields' => ['id', 'name', 'dateFrom'],
+                    'fields' => ['id', 'name', 'dateFrom', 'tz'],
                 ));
                 if ($res['k']) {
                     $doc = new \DOMDocument();
@@ -572,16 +573,49 @@ class MarkdownExt {
                         $img->setAttribute('src', $imgHref);
                         $container->appendChild($img);
                     }
+                    $detailsContainer = $doc->createElement('div');
+                    $detailsContainer->setAttribute('class', 'congress-details' . ($imgHref ? ' has-image' : ''));
                     $details = $doc->createElement('div');
-                    $details->setAttribute('class', 'congress-details' . ($imgHref ? ' has-image' : ''));
+                    $details->setAttribute('class', 'congress-inner-details');
                     $name = $doc->createElement('div');
                     $name->setAttribute('class', 'congress-name');
                     $name->textContent = $res['b']['name'];
                     $button = $doc->createElement('button');
+                    $button->setAttribute('class', 'open-button');
                     $button->textContent = $self->plugin->locale['content']['congress_poster_button_label'];
                     $details->appendChild($name);
-                    $details->appendChild($button);
-                    $container->appendChild($details);
+                    $detailsContainer->appendChild($details);
+                    $detailsContainer->appendChild($button);
+                    $container->appendChild($detailsContainer);
+
+                    if ($showCountdown) {
+                        // TODO: dedup code
+                        $firstEventRes = $self->bridge->get("/congresses/$congressId/instances/$instanceId/programs", array(
+                            'order' => ['timeFrom.asc'],
+                            'fields' => [
+                                'timeFrom',
+                            ],
+                            'offset' => 0,
+                            'limit' => 1,
+                        ), 60);
+                        $congressStartTime = null;
+                        if ($firstEventRes['k'] && sizeof($firstEventRes['b']) > 0) {
+                            // use the start time of the first event if available
+                            $firstEvent = $firstEventRes['b'][0];
+                            $congressStartTime = \DateTime::createFromFormat("U", $firstEvent['timeFrom']);
+                        } else {
+                            // otherwise just use noon in local time
+                            $timeZone = isset($res['b']['tz']) ? new \DateTimeZone($res['b']['tz']) : new \DateTimeZone('+00:00');
+                            $dateStr = $res['b']['dateFrom'] . ' 12:00:00';
+                            $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
+                        }
+
+                        $countdown = $doc->createElement('div');
+                        $countdown->setAttribute('class', 'congress-countdown live-countdown');
+                        $countdown->setAttribute('data-timestamp', $congressStartTime->getTimestamp());
+                        $details->appendChild($countdown);
+                    }
+
                     $renderedCongresses = $doc->saveHtml($container);
                 } else {
                     // TODO

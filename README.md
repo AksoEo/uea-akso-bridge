@@ -150,4 +150,6 @@ Probably not commonly used; mostly for the home page.
 
 - `[[aktuale]]`: shows a news carousel or sidebar depending on layout
 - `[[revuoj 1 2 3]]`: shows the given magazines (space-separated ids)
-- `[[kongreso 1/2 /path/to/target /path/to/optional/header/image]]`: shows the given congress instance
+- `[[kongreso 1/2 /path/to/target optional_header_image.jpg]]`: shows the given congress instance
+    - (upload the image to the same page)
+    - use `[[kongreso tempokalkulo 1/2 /path/to/target img.jpg]]` to add a countdown
