@@ -550,9 +550,42 @@ class MarkdownExt {
 
         $markdown->addBlockType('[', 'AksoCongresses');
         $markdown->blockAksoCongresses = function($line, $block) use ($self) {
-            if (preg_match('/^\[\[kongresoj((?:\s+\d+)+)\]\]/', $line['text'], $matches)) {
+            if (preg_match('/^\[\[kongreso\s+(\d+)\/(\d+)\s+([^\s]+)(?:\s+([^\s]+))?\]\]/', $line['text'], $matches)) {
+                $congressId = $matches[1];
+                $instanceId = $matches[2];
+                $href = $matches[3];
+                $imgHref = isset($matches[4]) ? $matches[4] : null;
                 $error = null;
-                $codeholders = [];
+                $renderedCongresses = '';
+
+                $res = $self->bridge->get("/congresses/$congressId/instances/$instanceId", array(
+                    'fields' => ['id', 'name', 'dateFrom'],
+                ));
+                if ($res['k']) {
+                    $doc = new \DOMDocument();
+                    $container = $doc->createElement('a');
+                    $container->setAttribute('class', 'akso-congress-poster');
+                    $container->setAttribute('href', $href);
+                    if ($imgHref) {
+                        $img = $doc->createElement('img');
+                        $img->setAttribute('class', 'congress-poster-image');
+                        $img->setAttribute('src', $imgHref);
+                        $container->appendChild($img);
+                    }
+                    $details = $doc->createElement('div');
+                    $details->setAttribute('class', 'congress-details' . ($imgHref ? ' has-image' : ''));
+                    $name = $doc->createElement('div');
+                    $name->setAttribute('class', 'congress-name');
+                    $name->textContent = $res['b']['name'];
+                    $button = $doc->createElement('button');
+                    $button->textContent = $self->plugin->locale['content']['congress_poster_button_label'];
+                    $details->appendChild($name);
+                    $details->appendChild($button);
+                    $container->appendChild($details);
+                    $renderedCongresses = $doc->saveHtml($container);
+                } else {
+                    // TODO
+                }
 
                 return array(
                     'element' => array(
@@ -560,7 +593,7 @@ class MarkdownExt {
                         'attributes' => array(
                             'class' => 'akso-congresses',
                         ),
-                        'text' => 'congresses ' . $matches[1] . ' go here'
+                        'text' => $renderedCongresses,
                     ),
                 );
             }

@@ -150,4 +150,4 @@ Probably not commonly used; mostly for the home page.
 
 - `[[aktuale]]`: shows a news carousel or sidebar depending on layout
 - `[[revuoj 1 2 3]]`: shows the given magazines (space-separated ids)
-- `[[kongresoj 1 2 3]]`: shows the given congresses (space-separated ids)
+- `[[kongreso 1/2 /path/to/target /path/to/optional/header/image]]`: shows the given congress instance
