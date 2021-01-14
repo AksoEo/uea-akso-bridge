@@ -10,11 +10,13 @@
             </label>
             <label class="bridge-options-backdrop" for="akso-bridge-login-options"></label>
             <ul class="bridge-options-popup">
+                {% if akso_full_auth %}
                 <li>
                     <a href="{{ config.plugins['akso-bridge'].account_path|e('html_attr') }}">
                         {{ akso_locale.login.account_options|e }}
                     </a>
                 </li>
+                {% endif %}
                 <li>
                     <a href="{{ config.plugins['akso-bridge'].logout_path|e('html_attr') }}">
                         {{ akso_locale.login.logout_label|e }}

@@ -560,7 +560,7 @@ class MarkdownExt {
                 $renderedCongresses = '';
 
                 $res = $self->bridge->get("/congresses/$congressId/instances/$instanceId", array(
-                    'fields' => ['id', 'name', 'dateFrom', 'tz'],
+                    'fields' => ['id', 'name', 'dateFrom', 'dateTo', 'tz'],
                 ));
                 if ($res['k']) {
                     $doc = new \DOMDocument();
@@ -610,10 +610,21 @@ class MarkdownExt {
                             $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
                         }
 
-                        $countdown = $doc->createElement('div');
+                        $timeDetails = $doc->createElement('div');
+                        $timeDetails->setAttribute('class', 'congress-time-details');
+
+                        $congressDate = $doc->createElement('span');
+                        $congressDate->setAttribute('class', 'congress-date');
+                        $congressDate->textContent = Utils::formatDayMonth($res['b']['dateFrom']) . '–'. Utils::formatDayMonth($res['b']['dateTo']);
+                        $timeDetails->appendChild($congressDate);
+
+                        $timeDetails->appendChild($doc->createTextNode(' · '));
+
+                        $countdown = $doc->createElement('span');
                         $countdown->setAttribute('class', 'congress-countdown live-countdown');
                         $countdown->setAttribute('data-timestamp', $congressStartTime->getTimestamp());
-                        $details->appendChild($countdown);
+                        $timeDetails->appendChild($countdown);
+                        $details->appendChild($timeDetails);
                     }
 
                     $renderedCongresses = $doc->saveHtml($container);

@@ -183,6 +183,30 @@ class AksoBridgePlugin extends Plugin {
             $post = !empty($_POST) ? $_POST : [];
             // TODO: use a form nonce
 
+            $canonUsername = '';
+            if (isset($post['username'])) {
+                $canonUsername = $post['username'];
+                if (preg_match('/^\w{4}-\w$/', $canonUsername)) {
+                    $canonUsername = substr($canonUsername, 0, 4);
+                }
+            }
+
+            if (isset($post['reset_password'])) {
+                // we're resetting the password actually
+
+                $res = $this->bridge->post('/codeholders/' . urlencode($canonUsername) . '/!forgot_password', [], [], []);
+                if (!$res['k']) {
+                    $this->pageState = array(
+                        'state' => 'reset-error',
+                    );
+                }
+
+                $this->pageState = array(
+                    'state' => 'reset-success',
+                );
+                return;
+            }
+
             $rpath = '/';
             if (isset($post['return'])) {
                 // if return is a valid-ish path, set it as the return path
@@ -221,7 +245,7 @@ class AksoBridgePlugin extends Plugin {
                     die(401);
                 }
 
-                $result = $this->bridge->login($post['username'], $post['password']);
+                $result = $this->bridge->login($canonUsername, $post['password']);
 
                 if ($result['s']) {
                     $this->aksoUser = $result;
@@ -471,6 +495,20 @@ class AksoBridgePlugin extends Plugin {
             // add login css
             $this->grav['assets']->add('plugin://akso-bridge/css/login.css');
 
+            $twig->twig_vars['akso_login_path'] = $this->loginPath;
+
+            $resetPasswordPathComponent = $this->locale['login']['forgot_password_path'];
+            $isResettingPassword = isset($_GET[$resetPasswordPathComponent]);
+            $twig->twig_vars['akso_login_is_pw_reset'] = $isResettingPassword;
+
+            $forgotLoginPathComponent = $this->locale['login']['forgot_login_path'];
+            $didForgetLogin = isset($_GET[$forgotLoginPathComponent]);
+            $twig->twig_vars['akso_login_forgot_login'] = $didForgetLogin;
+
+            $lostCodePathComponent = $this->locale['login']['lost_code_path'];
+            $lostCode = isset($_GET[$lostCodePathComponent]);
+            $twig->twig_vars['akso_login_lost_code'] = $lostCode;
+
             // set return path
             $rpath = '/';
             if (isset($post['return'])) {
@@ -480,9 +518,14 @@ class AksoBridgePlugin extends Plugin {
                 $rpath = $this->getReferrerPath();
             }
             $twig->twig_vars['akso_login_return_path'] = $rpath;
+
+            $twig->twig_vars['akso_login_forgot_password_path'] = $this->loginPath . '?' . $resetPasswordPathComponent;
+            $twig->twig_vars['akso_login_forgot_login_path'] = $this->loginPath . '?' . $forgotLoginPathComponent;
+            $twig->twig_vars['akso_login_lost_code_path'] = $this->loginPath . '?' . $lostCodePathComponent;
         }
 
         $twig->twig_vars['akso_auth'] = $this->aksoUser !== null;
+        $twig->twig_vars['akso_full_auth'] = $this->aksoUser ? !$this->aksoUser['totp'] : false;
         if ($this->aksoUser !== null) {
             $twig->twig_vars['akso_user_fmt_name'] = $this->aksoUserFormattedName;
             $twig->twig_vars['akso_uea_code'] = $this->aksoUser['uea'];
@@ -513,6 +556,10 @@ class AksoBridgePlugin extends Plugin {
                 } else {
                     $twig->twig_vars['akso_login_error'] = 'totpauth';
                 }
+            } else if ($state['state'] === 'reset-error') {
+                $twig->twig_vars['akso_login_error'] = 'reset-error';
+            } else if ($state['state'] === 'reset-success') {
+                $twig->twig_vars['akso_login_pw_reset_success'] = true;
             }
         }
     }

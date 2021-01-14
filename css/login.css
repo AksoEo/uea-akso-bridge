@@ -31,6 +31,9 @@
     margin-top: 0;
     text-align: center;
 }
+#akso-login .title.small-title {
+    font-size: 1.4em;
+}
 #akso-login .form-field {
     margin: 1em 0;
 }
@@ -47,6 +50,9 @@
 #akso-login .form-footer {
     display: flex;
     align-items: center;
+}
+#akso-login .footer-spacer {
+    flex: 1;
 }
 #akso-login .footer-help-links {
     font-size: small;
