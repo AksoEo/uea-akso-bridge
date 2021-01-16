@@ -195,6 +195,10 @@ class AksoBridge {
         return $this->request('-totp', array());
     }
 
+    public function forgotPassword(string $username) {
+        return $this->request('forgot_pw', array('un' => urlencode($username)));
+    }
+
     public function get(string $path, $query, $maxCacheAgeSecs = 0) {
         return $this->request('get', array(
             'p' => $path,

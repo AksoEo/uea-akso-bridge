@@ -194,16 +194,17 @@ class AksoBridgePlugin extends Plugin {
             if (isset($post['reset_password'])) {
                 // we're resetting the password actually
 
-                $res = $this->bridge->post('/codeholders/' . urlencode($canonUsername) . '/!forgot_password', [], [], []);
+                $res = $this->bridge->forgotPassword($canonUsername);
                 if (!$res['k']) {
                     $this->pageState = array(
                         'state' => 'reset-error',
                     );
+                    var_dump($res);
+                } else {
+                    $this->pageState = array(
+                        'state' => 'reset-success',
+                    );
                 }
-
-                $this->pageState = array(
-                    'state' => 'reset-success',
-                );
                 return;
             }
 

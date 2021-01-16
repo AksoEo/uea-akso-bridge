@@ -256,6 +256,38 @@ class UserAccount {
         }
     }
 
+    function renderResetPassword() {
+        $returnLink = $this->plugin->getGrav()['uri']->path();
+        $link = $returnLink . '?' . $this->plugin->locale['account']['reset_password_path'];
+        $submitLink = $link;
+        $active = false;
+        $state = 'none';
+
+        if (isset($_GET[$this->plugin->locale['account']['reset_password_path']])) {
+            $active = true;
+
+            if (isset($_POST) && isset($_POST['reset_password'])) {
+                // TODO: use a nonce
+
+                $login = $this->plugin->aksoUser['uea'];
+                $res = $this->bridge->forgotPassword($login);
+                if ($res['k']) {
+                    $state = 'success';
+                } else {
+                    $state = 'error';
+                }
+            }
+        }
+
+        return array(
+            'active' => $active,
+            'state' => $state,
+            'link' => $link,
+            'submit_link' => $submitLink,
+            'return_link' => $returnLink,
+        );
+    }
+
     public function run() {
         if (isset($_GET[self::QUERY_PROFILE_PICTURE])) {
             $this->runProfilePicture();
@@ -268,10 +300,12 @@ class UserAccount {
 
         $details = $this->renderDetails();
         $membership = $this->renderMembership();
+        $resetPassword = $this->renderResetPassword();
 
         return array(
             'details' => $details,
             'membership' => $membership,
+            'reset_password' => $resetPassword,
         );
     }
 }

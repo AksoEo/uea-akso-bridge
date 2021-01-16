@@ -491,6 +491,20 @@ const messageHandlers = {
             }
         }
     },
+    forgot_pw: async (conn, { un }) => {
+        assertType(un, 'string', 'expected un to be a string');
+        try {
+            const res = await conn.client.req({
+                method: 'POST',
+                path: `/codeholders/${un}/!forgot_password`,
+                body: { org: 'uea' },
+                _allowLoggedOut: true,
+            });
+            return { k: res.ok, sc: res.res.status, h: {}, b: res.body };
+        } catch (err) {
+            return { k: false, sc: err.statusCode, h: {}, b: err.toString() };
+        }
+    },
     get: async (conn, { p, q, c }) => {
         assertType(p, 'string', 'expected p to be a string');
         assertType(q, 'object', 'expected q to be an object');

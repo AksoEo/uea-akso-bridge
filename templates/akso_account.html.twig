@@ -1,6 +1,33 @@
 {% extends 'partials/base.html.twig' %}
 {% block content %}
-    {% if account.editing %}
+    {% if account.reset_password.active %}
+        <h2>{{ akso_locale.account.reset_password }}</h2>
+        <p>
+            {% if account.reset_password.state is same as('none') %}
+            {{ akso_locale.account.reset_password_description }}
+            {% elseif account.reset_password.state is same as('success') %}
+            {{ akso_locale.account.reset_password_description_success }}
+            {% elseif account.reset_password.state is same as('error') %}
+            {{ akso_locale.account.reset_password_description_error }}
+            {% endif %}
+        </p>
+        <form
+            class="reset-password-buttons"
+            method="POST"
+            action="{{ account.reset_password.submit_link }}">
+            <a class="link-button" href="{{ account.reset_password.return_link }}">
+                {{ akso_locale.account.reset_password_back }}
+            </a>
+            <div class="form-aux">
+                <input name="reset_password" value="1" />
+            </div>
+            {% if account.reset_password.state is same as('none') %}
+            <button class="is-primary" type="submit">
+                {{ akso_locale.account.reset_password_submit }}
+            </button>
+            {% endif %}
+        </form>
+    {% elseif account.editing %}
     {% else %}
         <h1>{{ akso_locale.account.title }}</h1>
         <div class="account-details">
@@ -83,9 +110,9 @@
             <button>
                 [[request changes?]]
             </button>
-            <button>
+            <a class="link-button" href="{{ account.reset_password.link }}">
                 {{ akso_locale.account.reset_password }}
-            </button>
+            </a>
         </div>
         <div class="account-memberships">
             <h2 class="memberships-title">{{ akso_locale.account.memberships_title }}</h2>
