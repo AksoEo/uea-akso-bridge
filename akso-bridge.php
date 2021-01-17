@@ -781,7 +781,11 @@ class AksoBridgePlugin extends Plugin {
         $markdownExt->onPageContentProcessed($event);
     }
     public function onOutputGenerated(Event $event) {
-        if ($this->isAdmin()) return;
+        if ($this->isAdmin()) {
+            // stop showing the “Grav Premium” ad
+            header('Set-Cookie: gp-premium=1', FALSE);
+            return;
+        }
         $markdownExt = $this->loadMarkdownExt();
         $nonces = $markdownExt->onOutputGenerated($event);
 
