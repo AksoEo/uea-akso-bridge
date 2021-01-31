@@ -210,6 +210,7 @@ class CongressPrograms {
 
     // Renders the program for all days
     function renderWholeAgenda() {
+        if (!$this->congress) return null;
         $root = $this->doc->createElement('div');
         $root->setAttribute('class', 'whole-program');
 
@@ -230,6 +231,7 @@ class CongressPrograms {
 
     // Renders the day switcher at the top
     function renderDaySwitcher($currentDate) {
+        if (!$this->congress) return null;
         $node = $this->doc->createElement('div');
         $node->setAttribute('class', 'program-day-switcher');
 
@@ -450,6 +452,7 @@ class CongressPrograms {
     // Returns the date the user has requested, or null for all days.
     // returns YYYY-MM-DD string or null.
     function readCurrentDate() {
+        if (!$this->congress) return null;
         $dateFrom = \DateTime::createFromFormat('Y-m-d', $this->congress['dateFrom']);
         $dateTo = \DateTime::createFromFormat('Y-m-d', $this->congress['dateTo']);
 

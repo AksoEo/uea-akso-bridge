@@ -57,6 +57,7 @@ class AksoBridgePlugin extends Plugin {
         $this->loginPath = $this->grav['config']->get('plugins.akso-bridge.login_path');
         $this->logoutPath = $this->grav['config']->get('plugins.akso-bridge.logout_path');
         $this->accountPath = $this->grav['config']->get('plugins.akso-bridge.account_path');
+        $this->registrationPath = $this->grav['config']->get('plugins.akso-bridge.registration_path');
         $this->apiHost = $this->grav['config']->get('plugins.akso-bridge.api_host');
 
         // Don't proceed if we are in the admin plugin
@@ -81,6 +82,11 @@ class AksoBridgePlugin extends Plugin {
         } else if ($this->aksoUser && $this->path === $this->accountPath) {
             $this->enable([
                 'onPagesInitialized' => ['addAccountPage', 0],
+            ]);
+            return;
+        } else if ($this->path === $this->registrationPath) {
+            $this->enable([
+                'onPagesInitialized' => ['addRegistrationPage', 0],
             ]);
             return;
         } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
@@ -335,6 +341,10 @@ class AksoBridgePlugin extends Plugin {
                 // you can't add more than 1 page with the same SplFileInfo, otherwise *weird*
                 // *things* will happen.
                 // so we'll only add the registration page if we're currently *on* that page
+                if (!isset($page->header()->congress_instance) || !isset($page->header()->payment_org)) {
+                    // no page params; skip
+                    continue;
+                }
                 $regPath = $page->route() . '/' . self::CONGRESS_REGISTRATION_PATH;
                 if (substr($currentPath, 0, strlen($regPath)) !== $regPath) continue;
 
@@ -352,27 +362,24 @@ class AksoBridgePlugin extends Plugin {
     }
 
     public function addLoginPage() {
-        $pages = $this->grav['pages'];
-        $page = $pages->dispatch($this->loginPath);
-
-        if (!$page) {
-            // login page has not been defined yet, add it
-            $page = new Page();
-            $page->init(new \SplFileInfo(__DIR__ . '/pages/akso_login.md'));
-            $page->slug(basename($this->loginPath));
-            $pages->addPage($page, $this->loginPath);
-        }
+        $this->addVirtualPage($this->loginPath, '/pages/akso_login.md');
+    }
+    public function addAccountPage() {
+        $this->addVirtualPage($this->accountPath, '/pages/akso_account.md');
+    }
+    public function addRegistrationPage() {
+        $this->addVirtualPage($this->registrationPath, '/pages/akso_registration.md');
     }
 
-    public function addAccountPage() {
+    function addVirtualPage($path, $template) {
         $pages = $this->grav['pages'];
-        $page = $pages->dispatch($this->accountPath);
+        $page = $pages->dispatch($path);
 
         if (!$page) {
             $page = new Page();
-            $page->init(new \SplFileInfo(__DIR__ . '/pages/akso_account.md'));
-            $page->slug(basename($this->accountPath));
-            $pages->addPage($page, $this->accountPath);
+            $page->init(new \SplFileInfo(__DIR__ . $template));
+            $page->slug(basename($path));
+            $pages->addPage($page, $path);
         }
     }
 
@@ -523,6 +530,10 @@ class AksoBridgePlugin extends Plugin {
             $twig->twig_vars['akso_login_forgot_password_path'] = $this->loginPath . '?' . $resetPasswordPathComponent;
             $twig->twig_vars['akso_login_forgot_login_path'] = $this->loginPath . '?' . $forgotLoginPathComponent;
             $twig->twig_vars['akso_login_lost_code_path'] = $this->loginPath . '?' . $lostCodePathComponent;
+        } else if ($this->path === $this->registrationPath) {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.js');
+            $twig->twig_vars['akso_login_path'] = $this->loginPath;
         }
 
         $twig->twig_vars['akso_auth'] = $this->aksoUser !== null;

@@ -1,0 +1,236 @@
+@import '../prelude';
+
+.akso-registration-page {
+    text-align: left;
+
+    .logged-out-notice {
+        border: 1px solid var(--accent);
+        border-radius: var(--radius);
+        padding: 1em;
+        margin: 1em 0;
+        background: var(--bg);
+
+        .notice-buttons {
+            margin-top: 0.5em;
+            text-align: right;
+        }
+    }
+
+    .registration-settings {
+        background: var(--bg);
+        padding: 1em;
+        margin: 1em 0;
+        background: var(--bg);
+        border-radius: var(--radius);
+        box-shadow: @shade-both;
+
+        .settings-field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            @media (max-width: 420px) {
+                display: block;
+
+                label {
+                    display: block;
+                    font-weight: bold;
+                }
+            }
+        }
+    }
+
+    .offer-selection {
+        .offer-year {
+            background: var(--bg);
+            border-radius: var(--radius);
+            box-shadow: @shade-both;
+
+            .year-expansion-switch {
+                display: none;
+            }
+
+            .year-title {
+                display: block;
+                padding: 0.5em 1em;
+
+                .title-arrow {
+                    position: relative;
+                    display: inline-block;
+                    font-size: 1.2em;
+                    width: 1em;
+                    height: 1em;
+                    opacity: 0.7;
+                    margin-right: 0.5em;
+                    vertical-align: -0.2em;
+
+                    &::before, &::after {
+                        content: '';
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translateX(0.3em) translate(-50%, -50%) rotate(135deg);
+                        transform-origin: 0.075em 50%;
+                        background: currentColor;
+                        width: 0.5em;
+                        height: 0.15em;
+                    }
+                    &::after {
+                        transform: translateX(0.3em) translate(-50%, -50%) rotate(-135deg);
+                    }
+                }
+                .title-contents {
+                    font-size: 1.2em;
+                    font-weight: 600;
+                }
+            }
+
+            .year-expansion-switch:checked ~ .year-title {
+                border-bottom: 1px solid var(--accent);
+
+                .title-arrow {
+                    transform: rotate(90deg);
+                }
+            }
+
+            .year-offer-group {
+                overflow: hidden;
+
+                .offer-group-info {
+                    padding: 0.5em 1em;
+
+                    .group-title {
+                        font-weight: bold;
+                    }
+                    .group-description {
+                        font-size: 0.9em;
+                    }
+                }
+
+                .offer-item-selection {
+                    display: none;
+                }
+
+                .offer-item {
+                    margin: 0.5em;
+                    padding: 0.5em 1em;
+                    background: var(--bg2);
+                    border-radius: var(--radius);
+
+                    .offer-item-inner {
+                        display: flex;
+                    }
+
+                    .item-selection {
+                        align-self: stretch;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        width: 2em;
+                        margin-right: 1em;
+
+                        .selection-box {
+                            display: inline-block;
+                            position: relative;
+                            width: 1.2em;
+                            height: 1.2em;
+                            border: 0.1em solid currentColor;
+                            border-radius: var(--radius);
+                            box-sizing: border-box;
+                            transition: background 0.2s, color 0.2s, border-color 0.2s;
+
+                            &::before, &::after {
+                                content: '';
+                                position: absolute;
+                                background: currentColor;
+                                transform-origin: 0 0;
+                                top: 0.75em;
+                                left: 0.33em;
+                                height: 0.15em;
+                                transition: transform 0.2s;
+                            }
+                            &::before {
+                                width: 0.7em;
+                                transform: rotate(-45deg) scaleX(0);
+                            }
+                            &::after {
+                                width: 0.3em;
+                                transform: rotate(-135deg) scaleX(0);
+                            }
+                        }
+                    }
+
+                    .item-details {
+                        flex: 1;
+                        margin-right: 1em;
+
+                        .item-name {
+                            font-weight: bold;
+                        }
+                        .item-description {
+                            font-size: 0.9em;
+                        }
+                    }
+
+                    .item-price {
+                        &.is-variable {
+                            .price-input {
+                                width: 7em;
+                                text-align: right;
+                            }
+                        }
+                    }
+
+                    @media (max-width: 420px) {
+                        .offer-item-inner {
+                            display: block;
+                        }
+
+                        .item-selection {
+                            float: right;
+                            width: 1.2em;
+                            margin-right: 0;
+                        }
+
+                        .item-price {
+                            margin-top: 0.5em;
+                            text-align: right;
+                        }
+                    }
+                }
+
+                .offer-item-selection:checked + .offer-item {
+                    .item-selection {
+                        .selection-box {
+                            background: var(--accent);
+                            border-color: var(--accent);
+                            color: var(--accent-fg);
+
+                            &::before {
+                                transform: rotate(-45deg);
+                            }
+                            &::after {
+                                transform: rotate(-135deg);
+                            }
+                        }
+                    }
+                }
+            }
+
+            .year-offer-group .offer-group-info {
+                display: none;
+            }
+            .year-expansion-switch:checked ~ .year-offer-group .offer-group-info {
+                display: block;
+            }
+
+            .year-offer-group .offer-item {
+                display: none;
+            }
+            .year-offer-group .offer-item-selection:checked + .offer-item,
+            .year-expansion-switch:checked ~ .year-offer-group .offer-item {
+                display: block;
+            }
+        }
+    }
+}

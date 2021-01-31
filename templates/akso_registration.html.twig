@@ -1,0 +1,82 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+    <form class="akso-registration-page">
+        <h1>{{akso_locale.registration.title}}</h1>
+        <div class="logged-out-notice">
+            <div class="notice-contents">{{akso_locale.registration.codeholder_logged_out_note}}</div>
+            <div class="notice-buttons">
+                <a class="link-button is-primary" href="{{akso_login_path}}">
+                    {{akso_locale.login.login_label}}
+                </a>
+            </div>
+        </div>
+        <div class="registration-settings">
+            <div class="settings-field">
+                <label for="registration-field-fee-country">
+                    {{akso_locale.registration.settings_fee_country}}
+                </label>
+                <select id="registration-field-fee-country">
+                    <option>Germanio</option>
+                    <!-- todo -->
+                </select>
+            </div>
+        </div>
+        <div class="offer-selection">
+            <h2>{{akso_locale.registration.offers_title}}</h2>
+            <div class="offer-year">
+                <input class="year-expansion-switch" type="checkbox" id="rx-year-2021" />
+                <label tabindex="0" for="rx-year-2021" class="year-title">
+                    <span class="title-arrow"></span>
+                    <span class="title-contents">
+                        2021
+                    </span>
+                </label>
+                <div class="year-offer-group">
+                    <div class="offer-group-info">
+                        <div class="group-title">Membrokategorioj</div>
+                        <div class="group-description">Meow meow meow emow meow meowm owm eowm oewm oewmo ewmo emwoew</div>
+                    </div>
+                    <input class="offer-item-selection" type="checkbox" id="offer-item-1" />
+                    <div class="offer-item">
+                        <div class="offer-item-inner">
+                            <div class="item-selection">
+                                <label tabindex="0" aria-role="checkbox" class="selection-box" for="offer-item-1"></label>
+                            </div>
+                            <div class="item-details">
+                                <div class="item-name">Membro Baza</div>
+                                <div class="item-description">Meowm ewom eowm oewm eow</div>
+                            </div>
+                            <div class="item-price">
+                                104,00 EUR
+                            </div>
+                        </div>
+                    </div>
+                    <div class="offer-group-info">
+                        <div class="group-title">Donacebloj</div>
+                        <div class="group-description">meow meowm oewmo emwo</div>
+                    </div>
+                    <input class="offer-item-selection" type="checkbox" id="offer-item-2" />
+                    <div class="offer-item">
+                        <div class="offer-item-inner">
+                            <div class="item-selection">
+                                <label tabindex="0" aria-role="checkbox" class="selection-box" for="offer-item-2"></label>
+                            </div>
+                            <div class="item-details">
+                                <div class="item-name">Donaceblo</div>
+                                <div class="item-description">Meowm ewom eowm oewm eow</div>
+                            </div>
+                            <div class="item-price is-variable">
+                                <input
+                                    class="price-input"
+                                    type="text"
+                                    placeholder="0,00"
+                                    inputmode="numeric" />
+                                <span class="price-currency">EUR</span>
+                            </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}

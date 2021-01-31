@@ -78,6 +78,16 @@ export default [
             format: 'amd',
         },
     },
+    {
+        input: 'src/registration.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/registration.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'reg_[name].js',
+            format: 'amd',
+        },
+    },
 ];
 
 function iniPlugin() {
