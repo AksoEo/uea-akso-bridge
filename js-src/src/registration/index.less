@@ -1,4 +1,5 @@
 @import '../prelude';
+@import '../form/index.less';
 
 .akso-registration-page {
     text-align: left;
@@ -24,19 +25,59 @@
         border-radius: var(--radius);
         box-shadow: @shade-both;
 
+        .settings-section {
+            margin-top: 1em;
+            margin-bottom: -0.5em;
+            font-weight: 600;
+
+            &:first-child {
+                margin-top: 0;
+            }
+        }
+
         .settings-field {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin-top: 0.5em;
+            &:first-child {
+                margin-top: 0;
+            }
 
-            @media (max-width: 420px) {
-                display: block;
+            .inner-field {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
 
-                label {
+                @media (max-width: 420px) {
                     display: block;
-                    font-weight: bold;
+
+                    label {
+                        display: block;
+                    }
+                    input {
+                        margin-left: 0;
+                        margin-right: 0;
+                    }
                 }
             }
+            .field-description {
+                font-size: 0.8em;
+            }
+
+            .required-star {
+                color: var(--error);
+            }
+        }
+
+        hr {
+            border: none;
+            border-bottom: 1px solid currentColor;
+            opacity: 0.5;
+        }
+
+        #registration-split-country {
+            display: none;
+        }
+        #registration-split-country:not(:checked) ~ #registration-address-country {
+            display: none;
         }
     }
 
@@ -232,5 +273,10 @@
                 display: block;
             }
         }
+    }
+
+    .form-buttons {
+        margin-top: 1em;
+        text-align: right;
     }
 }

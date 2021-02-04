@@ -11,6 +11,7 @@ use Grav\Plugin\AksoBridge\AppBridge;
 use Grav\Plugin\AksoBridge\CongressLocations;
 use Grav\Plugin\AksoBridge\CongressPrograms;
 use Grav\Plugin\AksoBridge\CongressRegistration;
+use Grav\Plugin\AksoBridge\Registration;
 use Grav\Plugin\AksoBridge\UserAccount;
 
 // TODO: pass host to bridge as Host header
@@ -497,6 +498,16 @@ class AksoBridgePlugin extends Plugin {
             }
         } else if ($templateId === 'akso_account') {
             $twig->twig_vars['account'] = $state;
+        } else if ($templateId === 'akso_registration') {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.js');
+            $twig->twig_vars['akso_login_path'] = $this->loginPath;
+
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $registration = new Registration($this, $app);
+            $twig->twig_vars['akso_registration'] = $registration->run();
+            $app->close();
         }
 
         if ($this->grav['uri']->path() === $this->loginPath) {
@@ -530,10 +541,6 @@ class AksoBridgePlugin extends Plugin {
             $twig->twig_vars['akso_login_forgot_password_path'] = $this->loginPath . '?' . $resetPasswordPathComponent;
             $twig->twig_vars['akso_login_forgot_login_path'] = $this->loginPath . '?' . $forgotLoginPathComponent;
             $twig->twig_vars['akso_login_lost_code_path'] = $this->loginPath . '?' . $lostCodePathComponent;
-        } else if ($this->path === $this->registrationPath) {
-            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
-            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.js');
-            $twig->twig_vars['akso_login_path'] = $this->loginPath;
         }
 
         $twig->twig_vars['akso_auth'] = $this->aksoUser !== null;

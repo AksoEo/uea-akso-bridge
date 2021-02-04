@@ -1,7 +1,8 @@
 {% extends 'partials/base.html.twig' %}
 {% block content %}
-    <form class="akso-registration-page">
+    <form class="akso-registration-page akso-form" method="POST">
         <h1>{{akso_locale.registration.title}}</h1>
+        {% if not akso_auth %}
         <div class="logged-out-notice">
             <div class="notice-contents">{{akso_locale.registration.codeholder_logged_out_note}}</div>
             <div class="notice-buttons">
@@ -10,21 +11,149 @@
                 </a>
             </div>
         </div>
+        {% endif %}
         <div class="registration-settings">
-            <div class="settings-field">
-                <label for="registration-field-fee-country">
-                    {{akso_locale.registration.settings_fee_country}}
-                </label>
-                <select id="registration-field-fee-country">
-                    <option>Germanio</option>
-                    <!-- todo -->
-                </select>
+            {% if not akso_auth %}
+            <div class="settings-section">
+                {{akso_locale.registration.codeholder_name}}
             </div>
+            <div class="settings-field" data-el="input" data-type="text">
+                <div class="inner-field">
+                    <label>
+                        {{akso_locale.registration.codeholder_first_name_legal}}
+                        <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                    </label>
+                    <input name="codeholder[firstNameLegal]" type="text" required />
+                </div>
+            </div>
+            <div class="settings-field" data-el="input" data-type="text">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_last_name_legal}}</label>
+                    <input name="codeholder[lastNameLegal]" type="text" />
+                </div>
+            </div>
+            <div class="settings-field" data-el="input" data-type="text">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_honorific}}</label>
+                    <input name="codeholder[honorific]" type="text" />
+                </div>
+            </div>
+            <hr />
+            <div class="settings-field form-item" data-el="input" data-type="date">
+                <div class="inner-field">
+                    <label>
+                        {{akso_locale.registration.codeholder_birthdate}}
+                        <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                    </label>
+                    <input name="codeholder[birthdate]" type="date" />
+                </div>
+            </div>
+            <div class="settings-field" data-el="input" data-type="email">
+                <div class="inner-field">
+                    <label>
+                        {{akso_locale.registration.codeholder_email}}
+                        <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                    </label>
+                    <input name="codeholder[email]" type="email" />
+                </div>
+            </div>
+            <div class="settings-field" data-el="input" data-type="phone">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_cellphone}}</label>
+                    <input name="codeholder[cellphone]" type="text" inputmode="numeric" />
+                </div>
+            </div>
+            <hr />
+            {% endif %}
+            <input type="checkbox" id="registration-split-country" />
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label for="registration-field-fee-country">
+                        {{akso_locale.registration.settings_fee_country}}
+                        <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                    </label>
+                    <select id="registration-field-fee-country">
+                        <option>Germanio</option>
+                        <!-- todo -->
+                        <!-- todo: fancy JS selection with search -->
+                        <!-- todo: default to IP country -->
+                    </select>
+                </div>
+                <div class="field-description">
+                    <label for="registration-split-country">CHECKBOX</label>
+                    <label for="registration-split-country">
+                        {{akso_locale.registration.settings_fee_country_split}}
+                    </label>
+                </div>
+            </div>
+            {% if not akso_auth %}
+            <div class="settings-section">
+                {{akso_locale.registration.codeholder_address}}
+            </div>
+            <div class="settings-field" id="registration-address-country">
+                <div class="inner-field">
+                    <label>
+                        {{akso_locale.registration.codeholder_country}}
+                        <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                    </label>
+                    <select>
+                        <option>Germanio</option>
+                        <!-- todo -->
+                        <!-- todo: fancy JS selection with search -->
+                        <!-- todo: default to IP country -->
+                    </select>
+                </div>
+            </div>
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_country_area}}</label>
+                    <input name="codeholder[countryArea]" type="text" />
+                </div>
+            </div>
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_city}}</label>
+                    <input name="codeholder[city]" type="text" />
+                </div>
+            </div>
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_city_area}}</label>
+                    <input name="codeholder[cityArea]" type="text" />
+                </div>
+            </div>
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_postal_code}}</label>
+                    <input name="codeholder[postalCode]" type="text" />
+                </div>
+            </div>
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_street_address}}</label>
+                    <input name="codeholder[streetAddress]" type="text" />
+                </div>
+            </div>
+            <div class="settings-field">
+                <div class="inner-field">
+                    <label>{{akso_locale.registration.codeholder_sorting_code}}</label>
+                    <input name="codeholder[sortingCode]" type="text" />
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="form-state">
+            <input name="step" type="text" value="{{akso_registration.step}}" />
+        </div>
+        <div class="form-buttons">
+            <button type="submit" class="is-primary">
+                {{akso_locale.registration.codeholder_next}}
+            </button>
         </div>
         <div class="offer-selection">
             <h2>{{akso_locale.registration.offers_title}}</h2>
             <div class="offer-year">
-                <input class="year-expansion-switch" type="checkbox" id="rx-year-2021" />
+                <input class="year-expansion-switch" type="checkbox" id="rx-year-2021" checked />
                 <label tabindex="0" for="rx-year-2021" class="year-title">
                     <span class="title-arrow"></span>
                     <span class="title-contents">
@@ -73,7 +202,6 @@
                                     inputmode="numeric" />
                                 <span class="price-currency">EUR</span>
                             </div>
-                    </div>
                     </div>
                 </div>
             </div>

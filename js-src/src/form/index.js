@@ -571,9 +571,9 @@ function initFormItem(node, onChange) {
 }
 
 function init() {
-    const form = document.querySelector('#akso-congress-registration-form');
+    const form = document.querySelector('form.akso-form');
     if (!form) return;
-    const submitButton = form.querySelector('.submit-button')
+    const submitButton = form.querySelector('.submit-button');
 
     const meta = form.querySelector('.form-meta') || ({ dataset: {} });
 
@@ -638,12 +638,14 @@ function init() {
     };
     update();
 
-    submitButton.addEventListener('click', (e) => {
-        // show all errors
-        for (const item of formItems) item.didInteract = true;
+    if (submitButton) {
+        submitButton.addEventListener('click', (e) => {
+            // show all errors
+            for (const item of formItems) item.didInteract = true;
 
-        if (!update(true)) e.preventDefault();
-    });
+            if (!update(true)) e.preventDefault();
+        });
+    }
 }
 
 if (document.readyState === 'complete') init();
