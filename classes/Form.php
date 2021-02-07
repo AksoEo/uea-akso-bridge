@@ -380,6 +380,19 @@ class Form {
         return $this->cachedCurrencies;
     }
 
+    protected $cachedCountries = null;
+    function getCachedCountries() {
+        if (!$this->cachedCountries) {
+            $res = $this->app->bridge->get('/countries', array(
+                'limit' => 300,
+                'fields' => ['name_eo', 'code'],
+                'order' => [['name_eo', 'asc']]
+            ), 300);
+            if ($res['k']) $this->cachedCountries = $res['b'];
+        }
+        return $this->cachedCountries;
+    }
+
     protected function localize(...$args) {
         return localize($this->locale, ...$args);
     }
