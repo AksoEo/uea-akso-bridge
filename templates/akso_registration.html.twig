@@ -255,12 +255,21 @@
                         </div>
                         {% for offerIndex, offer in offerGroup.offers %}
                         {% set id = 'offer-item-' ~ groupIndex ~ '-' ~ offer.type ~ '-' ~ offer.id %}
+                        {% set classes = '' %}
+                        {% set available = true %}
+                        {% if offer.type == 'membership' and not offer.price %}
+                            {% set available = false %}
+                            {% set classes = 'not-available' %}
+                        {% endif %}
+
+                        {% if available %}
                         <input
                             class="offer-item-selection"
                             type="checkbox"
-                            name="offers[{{groupIndex|e}}][{{offer.type}}][{{offer.id}}]"
+                            name="offers[{{offerGroup.year|e}}][{{groupIndex|e}}][{{offer.type}}][{{offer.id}}]"
                             id="{{id|e('html_attr')}}" />
-                        <div class="offer-item">
+                        {% endif %}
+                        <div class="offer-item {{classes}}">
                             <div class="offer-item-inner">
                                 <div class="item-selection">
                                     <label tabindex="0" aria-role="checkbox" class="selection-box" for="{{id|e('html_attr')}}"></label>
@@ -272,28 +281,29 @@
                                         {{akso_registration.categories[offer.id].name|e}}
                                     </div>
                                     <div class="item-description">
-                                        TODO:MD/{{akso_registration.categories[offer.id].description|e}}
+                                        {{akso_registration.categories[offer.id].description}}
                                     </div>
                                 </div>
                                 <div class="item-price">
                                     {% if offer.price %}
-                                        TODO:GET PRICE
+                                        {{offer.price.amount|e}}
                                     {% else %}
-                                        N/A
+                                        {{akso_locale.registration.offer_not_available}}
                                     {% endif %}
                                 </div>
                                 {% elseif offer.type == 'addon' %}
                                 <div class="item-details">
                                     <div class="item-name">
-                                        thing
+                                        {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
                                     </div>
                                     <div class="item-description">
-                                        thing
+                                        {{akso_registration.addons[offerYear.paymentOrgId][offer.id].description}}
                                     </div>
                                 </div>
                                 <div class="item-price is-variable">
                                     <input
                                         class="price-input"
+                                        name="addon_amount[{{offerGroup.year|e}}_{{groupIndex|e}}_{{offer.type}}_{{offer.id}}]"
                                         type="text"
                                         placeholder="0,00"
                                         inputmode="numeric" />
@@ -301,6 +311,15 @@
                                 </div>
                                 {% endif %}
                             </div>
+                            {% if offer.type == 'membership' and offer.price and offer.price.description %}
+                            <div class="item-price-description">
+                                <div class="inner-padding"></div>
+                                <div class="inner-description">
+                                    <div class="inner-title">{{akso_locale.registration.offer_price_desc_title}}</div>
+                                    {{offer.price.description}}
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>

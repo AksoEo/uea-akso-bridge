@@ -30,6 +30,9 @@ class FormScriptExecCtx {
     public function pushScript($script) {
         $this->scriptStack[] = $script;
     }
+    public function popScript() {
+        array_pop($this->scriptStack);
+    }
     public function setFormVar($name, $value) {
         $this->formVars[$name] = $value;
     }
