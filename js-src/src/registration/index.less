@@ -63,6 +63,69 @@
         }
     }
 
+    .form-summary {
+        .summary-codeholder-type {
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .summary-name {
+            font-size: 1.1em;
+            border-bottom: 1px solid var(--light-separator);
+        }
+
+        .offers-summary {
+            border-top: 1px solid var(--light-separator);
+            padding-top: 0.5em;
+
+            .offer-year {
+                .year-label {
+                    font-weight: bold;
+                    font-size: 1.1em;
+                    padding: 0 0.5em;
+                }
+
+                .offer-item {
+                    display: flex;
+                    background: var(--bg2);
+                    border-radius: var(--radius);
+                    margin: 0.5em 0;
+                    padding: 0.5em;
+                    justify-content: space-between;
+
+                    .item-name {
+                        .item-abbrev {
+                            opacity: 0.7;
+                        }
+                        font-weight: 600;
+                    }
+
+                    @media (max-width: 420px) {
+                        display: block;
+
+                        .item-price {
+                            text-align: right;
+                        }
+                    }
+                }
+
+                .year-label + .offer-item {
+                    margin-top: 0;
+                }
+            }
+
+            .price-sum {
+                display: flex;
+                justify-content: space-between;
+                padding: 0 0.5em;
+
+                .sum-value {
+                    font-weight: bold;
+                }
+            }
+        }
+    }
+
     .registration-settings {
         background: var(--bg);
         padding: 1em;
@@ -312,6 +375,12 @@
                             margin-top: 0.5em;
                             text-align: right;
                         }
+
+                        .item-price-description {
+                            .inner-padding {
+                                display: none;
+                            }
+                        }
                     }
 
                     &.not-available {
@@ -341,6 +410,16 @@
             .year-offer-group .offer-item-selection:checked + .offer-item,
             .year-expansion-switch:checked ~ .year-offer-group .offer-item {
                 display: block;
+            }
+            @media (max-width: 420px) {
+                .year-expansion-switch:not(:checked) ~ .year-offer-group .offer-item-selection:checked + .offer-item {
+                    .item-description {
+                        display: none;
+                    }
+                    .item-price-description {
+                        display: none;
+                    }
+                }
             }
         }
     }

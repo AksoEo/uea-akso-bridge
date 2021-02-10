@@ -383,6 +383,23 @@ class Form {
         return $this->cachedCurrencies;
     }
 
+    // TODO: deduplicate code
+    protected $cachedCurrencyRates = null;
+    protected function convertCurrency($fromCur, $toCur, $value) {
+        if ($fromCur == $toCur) return $value;
+        if (!$this->cachedCurrencyRates) {
+            $res = $this->app->bridge->get('/aksopay/exchange_rates', array(
+                'base' => $fromCur,
+            ), 60);
+            if ($res['k']) $this->cachedCurrencyRates = $res['b'];
+        }
+        $rates = $this->cachedCurrencyRates;
+        $multipliers = $this->app->bridge->currencies();
+        $fromCurFloat = $value / $multipliers[$fromCur];
+        $toCurFloat = $this->app->bridge->convertCurrency($rates, $fromCur, $toCur, $fromCurFloat)['v'];
+        return round($toCurFloat * $multipliers[$toCur]);
+    }
+
     protected $cachedCountries = null;
     function getCachedCountries() {
         if (!$this->cachedCountries) {

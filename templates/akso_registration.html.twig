@@ -2,6 +2,85 @@
 {% block content %}
     <form class="akso-registration-page akso-form" method="POST">
         <h1>{{akso_locale.registration.title}}</h1>
+        <input
+            class="fhjkls-hidden-input"
+            type="text"
+            name="state_serialized"
+            value="{{ akso_registration.state.serialized|e('html_attr') }}" />
+        {% if akso_registration.state.step > 0 %}
+        <div class="form-summary">
+            <div class="codeholder-summary">
+                <div class="summary-codeholder-type">
+                    {{akso_locale.registration.codeholder_is_new}}
+                </div>
+                <div class="summary-name">
+                    {{akso_registration.state.codeholder.honorific|e}}
+                    {{akso_registration.state.codeholder.firstNameLegal|e}}
+                    {{akso_registration.state.codeholder.lastNameLegal|e}}
+                </div>
+                <div class="summary-contact">
+                    {{akso_registration.state.codeholder.birthdate|e}}
+                    {{akso_registration.state.codeholder.email|e}}
+                    {{akso_registration.state.codeholder.cellphone|e}}
+                </div>
+                <div class="summary-address">
+                    {{akso_registration.state.codeholder.address.streetAddress|e}}
+                    {{akso_registration.state.codeholder.address.postalCode|e}}
+                    {{akso_registration.state.codeholder.address.sortingCode|e}}
+                    {{akso_registration.state.codeholder.address.cityArea|e}}
+                    {{akso_registration.state.codeholder.address.city|e}}
+                    {{akso_registration.state.codeholder.address.countryArea|e}}
+                    {{akso_registration.state.codeholder.address.country|e}}
+                </div>
+            </div>
+            {% if akso_registration.state.step > 1 %}
+            <div class="offers-summary">
+                {% for year, yearItems in akso_registration.state.offers %}
+                    <div class="offer-year">
+                        {% set offerYear = akso_registration.offers_indexed[year] %}
+                        <div class="year-label">{{offerYear.year|e}}</div>
+                        {% for offerKey, offer in yearItems %}
+                        {% set offerKeyParts = offerKey|split('-') %}
+                        {% set groupIndex = offerKeyParts[0] %}
+                        {% set offerIndex = offerKeyParts[1] %}
+                        <div class="offer-item">
+                            {% if offer.type == 'membership' %}
+                            <div class="item-name">
+                                <span class="item-abbrev">{{akso_registration.categories[offer.id].nameAbbrev|e}}</span>
+                                {{akso_registration.categories[offer.id].name|e}}
+                            </div>
+                            <div class="item-price">
+                                {{akso_registration.offers_indexed[offerYear.year].offers[groupIndex].offers[offerIndex].price.amount|e}}
+                            </div>
+                            {% elseif offer.type == 'addon' %}
+                            <div class="item-name">
+                                {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
+                            </div>
+                            <div class="item-price">
+                                {{offer.amount|e}} TODO
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <div class="price-sum">
+                    <span class="sum-label">{{akso_locale.registration.offers_sum}}</span>
+                    <span class="sum-value">TODO:100 EUR</span>
+                </div>
+            </div>
+            {% endif %}
+            {% if akso_registration.state.step == 1 %}
+            <button type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
+                {{akso_locale.registration.codeholder_back_edit}}
+            </button>
+            {% elseif akso_registration.state.step == 2 %}
+            <button type="submit" formaction="{{akso_registration.targets.offers|e('html_attr')}}">
+                {{akso_locale.registration.offers_back_edit}}
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
         {% if akso_registration.state.step == 0 %}
             {% if not akso_auth %}
             <div class="logged-out-notice">
@@ -113,7 +192,6 @@
                                     {% endif %}
                                     >{{country.name_eo|e}}</option>
                             {% endfor %}
-                            <!-- todo -->
                             <!-- todo: fancy JS selection with search -->
                             <!-- todo: default to IP country -->
                         </select>
@@ -135,7 +213,7 @@
                             {{akso_locale.registration.codeholder_country}}
                             <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
                         </label>
-                        <select name="codeholder[addressCountry]">
+                        <select name="codeholder[address][country]">
                             <option value="">—</option>
                             {% for country in akso_registration.countries %}
                                 <option
@@ -145,7 +223,6 @@
                                     {% endif %}
                                     >{{country.name_eo|e}}</option>
                             {% endfor %}
-                            <!-- todo -->
                             <!-- todo: fancy JS selection with search -->
                             <!-- todo: default to IP country -->
                         </select>
@@ -154,40 +231,76 @@
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_country_area}}</label>
-                        <input name="codeholder[addressCountryArea]" type="text" />
+                        <input
+                            name="codeholder[address][countryArea]"
+                            value="{{akso_registration.state.codeholder.address.countryArea|e('html_attr')}}"
+                            type="text" />
                     </div>
                 </div>
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_city}}</label>
-                        <input name="codeholder[addressCity]" type="text" />
+                        <input
+                            name="codeholder[address][city]"
+                            value="{{akso_registration.state.codeholder.address.city|e('html_attr')}}"
+                            type="text" />
                     </div>
                 </div>
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_city_area}}</label>
-                        <input name="codeholder[addressCityArea]" type="text" />
+                        <input
+                            name="codeholder[address][cityArea]"
+                            value="{{akso_registration.state.codeholder.address.cityArea|e('html_attr')}}"
+                            type="text" />
                     </div>
                 </div>
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_postal_code}}</label>
-                        <input name="codeholder[addressPostalCode]" type="text" />
+                        <input
+                            name="codeholder[address][postalCode]"
+                            value="{{akso_registration.state.codeholder.address.postalCode|e('html_attr')}}"
+                            type="text" />
                     </div>
                 </div>
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_street_address}}</label>
-                        <input name="codeholder[addressStreetAddress]" type="text" />
+                        <input
+                            name="codeholder[address][streetAddress]"
+                            value="{{akso_registration.state.codeholder.address.streetAddress|e('html_attr')}}"
+                            type="text" />
                     </div>
                 </div>
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_sorting_code}}</label>
-                        <input name="codeholder[addressSortingCode]" type="text" />
+                        <input
+                            name="codeholder[address][sortingCode]"
+                            value="{{akso_registration.state.codeholder.address.sortingCode|e('html_attr')}}"
+                            type="text" />
                     </div>
                 </div>
                 {% endif %}
+                <hr />
+                <div class="settings-field">
+                    <div class="inner-field">
+                        <label>{{akso_locale.registration.settings_currency}}</label>
+                        <select name="currency">
+                            {% for currency, multiplier in akso_registration.currencies %}
+                                <option
+                                    value="{{ currency|e('html_attr') }}"
+                                    {% if akso_registration.state.currency == currency %}
+                                    selected
+                                    {% endif %}
+                                    >{{currency|e}}</option>
+                            {% endfor %}
+                            <!-- todo: fancy JS selection with search -->
+                            <!-- todo: default to IP country -->
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="form-buttons">
                 <button type="submit" class="is-primary" formaction="{{akso_registration.targets.offers|e('html_attr')}}">
@@ -195,40 +308,6 @@
                 </button>
             </div>
         {% elseif akso_registration.state.step == 1 %}
-            <div class="form-summary">
-                <div class="codeholder-summary">
-                    <input
-                        class="hidden-input"
-                        type="text"
-                        name="codeholder_serialized"
-                        value="{{ akso_registration.state.codeholder_serialized|e('html_attr') }}" />
-                    <div class="summary-codeholder-type">
-                        {{akso_locale.registration.codeholder_is_new}}
-                    </div>
-                    <div class="summary-name">
-                        {{akso_registration.state.codeholder.honorific|e}}
-                        {{akso_registration.state.codeholder.firstNameLegal|e}}
-                        {{akso_registration.state.codeholder.lastNameLegal|e}}
-                    </div>
-                    <div class="summary-contact">
-                        {{akso_registration.state.codeholder.birthdate|e}}
-                        {{akso_registration.state.codeholder.email|e}}
-                        {{akso_registration.state.codeholder.cellphone|e}}
-                    </div>
-                    <div class="summary-address">
-                        {{akso_registration.state.codeholder.address.streetAddress|e}}
-                        {{akso_registration.state.codeholder.address.postalCode|e}}
-                        {{akso_registration.state.codeholder.address.sortingCode|e}}
-                        {{akso_registration.state.codeholder.address.cityArea|e}}
-                        {{akso_registration.state.codeholder.address.city|e}}
-                        {{akso_registration.state.codeholder.address.countryArea|e}}
-                        {{akso_registration.state.codeholder.address.country|e}}
-                    </div>
-                </div>
-                <button type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
-                    {{akso_locale.registration.codeholder_back_edit}}
-                </button>
-            </div>
             <div class="offer-selection">
                 <h2>{{akso_locale.registration.offers_title}}</h2>
                 <p>
@@ -254,7 +333,7 @@
                             <div class="group-description">TODO:MD/{{offerGroup.description|e}}</div>
                         </div>
                         {% for offerIndex, offer in offerGroup.offers %}
-                        {% set id = 'offer-item-' ~ groupIndex ~ '-' ~ offer.type ~ '-' ~ offer.id %}
+                        {% set id = 'offer-item-' ~ offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex %}
                         {% set classes = '' %}
                         {% set available = true %}
                         {% if offer.type == 'membership' and not offer.price %}
@@ -266,7 +345,10 @@
                         <input
                             class="offer-item-selection"
                             type="checkbox"
-                            name="offers[{{offerGroup.year|e}}][{{groupIndex|e}}][{{offer.type}}][{{offer.id}}]"
+                            name="offers[{{offerYear.year|e}}][{{groupIndex|e}}][{{offerIndex|e}}][{{offer.type}}-{{offer.id}}]"
+                            {% if akso_registration.state.offers_indexed[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex] %}
+                            checked
+                            {% endif %}
                             id="{{id|e('html_attr')}}" />
                         {% endif %}
                         <div class="offer-item {{classes}}">
@@ -303,11 +385,15 @@
                                 <div class="item-price is-variable">
                                     <input
                                         class="price-input"
-                                        name="addon_amount[{{offerGroup.year|e}}_{{groupIndex|e}}_{{offer.type}}_{{offer.id}}]"
+                                        name="addon_amount[{{offerYear.year|e}}-{{groupIndex}}-{{offerIndex}}]"
+                                        value="{{akso_registration.state.offers_indexed_amounts[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex]|e('html_attr')}}"
                                         type="text"
                                         placeholder="0,00"
                                         inputmode="numeric" />
-                                    <span class="price-currency">EUR</span>
+                                    <span class="price-currency">
+                                        TODO:fix placeholder
+                                        {{akso_registration.state.currency}}
+                                    </span>
                                 </div>
                                 {% endif %}
                             </div>

@@ -718,7 +718,7 @@ const messageHandlers = {
         }
     },
     currencies: async (conn) => {
-        return currencies;
+        return { v: currencies };
     },
     convertCurrency: async (conn, { r, fc, tc, v }) => {
         assertType(r, 'object', 'expected r to be an object');
