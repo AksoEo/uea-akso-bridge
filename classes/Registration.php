@@ -221,7 +221,10 @@ class Registration extends Form {
         return $result;
     }
 
-    public function readState() {
+    private $offers = null;
+    private $offersByYear = null;
+
+    public function update() {
         $step = 'init';
         $this->state = array(
             'step' => 0,
@@ -254,8 +257,36 @@ class Registration extends Form {
             $this->state['currency'] = $serializedState['currency'];
         }
 
+        // render a “0,00” placeholder for currency inputs
+        {
+            // kinda hacky but it works
+            $this->state['currency_placeholder'] = '0';
+            $mult = $currencies[$this->state['currency']];
+            if ($mult > 1) $this->state['currency_placeholder'] .= ',';
+            while ($mult > 1) {
+                $mult /= 10;
+                $this->state['currency_placeholder'] .= '0';
+            }
+        }
+
+        $currencyMult = $currencies[$this->state['currency']];
+
         $ch = [];
-        if (isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
+        if ($this->plugin->aksoUser) {
+            $codeholderId = $this->plugin->aksoUser['id'];
+            $res = $this->app->bridge->get("/codeholders/$codeholderId", array(
+                'fields' => [
+                    'firstNameLegal', 'lastNameLegal', 'honorific', 'birthdate', 'email',
+                    'cellphone', 'feeCountry', 'address.country', 'address.countryArea',
+                    'address.city', 'address.cityArea', 'address.postalCode', 'address.sortingCode',
+                    'address.streetAddress',
+                ],
+            ));
+            if ($res['k']) {
+                $ch = $res['b'];
+                $ch['splitCountry'] = true; // always read address and fee country separately
+            }
+        } else if (isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
             $ch = $_POST['codeholder'];
         } else {
             $ch = (isset($serializedState['codeholder']) && gettype($serializedState['codeholder']) === 'array')
@@ -313,7 +344,7 @@ class Registration extends Form {
                         if (isset($_POST['addon_amount'])) {
                             $k = "$year-$groupIndex-$offerIndex";
                             if (isset($_POST['addon_amount'][$k])) {
-                                $amount = (float) $_POST['addon_amount'][$k];
+                                $amount = (int) (floatval($_POST['addon_amount'][$k]) * $currencyMult);
                             }
                         }
 
@@ -349,21 +380,61 @@ class Registration extends Form {
             }
         }
 
-        $this->state['offers_indexed'] = [];
-        $this->state['offers_indexed_amounts'] = [];
-        foreach ($this->state['offers'] as $year => $yearItems) {
-            $price_sum = 0;
-            foreach ($yearItems as $key => $offer) {
-                $keyParts = explode('-', $key);
-                $group = $keyParts[0];
-                $id = $keyParts[1];
-                $this->state['offers_indexed']["$year-$group-$id"] = true;
-                $this->state['offers_indexed_amounts']["$year-$group-$id"] = $offer['amount'];
+        if ($this->state['step'] >= 1) {
+            $this->offers = $this->loadAllOffers();
+            $this->offersByYear = [];
+            foreach ($this->offers as $offerYear) {
+                $this->offersByYear[$offerYear['year']] = $offerYear;
+            }
 
-                if ($offer['type'] === 'membership') {
-                    // TODO
-                    $offer['amount'] = null;
+            $this->state['offers_indexed'] = [];
+            $this->state['offers_indexed_amounts'] = [];
+            $this->state['offers_sum'] = 0;
+            $scriptCtx = new FormScriptExecCtx($this->app);
+            foreach ($this->state['offers'] as $year => &$yearItems) {
+                $price_sum = 0;
+                foreach ($yearItems as $key => &$offer) {
+                    $keyParts = explode('-', $key);
+                    $group = $keyParts[0];
+                    $id = $keyParts[1];
+                    $this->state['offers_indexed']["$year-$group-$id"] = true;
+                    $this->state['offers_indexed_amounts']["$year-$group-$id"] = ((float) $offer['amount']) / $currencyMult;
+
+                    if ($offer['type'] === 'membership') {
+                        $apiOffer = null;
+                        if (isset($this->offersByYear[$year]['offers'][$group]['offers'][$id])) {
+                            $apiOffer = $this->offersByYear[$year]['offers'][$group]['offers'][$id];
+                        }
+                        if ($apiOffer) $offer['amount'] = $apiOffer['price']['value'];
+                        else $offer['amount'] = 2147483647; // FIXME
+                    } else if ($offer['type'] === 'addon') {
+                        $scriptCtx->pushScript(array(
+                            'currency' => array('t' => 's', 'v' => $this->state['currency']),
+                            'value' => array('t' => 'n', 'v' => $offer['amount']),
+                        ));
+                        $offer['amount_rendered'] = $scriptCtx->eval(array(
+                            't' => 'c',
+                            'f' => 'currency_fmt',
+                            'a' => ['currency', 'value'],
+                        ))['v'];
+                        $scriptCtx->popScript();
+                    }
+
+                    $this->state['offers_sum'] += $offer['amount'];
                 }
+            }
+
+            {
+                $scriptCtx->pushScript(array(
+                    'currency' => array('t' => 's', 'v' => $this->state['currency']),
+                    'value' => array('t' => 'n', 'v' => $this->state['offers_sum']),
+                ));
+                $this->state['offers_sum_rendered'] = $scriptCtx->eval(array(
+                    't' => 'c',
+                    'f' => 'currency_fmt',
+                    'a' => ['currency', 'value'],
+                ))['v'];
+                $scriptCtx->popScript();
             }
         }
 
@@ -377,7 +448,7 @@ class Registration extends Form {
     }
 
     public function run() {
-        $this->readState();
+        $this->update();
 
         $path = $this->plugin->getGrav()['uri']->path();
         $targets = [
@@ -386,16 +457,11 @@ class Registration extends Form {
             'payment' => $path . '?' . self::STEP . '=' . self::STEP_PAYMENT,
         ];
 
-        $offers = [];
-        $offersIndexed = [];
+        $offers = $this->offers;
+        $offersIndexed = $this->offersByYear;
         $categories = [];
         $addons = [];
         if ($this->state['step'] >= 1) {
-            $offers = $this->loadAllOffers();
-            foreach ($offers as $offer) {
-                $offersIndexed[$offer['year']] = $offer;
-            }
-
             $categories = $this->loadAllCategories($this->getOfferCategoryIds($offers));
             $addons = $this->loadAllAddons($this->getOfferAddonIds($offers));
         }

@@ -63,6 +63,38 @@
         }
     }
 
+    .form-back-button {
+        padding-left: 0.5em;
+
+        &:not(:active) {
+            background: none;
+            color: var(--accent);
+        }
+
+        .back-icon {
+            width: 1em;
+            height: 1em;
+            position: relative;
+            display: inline-block;
+            vertical-align: -0.1em;
+
+            &::before, &::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                background: currentColor;
+                width: 0.5em;
+                height: 0.1em;
+                transform-origin: 0.05em 0.05em;
+                transform: rotate(-45deg);
+            }
+            &::after {
+                transform: rotate(45deg);
+            }
+        }
+    }
+
     .form-summary {
         .summary-codeholder-type {
             font-size: 0.9em;

@@ -3,15 +3,30 @@
     <form class="akso-registration-page akso-form" method="POST">
         <h1>{{akso_locale.registration.title}}</h1>
         <input
-            class="fhjkls-hidden-input"
+            class="hidden-input"
             type="text"
             name="state_serialized"
             value="{{ akso_registration.state.serialized|e('html_attr') }}" />
-        {% if akso_registration.state.step > 0 %}
+        {% if akso_registration.state.step > 0 or akso_auth %}
+        {% if akso_registration.state.step == 1 %}
+        <button class="form-back-button" type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
+            <span class="back-icon"></span>
+            {{akso_locale.registration.btn_back}}
+        </button>
+        {% elseif akso_registration.state.step == 2 %}
+        <button class="form-back-button" type="submit" formaction="{{akso_registration.targets.offers|e('html_attr')}}">
+            <span class="back-icon"></span>
+            {{akso_locale.registration.btn_back}}
+        </button>
+        {% endif %}
         <div class="form-summary">
             <div class="codeholder-summary">
                 <div class="summary-codeholder-type">
+                    {% if akso_auth %}
+                    {{akso_locale.registration.codeholder_is_registered}}
+                    {% else %}
                     {{akso_locale.registration.codeholder_is_new}}
+                    {% endif %}
                 </div>
                 <div class="summary-name">
                     {{akso_registration.state.codeholder.honorific|e}}
@@ -57,7 +72,7 @@
                                 {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
                             </div>
                             <div class="item-price">
-                                {{offer.amount|e}} TODO
+                                {{offer.amount_rendered|e}}
                             </div>
                             {% endif %}
                         </div>
@@ -66,18 +81,9 @@
                 {% endfor %}
                 <div class="price-sum">
                     <span class="sum-label">{{akso_locale.registration.offers_sum}}</span>
-                    <span class="sum-value">TODO:100 EUR</span>
+                    <span class="sum-value">{{akso_registration.state.offers_sum_rendered}}</span>
                 </div>
             </div>
-            {% endif %}
-            {% if akso_registration.state.step == 1 %}
-            <button type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
-                {{akso_locale.registration.codeholder_back_edit}}
-            </button>
-            {% elseif akso_registration.state.step == 2 %}
-            <button type="submit" formaction="{{akso_registration.targets.offers|e('html_attr')}}">
-                {{akso_locale.registration.offers_back_edit}}
-            </button>
             {% endif %}
         </div>
         {% endif %}
@@ -166,7 +172,6 @@
                     </div>
                 </div>
                 <hr />
-                {% endif %}
                 <input
                     type="checkbox"
                     name="codeholder[splitCountry]"
@@ -174,6 +179,7 @@
                     checked
                     {% endif %}
                     id="registration-split-country" />
+                {% endif %}
                 <div class="settings-field">
                     <div class="inner-field">
                         <label for="registration-field-fee-country">
@@ -196,12 +202,14 @@
                             <!-- todo: default to IP country -->
                         </select>
                     </div>
+                    {% if not akso_auth %}
                     <div class="field-description">
                         <label for="registration-split-country" aria-role="checkbox" tabindex="0" id="split-country-checkbox"></label>
                         <label for="registration-split-country">
                             {{akso_locale.registration.settings_fee_country_split}}
                         </label>
                     </div>
+                    {% endif %}
                 </div>
                 {% if not akso_auth %}
                 <div class="settings-section">
@@ -388,10 +396,9 @@
                                         name="addon_amount[{{offerYear.year|e}}-{{groupIndex}}-{{offerIndex}}]"
                                         value="{{akso_registration.state.offers_indexed_amounts[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex]|e('html_attr')}}"
                                         type="text"
-                                        placeholder="0,00"
+                                        placeholder="{{akso_registration.state.currency_placeholder}}"
                                         inputmode="numeric" />
                                     <span class="price-currency">
-                                        TODO:fix placeholder
                                         {{akso_registration.state.currency}}
                                     </span>
                                 </div>
