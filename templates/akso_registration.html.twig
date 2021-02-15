@@ -2,12 +2,17 @@
 {% block content %}
     <form class="akso-registration-page akso-form" method="POST">
         <h1>{{akso_locale.registration.title}}</h1>
+        {% if akso_registration.state.form_error %}
+            <div class="error-banner">
+                {{akso_registration.state.form_error}}
+            </div>
+        {% endif %}
         <input
             class="hidden-input"
             type="text"
             name="state_serialized"
             value="{{ akso_registration.state.serialized|e('html_attr') }}" />
-        {% if akso_registration.state.step > 0 or akso_auth %}
+        {% if akso_registration.state.registered or akso_registration.state.step > 0 or akso_auth %}
         {% if akso_registration.state.step == 1 %}
         <button class="form-back-button" type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
             <span class="back-icon"></span>
@@ -33,22 +38,19 @@
                     {{akso_registration.state.codeholder.firstNameLegal|e}}
                     {{akso_registration.state.codeholder.lastNameLegal|e}}
                 </div>
+                <div class="summary-birthdate">
+                    {{akso_locale.registration.codeholder_birthdate}}:
+                    {{akso_registration.state.codeholder_derived.birthdate|e}}
+                </div>
                 <div class="summary-contact">
-                    {{akso_registration.state.codeholder.birthdate|e}}
                     {{akso_registration.state.codeholder.email|e}}
                     {{akso_registration.state.codeholder.cellphone|e}}
                 </div>
                 <div class="summary-address">
-                    {{akso_registration.state.codeholder.address.streetAddress|e}}
-                    {{akso_registration.state.codeholder.address.postalCode|e}}
-                    {{akso_registration.state.codeholder.address.sortingCode|e}}
-                    {{akso_registration.state.codeholder.address.cityArea|e}}
-                    {{akso_registration.state.codeholder.address.city|e}}
-                    {{akso_registration.state.codeholder.address.countryArea|e}}
-                    {{akso_registration.state.codeholder.address.country|e}}
+                    {{akso_registration.state.codeholder_derived.address|e}}
                 </div>
             </div>
-            {% if akso_registration.state.step > 1 %}
+            {% if akso_registration.state.registered or akso_registration.state.step > 1 %}
             <div class="offers-summary">
                 {% for year, yearItems in akso_registration.state.offers %}
                     <div class="offer-year">
@@ -304,9 +306,10 @@
                                     {% endif %}
                                     >{{currency|e}}</option>
                             {% endfor %}
-                            <!-- todo: fancy JS selection with search -->
-                            <!-- todo: default to IP country -->
                         </select>
+                    </div>
+                    <div class="field-description">
+                        {{akso_locale.registration.settings_currency_desc}}
                     </div>
                 </div>
             </div>
@@ -352,8 +355,14 @@
                         {% if available %}
                         <input
                             class="offer-item-selection"
+                            {% if akso_registration.categories[offer.id].givesMembership %}
+                            type="radio"
+                            name="offers[{{offerYear.year|e}}][membership]"
+                            value="{{groupIndex}}-{{offerIndex}}-{{offer.type}}-{{offer.id}}"
+                            {% else %}
                             type="checkbox"
                             name="offers[{{offerYear.year|e}}][{{groupIndex|e}}][{{offerIndex|e}}][{{offer.type}}-{{offer.id}}]"
+                            {% endif %}
                             {% if akso_registration.state.offers_indexed[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex] %}
                             checked
                             {% endif %}
@@ -393,7 +402,7 @@
                                 <div class="item-price is-variable">
                                     <input
                                         class="price-input"
-                                        name="addon_amount[{{offerYear.year|e}}-{{groupIndex}}-{{offerIndex}}]"
+                                        name="offer_amount[{{offerYear.year|e}}-{{groupIndex}}-{{offerIndex}}]"
                                         value="{{akso_registration.state.offers_indexed_amounts[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex]|e('html_attr')}}"
                                         type="text"
                                         placeholder="{{akso_registration.state.currency_placeholder}}"
@@ -421,10 +430,81 @@
                 {% endfor %}
             </div>
             <div class="form-buttons">
-                <button type="submit" class="is-primary" formaction="{{akso_registration.targets.payment|e('html_attr')}}">
+                <button type="submit" class="is-primary" formaction="{{akso_registration.targets.summary|e('html_attr')}}">
                     {{akso_locale.registration.offers_next}}
                 </button>
             </div>
+        {% elseif akso_registration.state.step == 2 %}
+        <p>
+            {{akso_locale.registration.entry_create_desc}}
+        </p>
+        <div class="form-buttons">
+            <button type="submit" class="is-primary" formaction="{{akso_registration.targets.entry_create|e('html_attr')}}">
+                {{akso_locale.registration.entry_create}}
+            </button>
+        </div>
+        {% elseif akso_registration.state.step == 3 %}
+        <div class="payment-orgs">
+            {% for org in akso_registration.payment_orgs %}
+            <div class="payment-org">
+                <div class="org-title">
+                    <span>
+                        {% if count(org.years) > 1 %}
+                        {{akso_locale.registration.payment_org_for_years}}
+                        {% else %}
+                        {{akso_locale.registration.payment_org_for_year}}
+                        {% endif %}
+                    </span>
+                    {% for year in org.years %}
+                    <span>{{year|e}}</span>
+                    {% endfor %}
+                </div>
+                <ul class="org-methods">
+                    {% if count(org.methods) == 0 %}
+                        <li class="methods-empty">{{akso_locale.registration.payment_org_no_methods}}</li>
+                    {% endif %}
+                    {% for method in org.methods %}
+                    {% if method.isRecommended %}
+                    <li class="payment-method is-recommended">
+                    {% else %}
+                    <li class="payment-method">
+                    {% endif %}
+                        {% set method_radio_id = 'payment-method-check-' ~ org.id ~ '-' ~ method.id %}
+                        <div class="method-radio-container">
+                            <input
+                                type="radio"
+                                id="{{method_radio_id}}"
+                                name="payment_methods[{{org.id}}][method]"
+                                value="{{method.id}}"
+                                {% if akso_registration.state.payments[org.id].method == method.id %}
+                                checked
+                                {% endif %} />
+                        </div>
+                        <div class="method-details">
+                            <label class="method-name" for="{{method_radio_id}}">{{method.name|e}}</label>
+                            <div class="method-description">{{method.description}}</div>
+                            <div class="method-currency">
+                                <label>{{akso_locale.registration.payment_currency}}</label>
+                                <select
+                                    name="payment_methods[{{org.id}}][currency]"
+                                    value="todo">
+                                    {% for currency in method.currencies %}
+                                        <option value="{{currencies|e('html_attr')}}">{{currency|e}}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="form-buttons">
+            <button type="submit" class="is-primary" formaction="{{akso_registration.targets.payment_commit|e('html_attr')}}">
+                {{akso_locale.registration.payment_next}}
+            </button>
+        </div>
         {% endif %}
     </form>
 {% endblock %}

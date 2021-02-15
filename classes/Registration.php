@@ -2,18 +2,33 @@
 namespace Grav\Plugin\AksoBridge;
 
 use Grav\Plugin\AksoBridge\Form;
+use Grav\Plugin\AksoBridge\Utils;
+
+// TODO: use form nonce
 
 // The membership registration page
 class Registration extends Form {
     private const STEP = 'p';
     private const STEP_OFFERS = '1';
-    private const STEP_PAYMENT = '2';
+    private const STEP_SUMMARY = '2';
+    private const STEP_ENTRY_CREATE = 'create_entry';
+    private const STEP_PAYMENT = 'p1';
+    private const STEP_PAYMENT_COMMIT = 'p2';
+    private const DATAID = 'dataId';
+
+    private const CODEHOLDER_FIELDS = [
+        'firstNameLegal', 'lastNameLegal', 'honorific', 'birthdate', 'email',
+        'cellphone', 'feeCountry', 'address.country', 'address.countryArea',
+        'address.city', 'address.cityArea', 'address.postalCode', 'address.sortingCode',
+        'address.streetAddress',
+    ];
 
     private $plugin;
 
     public function __construct($plugin, $app) {
         parent::__construct($app);
         $this->plugin = $plugin;
+        $this->locale = $plugin->locale['registration'];
     }
 
     // state array: stores the current user input and some derived data
@@ -162,7 +177,7 @@ class Registration extends Form {
         $categories = [];
         for ($i = 0; true; $i += 100) {
             $res = $this->app->bridge->get("/membership_categories", array(
-                'fields' => ['id', 'nameAbbrev', 'name', 'description', 'lifetime'],
+                'fields' => ['id', 'nameAbbrev', 'name', 'description', 'lifetime', 'givesMembership'],
                 'filter' => ['id' => ['$in' => $ids->slice(0, 100)->toArray()]],
                 'limit' => 100,
                 'offset' => $i,
@@ -220,21 +235,130 @@ class Registration extends Form {
         }
         return $result;
     }
+    private function loadPaymentOrgs($orgs) {
+        $result = [];
+        foreach ($orgs->toArray() as $orgId) {
+            $res = $this->app->bridge->get("/aksopay/payment_orgs/$orgId", array(
+                'fields' => ['id', 'org', 'name'],
+            ));
+            if (!$res['k']) {
+                // TODO: error?
+                break;
+            }
+            $orgInfo = $res['b'];
+            $methods = [];
+
+            for ($i = 0; true; $i += 100) {
+                $res = $this->app->bridge->get("/aksopay/payment_orgs/$orgId/methods", array(
+                    'fields' => ['id', 'type', 'name', 'description', 'currencies'],
+                    'limit' => 100,
+                    'offset' => $i,
+                ), 120);
+                if (!$res['k']) {
+                    // TODO: emit error
+                    break;
+                }
+                foreach ($res['b'] as $method) {
+                    if (gettype($method['description']) === 'string') {
+                        $method['description'] = $this->app->bridge->renderMarkdown(
+                            $method['description'],
+                            ['emphasis', 'strikethrough', 'link', 'list', 'table'],
+                        )['c'];
+                    }
+
+                    $methods[$method['id']] = $method;
+                }
+                if (count($methods) >= $res['h']['x-total-items']) {
+                    break;
+                }
+            }
+            $orgInfo['methods'] = $methods;
+            $result[$orgId] = $orgInfo;
+        }
+        return $result;
+    }
+
+    public function loadRegistered($dataIds) {
+        $needsLogin = false;
+        $currency = '';
+        $hasCodeholder = false;
+        $codeholder = [];
+        $offersByYear = [];
+        foreach ($dataIds as $id) {
+            $res = $this->app->bridge->get("/registration/entries/$id", array(
+                'fields' => ['year', 'currency', 'codeholderData', 'offers'],
+            ));
+            if ($res['k']) {
+                // ignore duplicate year
+                if (isset($offersByYear[$res['b']['year']])) continue;
+                if (!$hasCodeholder) {
+                    $hasCodeholder = $res['b']['codeholderData'];
+                    if (gettype($res['b']['codeholderData']) === 'integer') {
+                        if (!$this->plugin->aksoUser || $this->plugin->aksoUser['id'] != $res['b']['codeholderData']) {
+                            $needsLogin = true;
+                        } else {
+                            $chId = $res['b']['codeholderData'];
+                            $chRes = $this->app->bridge->get("/codeholders/$chId", array(
+                                'fields' => self::CODEHOLDER_FIELDS,
+                            ));
+                            if ($chRes['k']) {
+                                $codeholder = $chRes['b'];
+                                $codeholder['splitCountry'] = true;
+                            }
+                        }
+                    } else {
+                        $codeholder = $res['b']['codeholderData'];
+                    }
+                } else {
+                    // ignore incorrect codeholder
+                    if ($res['b']['codeholderData'] != $hasCodeholder) continue;
+                }
+
+                $selectedItems = []; // TODO
+                $offersByYear[$res['b']['year']] = $selectedItems;
+            }
+        }
+
+        return array(
+            'needs_login' => $needsLogin,
+            'currency' => $currency,
+            'codeholder' => $codeholder,
+            'offers' => $offersByYear,
+            'dataIds' => $dataIds,
+        );
+    }
 
     private $offers = null;
     private $offersByYear = null;
+    private $paymentOrgs = null;
 
     public function update() {
         $step = 'init';
-        $this->state = array(
-            'step' => 0,
-        );
+        $this->state = array('step' => 0);
+
+        $creatingEntry = false;
+
+        $this->state['dataIds'] = [];
+        if (isset($_GET[self::DATAID]) && gettype($_GET[self::DATAID]) === 'string') {
+            $this->state['dataIds'] = explode('-', $_GET[self::DATAID]);
+            $this->state['step'] = 3;
+        }
+        $this->state['registered'] = count($this->state['dataIds']) > 0;
+        $registered = $this->state['registered'];
 
         if (isset($_GET[self::STEP]) && gettype($_GET[self::STEP]) === 'string') {
             $step = $_GET[self::STEP];
-            // TODO: validate before allowing step forward
-            if ($step === self::STEP_OFFERS) $this->state['step'] = 1;
-            if ($step === self::STEP_PAYMENT) $this->state['step'] = 2;
+            if ($registered) {
+                // TODO
+            } else {
+                // TODO: validate before allowing step forward
+                if ($step === self::STEP_OFFERS) $this->state['step'] = 1;
+                if ($step === self::STEP_SUMMARY) $this->state['step'] = 2;
+                if ($step === self::STEP_ENTRY_CREATE) {
+                    $this->state['step'] = 2;
+                    $creatingEntry = true;
+                }
+            }
         }
 
         $serializedState = [];
@@ -243,6 +367,10 @@ class Registration extends Form {
                 $decoded = json_decode($_POST['state_serialized'], true);
                 if (gettype($decoded) === 'array') $serializedState = $decoded;
             } catch (\Exception $e) {}
+        }
+
+        if ($this->state['registered']) {
+            $serializedState = array_merge($serializedState, $this->loadRegistered($this->state['dataIds']));
         }
 
         $currencies = $this->getCachedCurrencies();
@@ -272,21 +400,16 @@ class Registration extends Form {
         $currencyMult = $currencies[$this->state['currency']];
 
         $ch = [];
-        if ($this->plugin->aksoUser) {
+        if (!$registered && $this->plugin->aksoUser) {
             $codeholderId = $this->plugin->aksoUser['id'];
             $res = $this->app->bridge->get("/codeholders/$codeholderId", array(
-                'fields' => [
-                    'firstNameLegal', 'lastNameLegal', 'honorific', 'birthdate', 'email',
-                    'cellphone', 'feeCountry', 'address.country', 'address.countryArea',
-                    'address.city', 'address.cityArea', 'address.postalCode', 'address.sortingCode',
-                    'address.streetAddress',
-                ],
+                'fields' => self::CODEHOLDER_FIELDS,
             ));
             if ($res['k']) {
                 $ch = $res['b'];
                 $ch['splitCountry'] = true; // always read address and fee country separately
             }
-        } else if (isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
+        } else if (!$registered && isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
             $ch = $_POST['codeholder'];
         } else {
             $ch = (isset($serializedState['codeholder']) && gettype($serializedState['codeholder']) === 'array')
@@ -315,16 +438,75 @@ class Registration extends Form {
                     'streetAddress' => $this->readSafe('string', $ch, 'address.streetAddress'),
                 ),
             );
+
+            $addressFmt = '';
+            try {
+                $addr = $this->state['codeholder']['address'];
+                $countryName = '';
+                foreach ($this->getCachedCountries() as $entry) {
+                    if ($entry['code'] == $addr['country']) {
+                        $countryName = $entry['name_eo'];
+                        break;
+                    }
+                }
+                $addressFmt = $this->app->bridge->renderAddress(array(
+                    'countryCode' => $addr['country'],
+                    'countryArea' => $addr['countryArea'],
+                    'city' => $addr['city'],
+                    'cityArea' => $addr['cityArea'],
+                    'streetAddress' => $addr['streetAddress'],
+                    'postalCode' => $addr['postalCode'],
+                    'sortingCode' => $addr['sortingCode'],
+                ), $countryName)['c'];
+                $addressFmt = implode(', ', explode("\n", $addressFmt));
+            } catch (\Exception $e) {
+                // FIXME: this
+                $addressFmt = '(Nevalida adreso)';
+            }
+
+            $this->state['codeholder_derived'] = array(
+                'birthdate' => Utils::formatDate($this->state['codeholder']['birthdate']),
+                'address' => $addressFmt,
+            );
         }
 
         $this->state['offers'] = [];
-        if (isset($_POST['offers']) && gettype($_POST['offers']) === 'array') {
+        if (!$registered && isset($_POST['offers']) && gettype($_POST['offers']) === 'array') {
             foreach ($_POST['offers'] as $_year => $yearItems) {
                 $year = (int) $_year;
                 $this->state['offers'][$year] = [];
 
                 // key format: [year][group][offer][type-id]
                 foreach ($yearItems as $groupIndex => $groupItems) {
+                    if ($groupIndex === 'membership') {
+                        // this is the givesMembership radio selection
+                        if (gettype($groupItems) !== 'string') continue;
+                        $offerKeyParts = explode('-', $groupItems);
+                        if (count($offerKeyParts) != 4) continue;
+                        $groupIndex = (int) $offerKeyParts[0];
+                        $offerIndex = (int) $offerKeyParts[1];
+                        $type = $offerKeyParts[2];
+                        $id = (int) $offerKeyParts[3];
+
+                        if ($type !== 'membership' && $type !== 'addon') continue;
+
+                        $amount = null;
+                        if (isset($_POST['offer_amount'])) {
+                            $k = "$year-$groupIndex-$offerIndex";
+                            if (isset($_POST['offer_amount'][$k])) {
+                                $amount = (int) (floatval($_POST['offer_amount'][$k]) * $currencyMult);
+                            }
+                        }
+
+                        $this->state['offers'][$year]["$groupIndex-$offerIndex"] = array(
+                            'type' => $type,
+                            'id' => $id,
+                            'amount' => $amount,
+                        );
+
+                        continue;
+                    }
+
                     if (gettype($groupItems) !== 'array') continue;
                     foreach ($groupItems as $offerIndex => $offerData) {
                         if (gettype($offerData) !== 'array') continue;
@@ -341,10 +523,10 @@ class Registration extends Form {
                         if ($type !== 'membership' && $type !== 'addon') continue;
 
                         $amount = null;
-                        if (isset($_POST['addon_amount'])) {
+                        if (isset($_POST['offer_amount'])) {
                             $k = "$year-$groupIndex-$offerIndex";
-                            if (isset($_POST['addon_amount'][$k])) {
-                                $amount = (int) (floatval($_POST['addon_amount'][$k]) * $currencyMult);
+                            if (isset($_POST['offer_amount'][$k])) {
+                                $amount = (int) (floatval($_POST['offer_amount'][$k]) * $currencyMult);
                             }
                         }
 
@@ -356,28 +538,45 @@ class Registration extends Form {
                     }
                 }
             }
-        } else {
-            if (isset($serializedState['offers']) && gettype($serializedState['offers']) === 'array') {
-                foreach ($serializedState['offers'] as $year => $yearItems) {
-                    if (gettype($yearItems) !== 'array') continue;
-                    $items = [];
-                    foreach ($yearItems as $key => $item) {
-                        if (gettype($item) !== 'array') continue 2;
-                        $keyParts = explode('-', $key);
-                        if (count($keyParts) != 2) continue;
-                        $group = $keyParts[0];
-                        $id = $keyParts[1];
-                        if (!isset($item['type']) || gettype($item['type']) !== 'string') continue;
-                        if (!isset($item['id']) || gettype($item['id']) !== 'integer') continue;
-                        $items["$group-$id"] = array(
-                            'type' => $item['type'],
-                            'id' => $item['id'],
-                            'amount' => isset($item['amount']) ? ((float) $item['amount']) : null,
-                        );
-                    }
-                    if (!empty($items)) $this->state['offers'][$year] = $items;
+        } else if (isset($serializedState['offers']) && gettype($serializedState['offers']) === 'array') {
+            foreach ($serializedState['offers'] as $year => $yearItems) {
+                if (gettype($yearItems) !== 'array') continue;
+                $items = [];
+                foreach ($yearItems as $key => $item) {
+                    if (gettype($item) !== 'array') continue 2;
+                    $keyParts = explode('-', $key);
+                    if (count($keyParts) != 2) continue;
+                    $group = $keyParts[0];
+                    $id = $keyParts[1];
+                    if (!isset($item['type']) || gettype($item['type']) !== 'string') continue;
+                    if (!isset($item['id']) || gettype($item['id']) !== 'integer') continue;
+                    $items["$group-$id"] = array(
+                        'type' => $item['type'],
+                        'id' => $item['id'],
+                        'amount' => isset($item['amount']) ? ((float) $item['amount']) : null,
+                    );
                 }
+                if (!empty($items)) $this->state['offers'][$year] = $items;
             }
+        }
+
+        $this->state['payments'] = [];
+        $paymentMethods = [];
+        if (isset($_POST['payment_methods']) && gettype($_POST['payment_methods']) === 'array') {
+            $paymentMethods = $_POST['payment_methods'];
+        } else if (isset($serializedState['payments']) && gettype($serializedState['payments']) === 'array') {
+            $paymentMethods = $serializedState['payments'];
+        }
+        foreach ($paymentMethods as $_orgId => $data) {
+            $orgId = (int) $_orgId;
+            if (gettype($data) !== 'array') continue;
+            $methodId = (int) $data['method'];
+            $currency = $data['currency'];
+
+            $this->state['payments'][$orgId] = array(
+                'method' => $methodId,
+                'currency' => $currency,
+            );
         }
 
         if ($this->state['step'] >= 1) {
@@ -436,14 +635,80 @@ class Registration extends Form {
                 ))['v'];
                 $scriptCtx->popScript();
             }
+
+            $paymentOrgIds = new \Ds\Set();
+            foreach ($this->offers as $offerYear) {
+                $paymentOrgIds->add($offerYear['paymentOrgId']);
+            }
+            $this->paymentOrgs = $this->loadPaymentOrgs($paymentOrgIds);
+            foreach ($this->paymentOrgs as &$org) {
+                $org['years'] = [];
+                foreach ($this->offers as $offerYear) {
+                    if ($offerYear['paymentOrgId'] == $org['id']) {
+                        $org['years'][] = $offerYear['year'];
+                    }
+                }
+            }
         }
 
         // TODO: validate this stuff
+
+        if ($creatingEntry) {
+            $errors = [];
+            foreach ($this->state['offers'] as $year => $yearItems) {
+                $options = [];
+                $options['year'] = (int) $year;
+                $options['currency'] = $this->state['currency'];
+
+                if ($this->plugin->aksoUser) {
+                    $options['codeholderData'] = $this->plugin->aksoUser['id'];
+                } else {
+                    $options['codeholderData'] = $this->state['codeholder'];
+                }
+
+                $options['offers'] = [];
+                foreach ($yearItems as $itemId => $itemData) {
+                    $itemIdParts = explode('-', $itemId);
+                    $groupIndex = $itemIdParts[0];
+                    $offerIndex = $itemIdParts[1];
+
+                    $options['offers'][] = array(
+                        'type' => $itemData['type'],
+                        'id' => $itemData['id'],
+                        'amount' => $itemData['amount'],
+                    );
+                }
+
+                $res = $this->app->bridge->post('/registration/entries', $options, [], []);
+                if ($res['k']) {
+                    $this->state['dataIds'][$year] = $res['h']['x-identifier'];
+                } else if (!$res['k']) {
+                    if ($res['sc'] === 400) $errors[$year] = $this->localize('create_entry_bad_request');
+                    else $errors[$year] = $this->localize('create_entry_internal_error');
+                }
+            }
+
+            if (count($errors) > 0) {
+                $this->state['form_error'] = '';
+                foreach ($errors as $year => $err) {
+                    $this->state['form_error'] .= '<div>' .
+                        $this->localize('create_entry_year_failed', $year) .
+                        htmlspecialchars($err) . '</div>';
+                }
+            } else if (count($this->state['dataIds']) > 0) {
+                $dataIds = implode('-', $this->state['dataIds']);
+                $route = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $dataIds .
+                    '&' . self::STEP . '=' . self::STEP_PAYMENT;
+                $this->plugin->getGrav()->redirectLangSafe($route, 303);
+            }
+        }
 
         $this->state['serialized'] = json_encode(array(
             'currency' => $this->state['currency'],
             'codeholder' => $this->state['codeholder'],
             'offers' => $this->state['offers'],
+            'dataIds' => $this->state['dataIds'],
+            'payments' => $this->state['payments'],
         ));
     }
 
@@ -454,7 +719,10 @@ class Registration extends Form {
         $targets = [
             'codeholder' => $path,
             'offers' => $path . '?' . self::STEP . '=' . self::STEP_OFFERS,
+            'summary' => $path . '?' . self::STEP . '=' . self::STEP_SUMMARY,
+            'entry_create' => $path . '?' . self::STEP . '=' . self::STEP_ENTRY_CREATE,
             'payment' => $path . '?' . self::STEP . '=' . self::STEP_PAYMENT,
+            'payment_commit' => $path . '?' . self::STEP . '=' . self::STEP_PAYMENT_COMMIT,
         ];
 
         $offers = $this->offers;
@@ -478,6 +746,7 @@ class Registration extends Form {
             'addons' => $addons,
             'targets' => $targets,
             'thisYear' => $thisYear,
+            'payment_orgs' => $this->paymentOrgs,
         );
     }
 }

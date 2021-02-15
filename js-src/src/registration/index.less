@@ -46,6 +46,14 @@
 .akso-registration-page {
     text-align: left;
 
+    .error-banner {
+        background: var(--error-bg);
+        color: var(--error-fg);
+        border-radius: var(--radius);
+        padding: 1em;
+        margin-bottom: 1em;
+    }
+
     .hidden-input {
         display: none;
     }
@@ -104,6 +112,7 @@
         .summary-name {
             font-size: 1.1em;
             border-bottom: 1px solid var(--light-separator);
+            margin-bottom: 0.2em;
         }
 
         .offers-summary {
@@ -450,6 +459,63 @@
                     }
                     .item-price-description {
                         display: none;
+                    }
+                }
+            }
+        }
+    }
+
+    .payment-orgs {
+        .payment-org {
+            .org-title {
+                font-weight: bold;
+                margin-top: 1em;
+            }
+
+            .org-methods {
+                margin: 0;
+                padding: 0;
+                list-style-type: none;
+
+                .payment-method {
+                    margin: 0.5em 0;
+                    background: var(--bg);
+                    border-radius: var(--radius);
+                    box-shadow: @shade-both;
+                    display: flex;
+
+                    .method-radio-container {
+                        width: 3em;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .method-details {
+                        flex: 1;
+                        padding: 1em;
+                        padding-left: 0;
+
+                        .method-name {
+                            display: block;
+                            font-weight: bold;
+                        }
+                        .method-description {
+                            font-size: 0.9em;
+
+                            p:first-child {
+                                margin-top: 0;
+                            }
+                            p:last-child {
+                                margin-bottom: 0;
+                            }
+                        }
+                        .method-currency {
+                            margin-top: 0.5em;
+
+                            label {
+                                margin-right: 0.3em;
+                            }
+                        }
                     }
                 }
             }
