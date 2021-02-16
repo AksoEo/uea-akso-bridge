@@ -50,7 +50,40 @@
                     {{akso_registration.state.codeholder_derived.address|e}}
                 </div>
             </div>
-            {% if akso_registration.state.registered or akso_registration.state.step > 1 %}
+            {% if akso_registration.state.registered %}
+            <div class="offers-summary">
+                {% for year, yearItems in akso_registration.state.offers %}
+                <div class="offer-year">
+                    {% set offerYear = akso_registration.offers_indexed[year] %}
+                    <div class="year-label">{{year|e}}</div>
+                    {% for offer in yearItems %}
+                    <div class="offer-item">
+                        {% if offer.type == 'membership' %}
+                        <div class="item-name">
+                            <span class="item-abbrev">{{akso_registration.categories[offer.id].nameAbbrev|e}}</span>
+                            {{akso_registration.categories[offer.id].name|e}}
+                        </div>
+                        <div class="item-price">
+                            {{offer.amount_rendered|e}}
+                        </div>
+                        {% elseif offer.type == 'addon' %}
+                        <div class="item-name">
+                            {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
+                        </div>
+                        <div class="item-price">
+                            {{offer.amount_rendered|e}}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+                <div class="price-sum">
+                    <span class="sum-label">{{akso_locale.registration.offers_sum}}</span>
+                    <span class="sum-value">{{akso_registration.state.offers_sum_rendered|e}}</span>
+                </div>
+            </div>
+            {% elseif akso_registration.state.step > 1 %}
             <div class="offers-summary">
                 {% for year, yearItems in akso_registration.state.offers %}
                     <div class="offer-year">
