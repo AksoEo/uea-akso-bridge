@@ -43,7 +43,6 @@ class CongressRegistration {
     private $isPayment = false;
     private $paymentMethod = null;
     private $paymentCurrency = null;
-    private $paymentSuccessReturn = false;
 
     private function readReq() {
         if (isset($_GET[self::VALIDATE])) {
@@ -235,7 +234,7 @@ class CongressRegistration {
                         $paymentsHost = $this->plugin->getGrav()['config']->get('plugins.akso-bridge.payments_host');
                         $redirectTarget = $paymentsHost . '/i/' . $paymentId . '?return=' . urlencode($returnTarget);
                     } else {
-                        var_dump($res);
+                        // TODO: handle error
                     }
 
                     break;

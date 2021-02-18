@@ -482,18 +482,10 @@
                     background: var(--bg);
                     border-radius: var(--radius);
                     box-shadow: @shade-both;
-                    display: flex;
 
-                    .method-radio-container {
-                        width: 3em;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    }
                     .method-details {
                         flex: 1;
                         padding: 1em;
-                        padding-left: 0;
 
                         .method-name {
                             display: block;
@@ -514,6 +506,19 @@
 
                             label {
                                 margin-right: 0.3em;
+                            }
+                        }
+
+                        .method-selection {
+                            display: flex;
+                            justify-content: space-between;
+
+                            @media (max-width: 420px) {
+                                display: block;
+
+                                .submit-container {
+                                    text-align: right;
+                                }
                             }
                         }
                     }

@@ -15,6 +15,7 @@ class Registration extends Form {
     private const STEP_PAYMENT = 'p1';
     private const STEP_PAYMENT_COMMIT = 'p2';
     private const DATAID = 'dataId';
+    private const PAYMENT_SUCCESS_RETURN = 'payment_success_return';
 
     private const CODEHOLDER_FIELDS = [
         'firstNameLegal', 'lastNameLegal', 'honorific', 'birthdate', 'email',
@@ -311,6 +312,7 @@ class Registration extends Form {
         $hasCodeholder = false;
         $codeholder = [];
         $offersByYear = [];
+        $yearDataIds = [];
 
         $scriptCtx = new FormScriptExecCtx($this->app);
         $offersSum = 0;
@@ -362,6 +364,7 @@ class Registration extends Form {
                     $selectedItems[] = $offer;
                 }
                 $offersByYear[$res['b']['year']] = $selectedItems;
+                $yearDataIds[$res['b']['year']] = $id;
             }
         }
 
@@ -384,7 +387,7 @@ class Registration extends Form {
             'currency' => $currency,
             'codeholder' => $codeholder,
             'offers' => $offersByYear,
-            'dataIds' => $dataIds,
+            'dataIds' => $yearDataIds,
             'offers_sum' => $offersSum,
             'offers_sum_rendered' => $offersSumRendered,
         );
@@ -395,6 +398,8 @@ class Registration extends Form {
     private $paymentOrgs = null;
 
     public function update() {
+        // TODO: split this method up
+
         $step = 'init';
         $this->state = array('step' => 0);
 
@@ -407,6 +412,22 @@ class Registration extends Form {
         }
         $this->state['registered'] = count($this->state['dataIds']) > 0;
         $registered = $this->state['registered'];
+
+        $editTarget = $this->plugin->getGrav()['uri']->path();
+        if (count($this->state['dataIds'])) {
+            $editTarget .= '?' . self::DATAID . '=' . implode('-', $this->state['dataIds']);
+        }
+
+        if (isset($_GET[self::PAYMENT_SUCCESS_RETURN])) {
+            $_SESSION[self::PAYMENT_SUCCESS_RETURN] = true;
+            // redirect to the same page without payment_success_retunr
+            $this->plugin->getGrav()->redirectLangSafe($editTarget, 302);
+        }
+        if (isset($_SESSION[self::PAYMENT_SUCCESS_RETURN])) {
+            // this is the payment success page
+            $this->state['payment_success'] = true;
+            unset($_SESSION[self::PAYMENT_SUCCESS_RETURN]);
+        }
 
         if (isset($_GET[self::STEP]) && gettype($_GET[self::STEP]) === 'string') {
             $step = $_GET[self::STEP];
@@ -433,6 +454,8 @@ class Registration extends Form {
 
         if ($this->state['registered']) {
             $serializedState = array_merge($serializedState, $this->loadRegistered($this->state['dataIds']));
+            $this->state['needs_login'] = $serializedState['needs_login'];
+            $this->state['dataIds'] = $serializedState['dataIds'];
         }
 
         $currencies = $this->getCachedCurrencies();
@@ -626,25 +649,6 @@ class Registration extends Form {
             }
         }
 
-        $this->state['payments'] = [];
-        $paymentMethods = [];
-        if (isset($_POST['payment_methods']) && gettype($_POST['payment_methods']) === 'array') {
-            $paymentMethods = $_POST['payment_methods'];
-        } else if (isset($serializedState['payments']) && gettype($serializedState['payments']) === 'array') {
-            $paymentMethods = $serializedState['payments'];
-        }
-        foreach ($paymentMethods as $_orgId => $data) {
-            $orgId = (int) $_orgId;
-            if (gettype($data) !== 'array') continue;
-            $methodId = (int) $data['method'];
-            $currency = $data['currency'];
-
-            $this->state['payments'][$orgId] = array(
-                'method' => $methodId,
-                'currency' => $currency,
-            );
-        }
-
         if ($registered) {
             $this->offers = $this->loadAllOffers(true);
             $this->offersByYear = [];
@@ -657,12 +661,119 @@ class Registration extends Form {
                 $paymentOrgIds->add($offerYear['paymentOrgId']);
             }
             $this->paymentOrgs = $this->loadPaymentOrgs($paymentOrgIds);
+            // add 'years' entry marking which years are using this payment org
             foreach ($this->paymentOrgs as &$org) {
                 $org['years'] = [];
                 foreach ($this->offers as $offerYear) {
                     if ($offerYear['paymentOrgId'] == $org['id']) {
                         $org['years'][] = $offerYear['year'];
                     }
+                }
+            }
+
+            if (isset($_POST['payment_org']) && isset($_POST['payment_method_id']) && isset($_POST['payment_currency'])) {
+                $paymentOrg = (int) $_POST['payment_org'];
+                $paymentMethodId = (int) $_POST['payment_method_id'];
+                $currency = (string) $_POST['payment_currency'];
+
+                if (!isset($this->paymentOrgs[$paymentOrg])) {
+                    // invalid
+                    // TODO: handle error?
+                    return;
+                }
+                $org = $this->paymentOrgs[$paymentOrg];
+
+                // TODO: validate method id and currency maybe?
+
+                $codeholderId = null;
+                $customerName = '';
+                if ($this->plugin->aksoUser) {
+                    $codeholderId = $this->plugin->aksoUser['id'];
+                    $customerName = $this->plugin->aksoUserFormattedName;
+                } else {
+                    $customerName = [
+                        $this->state['codeholder']['honorific'],
+                        $this->state['codeholder']['firstNameLegal'],
+                        $this->state['codeholder']['lastNameLegal'],
+                    ];
+                    $customerName = implode(' ', array_filter($customerName, null));
+                }
+
+                $purposes = [];
+                $categories = $this->loadAllCategories($this->getRegisteredOfferCategoryIds($this->state['offers']));
+                $addons = $this->loadAllAddons($this->getRegisteredOfferAddonIds($this->state['offers']));
+                foreach ($org['years'] as $year) {
+                    $purposeTitle = $this->locale['payment_purpose_title_singular'] . ' ' . $org['years'][0];
+                    $purposeDescription = '';
+
+                    if (!isset($this->state['offers'][$year])) continue;
+                    $yearItems = $this->state['offers'][$year];
+                    $sum = 0;
+                    foreach ($yearItems as $offer) {
+                        if ($purposeDescription) $purposeDescription .= '\n';
+                        $purposeDescription .= '- '; // render a list
+                        if ($offer['type'] === 'membership') {
+                            if (isset($categories[$offer['id']])) {
+                                $cat = $categories[$offer['id']];
+                                $purposeDescription .= $cat['nameAbbrev'] . ' ' . $cat['name'];
+                            } else {
+                                $purposeDescription .= '(Eraro)';
+                            }
+                        } else if ($offer['type'] === 'addon') {
+                            $offerYear = $this->offersByYear[$year];
+                            if (isset($addons[$offerYear['paymentOrgId']][$offer['id']])) {
+                                $addon = $addons[$offerYear['paymentOrgId']][$offer['id']];
+                                $purposeDescription .= $addon['name'];
+                            }
+                        } else {
+                            $purposeDescription .= '(Eraro)';
+                        }
+                        $sum += $offer['amount'];
+                    }
+
+                    $convertedAmount = $this->convertCurrency($this->state['currency'], $currency, $sum);
+
+                    $purposes[] = array(
+                        'type' => 'trigger',
+                        'title' => $purposeTitle,
+                        'description' => $purposeDescription,
+                        'amount' => $convertedAmount,
+                        'triggerAmount' => array(
+                            'currency' => $this->state['currency'],
+                            'amount' => $sum,
+                        ),
+                        'triggers' => 'registration',
+                        'dataId' => $this->state['dataIds'][$year],
+                    );
+                }
+
+                $res = $this->app->bridge->post('/aksopay/payment_intents', array(
+                    'codeholderId' => $codeholderId,
+                    'customer' => array(
+                        'name' => $customerName,
+                        'email' => $this->state['codeholder']['email'],
+                    ),
+                    'paymentOrgId' => $paymentOrg,
+                    'paymentMethodId' => $paymentMethodId,
+                    'currency' => $currency,
+                    'customerNotes' => null,
+                    'purposes' => $purposes,
+                ), array(), []);
+
+                if ($res['k']) {
+                    $paymentId = $res['h']['x-identifier'];
+
+                    $returnTarget = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") .
+                        "://$_SERVER[HTTP_HOST]" . $editTarget;
+
+                    $paymentsHost = $this->plugin->getGrav()['config']->get('plugins.akso-bridge.payments_host');
+                    $redirectTarget = $paymentsHost . '/i/' . $paymentId . '?return=' . urlencode($returnTarget);
+                } else {
+                    // TODO: handle error
+                    if ($res['sc'] === 400) $this->state['form_error'] = $this->locale['payment_error_bad_request'];
+                    else if ($res['sc'] === 417) $this->state['form_error'] = $this->locale['payment_error_too_high'];
+                    else if ($res['sc'] === 500) $this->state['form_error'] = $this->locale['payment_error_server_error'];
+                    else $this->state['form_error'] = $this->locale['payment_error_generic'];
                 }
             }
         } else if ($this->state['step'] >= 1 && !$registered) {
@@ -780,7 +891,6 @@ class Registration extends Form {
             'codeholder' => $this->state['codeholder'],
             'offers' => $this->state['offers'],
             'dataIds' => $this->state['dataIds'],
-            'payments' => $this->state['payments'],
         ));
     }
 

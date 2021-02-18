@@ -1,0 +1,199 @@
+{% macro akso_payment_form(akso_payment) %}
+    <div class="akso-payment-form is-intent-page">
+        {% if akso_payment.payment_success_redirect %}
+            <div class="payment-intent-redirect">
+                {{akso_locale.registration_form.payment_intent_redirect}}
+                <div>
+                    <a
+                        id="payment-intent-redirect-button"
+                        class="link-button is-primary"
+                        href="{{akso_payment.payment_success_redirect}}">
+                        {{akso_locale.registration_form.payment_intent_redirect_open}}
+                    </a>
+                </div>
+            </div>
+        {% elseif akso_payment.is_payment_method %}
+            <h1>{{akso_payment.payment_method.name}}</h1>
+            <h2 class="payment-amount">
+                {{akso_locale.registration_form.payment_outstanding}}
+                {{akso_payment.payment.remaining_rendered|e}}
+            </h2>
+            <div class="payment-min-upfront">
+                {% if akso_payment.payment.is_min_payment %}
+                    {{akso_locale.registration_form.payment_box_min_upfront}}
+                    {{akso_payment.payment.min_upfront_rendered|e}}
+                {% else %}
+                    {{akso_locale.registration_form.payment_box_min_upfront_paid}}
+                {% endif %}
+            </div>
+            {% if akso_payment.payment_error %}
+                <div class="registration-error">
+                    {{akso_payment.payment_error|e}}
+                </div>
+            {% endif %}
+            <form method="POST" id="akso-payment-form" class="akso-form">
+                <input
+                    class="hidden-input"
+                    name="nonce"
+                    value="{{akso_payment.form_nonce|e('html_attr')}}" />
+                <div class="form-item payment-customer">
+                    <div class="customer-name">{{akso_payment.payment_customer_name}}</div>
+                    <div class="customer-email">{{akso_payment.payment_customer_email}}</div>
+                </div>
+                <div class="form-item form-input-item money-input" data-el="input" data-type="money" data-name="amount">
+                    <div class="form-label">
+                        <label for="amount-to-pay">
+                            {{akso_locale.registration_form.payment_amount_to_pay}}
+                        </label>
+                    </div>
+                    <div class="form-data">
+                        <input
+                            id="amount-to-pay"
+                            data-currency="{{ akso_payment.payment_currency }}"
+                            data-currency-multiplier="{{ akso_payment.payment_currency_mult }}"
+                            step="{{ akso_payment.payment_amount_step }}"
+                            min="{{ akso_payment.payment_amount_min }}"
+                            max="{{ akso_payment.payment_amount_max }}"
+                            value="{{ akso_payment.payment_amount_value }}"
+                            name="amount"
+                            type="number" />
+                        <span class="currency-label">
+                            {{ akso_payment.payment_currency }}
+                        </span>
+
+                        <span
+                            class="currency-approx-conversion"
+                            data-currency="{{akso_payment.payment_price_currency}}"
+                            data-approx-rate="{{akso_payment.payment_price_approx_rate}}">*</span>
+                    </div>
+                </div>
+                <div
+                    class="form-item form-script-item"
+                    data-el="script"
+                    data-script="{{akso_payment.payment_form_script|e('html_attr')}}"></div>
+                {% if akso_payment.payment_method.feeFixed is not empty or akso_payment.payment_method.feePercent is not empty %}
+                    <div class="form-item form-text-item" data-el="text" data-script='!{"t":"c","f":"id","a":["fees_text"]}'>
+                        <b>{{akso_locale.registration_form.payment_fees}}</b>:
+                        {% if akso_payment.payment_method.feeFixed is not empty %}
+                            {{akso_payment.fee_fixed_rendered|e}}
+                        {% endif %}
+                        {% if akso_payment.payment_method.feeFixed is not empty and akso_payment.payment_method.feePercent is not empty %}
+                            <span>+</span>
+                        {% endif %}
+                        {% if akso_payment.payment_method.feePercent is not empty %}
+                            {{akso_payment.payment_method.feePercent|e}} %
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <div class="form-item form-input-item" data-el="input" data-type="text" data-name="notes">
+                    <div class="form-label">
+                        <label for="customer-notes">
+                            {{akso_locale.registration_form.payment_notes}}
+                        </label>
+                    </div>
+                    <div class="form-data">
+                        <textarea
+                            id="customer-notes"
+                            name="notes"
+                            placeholder="{{akso_locale.registration_form.payment_notes_placeholder|e('html_attr')}}"></textarea>
+                    </div>
+                </div>
+                <ul class="form-small-print">
+                    <li>* {{akso_locale.registration_form.payment_conversion_note}}</li>
+                </ul>
+                <div class="form-footer">
+                    <a class="link-button" href="{{ akso_payment.payment_back_target|e('html_attr') }}">
+                        {{akso_locale.registration_form.payment_intent_cancel}}
+                    </a>
+                    <button type="submit" class="submit-button is-primary">
+                        {{akso_locale.registration_form.payment_intent_create}}
+                    </button>
+                </div>
+            </form>
+        {% elseif akso_payment.payment.outstanding_payment %}
+            <h1>{{akso_locale.registration_form.payment_title}}</h1>
+            <h2 class="payment-amount">
+                {{akso_locale.registration_form.payment_outstanding}}
+                {{akso_payment.payment.remaining_rendered|e}}
+            </h2>
+            {% if akso_payment.payment_methods is empty %}
+                <p>
+                    {{akso_locale.registration_form.payment_methods_none}}
+                </p>
+            {% else %}
+                {% macro render_payment_method(method, akso_locale, akso_payment) %}
+                    {% if method.isRecommended %}
+                    <li class="payment-method is-recommended">
+                    {% else %}
+                    <li class="payment-method">
+                    {% endif %}
+                        <div class="method-type">
+                            {% if method.type == 'manual' %}
+                                {{akso_locale.registration_form.payment_type_manual}}
+                            {% elseif method.type == 'stripe' %}
+                                {{akso_locale.registration_form.payment_type_stripe}}
+                            {% endif %}
+                        </div>
+                        <h3 class="method-name">
+                            {{method.name|e}}
+
+                            {% if method.isRecommended %}
+                                <span class="method-recommended">{{akso_locale.registration_form.payment_method_recommended}}</span>
+                            {% endif %}
+                        </h3>
+                        <p>{{method.description|e}}</p>
+                        <form method="GET" action="{{ akso_payment.method_target|e('html_attr') }}" class="method-form">
+                            <div class="currency-select">
+                                {% if method.currencies|length > 1 %}
+                                    <label>
+                                        {{akso_locale.registration_form.payment_currency}}
+                                    </label>
+                                    <select name="currency">
+                                        {% for currency in method.currencies %}
+                                            <option value="{{currency}}">{{currency}}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <input class="hidden-input" name="currency" value="{{ method.currencies[0] }}" />
+                                {% endif %}
+                            </div>
+                            <input class="hidden-input" name="dataId" value="{{ akso_payment.data_id }}" />
+                            <input class="hidden-input" name="payment" value="true" />
+                            <input class="hidden-input" name="method" value="{{ method.id }}" />
+                            <button type="submit">
+                                {{akso_locale.registration_form.payment_method_pay}}
+                            </button>
+                        </form>
+                    </li>
+                {% endmacro %}
+                {% if akso_payment.payment_methods.other is not empty %}
+                <h4>{{akso_locale.registration_form.payment_methods_section_auto}}</h4>
+                <ul class="payment-methods">
+                {% for method in akso_payment.payment_methods.auto %}
+                    {{_self.render_payment_method(method, akso_locale, akso_payment)}}
+                {% endfor %}
+                </ul>
+                {% endif %}
+                {% if akso_payment.payment_methods.other is not empty %}
+                <h4>{{akso_locale.registration_form.payment_methods_section_other}}</h4>
+                <ul class="payment-methods">
+                {% for method in akso_payment.payment_methods.other %}
+                    {{_self.render_payment_method(method, akso_locale, akso_payment)}}
+                {% endfor %}
+                {% endif %}
+                </ul>
+            {% endif %}
+            <a class="link-button" href="{{ akso_payment.edit_target|e('html_attr') }}">
+                {{akso_locale.registration_form.payment_back_to_edit}}
+            </a>
+        {% else %}
+            <h1>{{akso_locale.registration_form.payment_title}}</h1>
+            <p>
+                {{akso_locale.registration_form.payment_all_paid}}
+            </p>
+            <a class="link-button" href="{{ akso_payment.edit_target|e('html_attr') }}">
+                {{akso_locale.registration_form.payment_all_paid_back}}
+            </a>
+        {% endif %}
+    </div>
+{% endmacro %}

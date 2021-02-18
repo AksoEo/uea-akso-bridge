@@ -1,10 +1,19 @@
 {% extends 'partials/base.html.twig' %}
 {% block content %}
+    {% if akso_registration.state.step >= 3 %}
+    <div class="akso-registration-page">
+    {% else %}
     <form class="akso-registration-page akso-form" method="POST">
+    {% endif %}
         <h1>{{akso_locale.registration.title}}</h1>
         {% if akso_registration.state.form_error %}
             <div class="error-banner">
                 {{akso_registration.state.form_error}}
+            </div>
+        {% endif %}
+        {% if akso_registration.state.payment_success %}
+            <div class="message-banner">
+                {{akso_locale.registration.payment_success_return_msg}}
             </div>
         {% endif %}
         <input
@@ -27,12 +36,15 @@
         <div class="form-summary">
             <div class="codeholder-summary">
                 <div class="summary-codeholder-type">
-                    {% if akso_auth %}
+                    {% if akso_registration.state.needs_login %}
+                    {{akso_locale.registration.codeholder_login_to_view}}
+                    {% elseif akso_auth %}
                     {{akso_locale.registration.codeholder_is_registered}}
                     {% else %}
                     {{akso_locale.registration.codeholder_is_new}}
                     {% endif %}
                 </div>
+                {% if not akso_registration.state.needs_login %}
                 <div class="summary-name">
                     {{akso_registration.state.codeholder.honorific|e}}
                     {{akso_registration.state.codeholder.firstNameLegal|e}}
@@ -49,6 +61,7 @@
                 <div class="summary-address">
                     {{akso_registration.state.codeholder_derived.address|e}}
                 </div>
+                {% endif %}
             </div>
             {% if akso_registration.state.registered %}
             <div class="offers-summary">
@@ -480,6 +493,7 @@
         <div class="payment-orgs">
             {% for org in akso_registration.payment_orgs %}
             <div class="payment-org">
+                (TODO: read state)
                 <div class="org-title">
                     <span>
                         {% if count(org.years) > 1 %}
@@ -503,41 +517,40 @@
                     <li class="payment-method">
                     {% endif %}
                         {% set method_radio_id = 'payment-method-check-' ~ org.id ~ '-' ~ method.id %}
-                        <div class="method-radio-container">
-                            <input
-                                type="radio"
-                                id="{{method_radio_id}}"
-                                name="payment_methods[{{org.id}}][method]"
-                                value="{{method.id}}"
-                                {% if akso_registration.state.payments[org.id].method == method.id %}
-                                checked
-                                {% endif %} />
-                        </div>
-                        <div class="method-details">
+                        <form class="method-details" method="POST">
                             <label class="method-name" for="{{method_radio_id}}">{{method.name|e}}</label>
                             <div class="method-description">{{method.description}}</div>
-                            <div class="method-currency">
-                                <label>{{akso_locale.registration.payment_currency}}</label>
-                                <select
-                                    name="payment_methods[{{org.id}}][currency]"
-                                    value="todo">
-                                    {% for currency in method.currencies %}
-                                        <option value="{{currencies|e('html_attr')}}">{{currency|e}}</option>
-                                    {% endfor %}
-                                </select>
+                            <div class="method-selection">
+                                <div class="method-currency">
+                                    <label>{{akso_locale.registration.payment_currency}}</label>
+                                    <select name="payment_currency">
+                                        {% for currency in method.currencies %}
+                                            <option value="{{currency|e('html_attr')}}">{{currency|e}}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <input class="hidden-input" name="payment_org" value="{{org.id}}" />
+                                <input class="hidden-input" name="payment_method_id" value="{{method.id}}" />
+                                <div class="submit-container">
+                                    <button type="submit">
+                                        {{akso_locale.registration.payment_method_select}}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        </form>
                     </li>
                     {% endfor %}
                 </ul>
             </div>
             {% endfor %}
         </div>
-        <div class="form-buttons">
-            <button type="submit" class="is-primary" formaction="{{akso_registration.targets.payment_commit|e('html_attr')}}">
-                {{akso_locale.registration.payment_next}}
-            </button>
-        </div>
+        {% elseif akso_registration.state.step == 4 %}
+            {% import 'partials/akso_payment_form.html.twig' as payment_form %}
+            {{ payment_form.akso_payment_form() }}
         {% endif %}
+    {% if akso_registration.state.step >= 3 %}
+    </div>
+    {% else %}
     </form>
+    {% endif %}
 {% endblock %}
