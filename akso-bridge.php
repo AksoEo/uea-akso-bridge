@@ -58,7 +58,6 @@ class AksoBridgePlugin extends Plugin {
         $this->loginPath = $this->grav['config']->get('plugins.akso-bridge.login_path');
         $this->logoutPath = $this->grav['config']->get('plugins.akso-bridge.logout_path');
         $this->accountPath = $this->grav['config']->get('plugins.akso-bridge.account_path');
-        $this->registrationPath = $this->grav['config']->get('plugins.akso-bridge.registration_path');
         $this->apiHost = $this->grav['config']->get('plugins.akso-bridge.api_host');
 
         // Don't proceed if we are in the admin plugin
@@ -83,11 +82,6 @@ class AksoBridgePlugin extends Plugin {
         } else if ($this->aksoUser && $this->path === $this->accountPath) {
             $this->enable([
                 'onPagesInitialized' => ['addAccountPage', 0],
-            ]);
-            return;
-        } else if ($this->path === $this->registrationPath) {
-            $this->enable([
-                'onPagesInitialized' => ['addRegistrationPage', 0],
             ]);
             return;
         } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
@@ -367,9 +361,6 @@ class AksoBridgePlugin extends Plugin {
     }
     public function addAccountPage() {
         $this->addVirtualPage($this->accountPath, '/pages/akso_account.md');
-    }
-    public function addRegistrationPage() {
-        $this->addVirtualPage($this->registrationPath, '/pages/akso_registration.md');
     }
 
     function addVirtualPage($path, $template) {

@@ -568,9 +568,6 @@
             </div>
             {% endfor %}
         </div>
-        {% elseif akso_registration.state.step == 4 %}
-            {% import 'partials/akso_payment_form.html.twig' as payment_form %}
-            {{ payment_form.akso_payment_form() }}
         {% endif %}
     {% if akso_registration.state.step >= 3 %}
     </div>

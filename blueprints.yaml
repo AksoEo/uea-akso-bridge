@@ -29,9 +29,6 @@ form:
     account_path:
       type: text
       label: Account Path
-    registration_path:
-      type: text
-      label: Registration Path
     api_host:
       type: text
       label: API host
