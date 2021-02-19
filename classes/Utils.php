@@ -11,7 +11,7 @@ class Utils {
     static function formatDate($dateString) {
         $date = \DateTime::createFromFormat('Y-m-d', $dateString);
         if (!$date) return null;
-        $formatted = $date->format('d') . '-a de ' . Utils::formatMonth($date->format('m')) . ' ' . $date->format('Y');
+        $formatted = $date->format('j') . '-a de ' . Utils::formatMonth($date->format('m')) . ' ' . $date->format('Y');
         return $formatted;
     }
 

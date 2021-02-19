@@ -387,7 +387,7 @@
                     <div class="year-offer-group">
                         <div class="offer-group-info">
                             <div class="group-title">{{offerGroup.title|e}}</div>
-                            <div class="group-description">TODO:MD/{{offerGroup.description|e}}</div>
+                            <div class="group-description">{{offerGroup.description}}</div>
                         </div>
                         {% for offerIndex, offer in offerGroup.offers %}
                         {% set id = 'offer-item-' ~ offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex %}
@@ -493,54 +493,78 @@
         <div class="payment-orgs">
             {% for org in akso_registration.payment_orgs %}
             <div class="payment-org">
-                (TODO: read state)
                 <div class="org-title">
-                    <span>
-                        {% if count(org.years) > 1 %}
-                        {{akso_locale.registration.payment_org_for_years}}
-                        {% else %}
-                        {{akso_locale.registration.payment_org_for_year}}
-                        {% endif %}
-                    </span>
-                    {% for year in org.years %}
-                    <span>{{year|e}}</span>
-                    {% endfor %}
+                    <div class="title-inner">
+                        <span>
+                            {% if count(org.years) > 1 %}
+                            {{akso_locale.registration.payment_org_for_years}}
+                            {% else %}
+                            {{akso_locale.registration.payment_org_for_year}}
+                            {% endif %}
+                        </span>
+                        {% for i, year in org.years %}{% if i > 0 %}, {% endif %}{{year|e}}{% endfor %}
+                    </div>
+                    {% if org.can_pay %}
+                    <div class="title-price">
+                        {{org.offers_sum_rendered}}
+                    </div>
+                    {% endif %}
                 </div>
-                <ul class="org-methods">
-                    {% if count(org.methods) == 0 %}
-                        <li class="methods-empty">{{akso_locale.registration.payment_org_no_methods}}</li>
-                    {% endif %}
-                    {% for method in org.methods %}
-                    {% if method.isRecommended %}
-                    <li class="payment-method is-recommended">
-                    {% else %}
-                    <li class="payment-method">
-                    {% endif %}
-                        {% set method_radio_id = 'payment-method-check-' ~ org.id ~ '-' ~ method.id %}
-                        <form class="method-details" method="POST">
-                            <label class="method-name" for="{{method_radio_id}}">{{method.name|e}}</label>
-                            <div class="method-description">{{method.description}}</div>
-                            <div class="method-selection">
-                                <div class="method-currency">
-                                    <label>{{akso_locale.registration.payment_currency}}</label>
-                                    <select name="payment_currency">
-                                        {% for currency in method.currencies %}
-                                            <option value="{{currency|e('html_attr')}}">{{currency|e}}</option>
-                                        {% endfor %}
-                                    </select>
+                {% if org.can_pay %}
+                    <ul class="org-methods">
+                        {% if count(org.methods) == 0 %}
+                            <li class="methods-empty">{{akso_locale.registration.payment_org_no_methods}}</li>
+                        {% endif %}
+                        {% for method in org.methods %}
+                        {% if method.isRecommended %}
+                        <li class="payment-method is-recommended">
+                        {% else %}
+                        <li class="payment-method">
+                        {% endif %}
+                            {% set method_radio_id = 'payment-method-check-' ~ org.id ~ '-' ~ method.id %}
+                            <form class="method-details" method="POST">
+                                <label class="method-name" for="{{method_radio_id}}">{{method.name|e}}</label>
+                                <div class="method-description">{{method.description}}</div>
+                                <div class="method-selection">
+                                    <div class="method-currency">
+                                        <label>{{akso_locale.registration.payment_currency}}</label>
+                                        <select
+                                            name="payment_currency">
+                                            {% for currency in method.currencies %}
+                                                <option
+                                                    {% if akso_registration.state.currency == currency %}
+                                                    selected
+                                                    {% endif %}
+                                                    value="{{currency|e('html_attr')}}">
+                                                    {{currency|e}}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <input class="hidden-input" name="payment_org" value="{{org.id}}" />
+                                    <input class="hidden-input" name="payment_method_id" value="{{method.id}}" />
+                                    <div class="submit-container">
+                                        <button type="submit">
+                                            {{akso_locale.registration.payment_method_select}}
+                                        </button>
+                                    </div>
                                 </div>
-                                <input class="hidden-input" name="payment_org" value="{{org.id}}" />
-                                <input class="hidden-input" name="payment_method_id" value="{{method.id}}" />
-                                <div class="submit-container">
-                                    <button type="submit">
-                                        {{akso_locale.registration.payment_method_select}}
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </li>
-                    {% endfor %}
-                </ul>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <ul class="org-summary">
+                        {% for year in org.years %}
+                            <li class="org-year-state">
+                                <span class="year-title">{{year|e}}</span>
+                                <span class="year-status">
+                                    {{akso_locale.registration['payment_status_' ~ akso_registration.state.year_statuses[year]]}}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

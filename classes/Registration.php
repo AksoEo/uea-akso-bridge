@@ -95,6 +95,13 @@ class Registration extends Form {
                     $yearCurrency = $offerYear['currency'];
 
                     foreach ($offerYear['offers'] as &$offerGroup) {
+                        if (gettype($offerGroup['description']) === 'string') {
+                            $offerGroup['description'] = $this->app->bridge->renderMarkdown(
+                                $offerGroup['description'],
+                                ['emphasis', 'strikethrough', 'link'],
+                            )['c'];
+                        }
+
                         foreach ($offerGroup['offers'] as &$offer) {
                             if (!isset($offer['price'])) continue;
 
@@ -313,13 +320,14 @@ class Registration extends Form {
         $codeholder = [];
         $offersByYear = [];
         $yearDataIds = [];
+        $yearStatuses = [];
 
         $scriptCtx = new FormScriptExecCtx($this->app);
         $offersSum = 0;
 
         foreach ($dataIds as $id) {
             $res = $this->app->bridge->get("/registration/entries/$id", array(
-                'fields' => ['year', 'currency', 'codeholderData', 'offers'],
+                'fields' => ['year', 'currency', 'codeholderData', 'offers', 'status'],
             ));
             if ($res['k']) {
                 // ignore duplicate year
@@ -365,6 +373,7 @@ class Registration extends Form {
                 }
                 $offersByYear[$res['b']['year']] = $selectedItems;
                 $yearDataIds[$res['b']['year']] = $id;
+                $yearStatuses[$res['b']['year']] = $res['b']['status'];
             }
         }
 
@@ -387,6 +396,7 @@ class Registration extends Form {
             'currency' => $currency,
             'codeholder' => $codeholder,
             'offers' => $offersByYear,
+            'year_statuses' => $yearStatuses,
             'dataIds' => $yearDataIds,
             'offers_sum' => $offersSum,
             'offers_sum_rendered' => $offersSumRendered,
@@ -456,6 +466,7 @@ class Registration extends Form {
             $serializedState = array_merge($serializedState, $this->loadRegistered($this->state['dataIds']));
             $this->state['needs_login'] = $serializedState['needs_login'];
             $this->state['dataIds'] = $serializedState['dataIds'];
+            $this->state['year_statuses'] = $serializedState['year_statuses'];
         }
 
         $currencies = $this->getCachedCurrencies();
@@ -658,20 +669,49 @@ class Registration extends Form {
 
             $paymentOrgIds = new \Ds\Set();
             foreach ($this->offers as $offerYear) {
+                if (!isset($this->state['year_statuses'][$offerYear['year']])) continue;
                 $paymentOrgIds->add($offerYear['paymentOrgId']);
             }
             $this->paymentOrgs = $this->loadPaymentOrgs($paymentOrgIds);
-            // add 'years' entry marking which years are using this payment org
+            $scriptCtx = new FormScriptExecCtx($this->app);
+
+            // add additional derived data to payment orgs
             foreach ($this->paymentOrgs as &$org) {
                 $org['years'] = [];
+                $org['statuses'] = [];
+                $org['can_pay'] = false;
+                $org['offers_sum'] = 0;
                 foreach ($this->offers as $offerYear) {
                     if ($offerYear['paymentOrgId'] == $org['id']) {
+                        if (!isset($this->state['year_statuses'][$offerYear['year']])) continue;
                         $org['years'][] = $offerYear['year'];
+                        $yearStatus = $this->state['year_statuses'][$offerYear['year']];
+                        $org['statuses'][$offerYear['year']] = $yearStatus;
+                        if ($yearStatus === 'submitted') $org['can_pay'] = true;
+
+                        if (isset($this->state['offers'][$offerYear['year']])) {
+                            $offers = $this->state['offers'][$offerYear['year']];
+                            foreach ($offers as $offer) {
+                                $org['offers_sum'] += $offer['amount'];
+                            }
+                        }
                     }
                 }
+
+                $scriptCtx->pushScript(array(
+                    'currency' => array('t' => 's', 'v' => $this->state['currency']),
+                    'value' => array('t' => 'n', 'v' => $org['offers_sum']),
+                ));
+                $org['offers_sum_rendered'] = $scriptCtx->eval(array(
+                    't' => 'c',
+                    'f' => 'currency_fmt',
+                    'a' => ['currency', 'value'],
+                ))['v'];
+                $scriptCtx->popScript();
             }
 
             if (isset($_POST['payment_org']) && isset($_POST['payment_method_id']) && isset($_POST['payment_currency'])) {
+                // the user clicked on the 'pay' button
                 $paymentOrg = (int) $_POST['payment_org'];
                 $paymentMethodId = (int) $_POST['payment_method_id'];
                 $currency = (string) $_POST['payment_currency'];
@@ -707,6 +747,7 @@ class Registration extends Form {
                     $purposeDescription = '';
 
                     if (!isset($this->state['offers'][$year])) continue;
+                    if ($this->state['year_statuses'][$year] !== 'submitted') continue;
                     $yearItems = $this->state['offers'][$year];
                     $sum = 0;
                     foreach ($yearItems as $offer) {
@@ -838,7 +879,7 @@ class Registration extends Form {
 
         if ($creatingEntry) {
             $errors = [];
-            foreach ($this->state['offers'] as $year => $yearItems) {
+            foreach ($this->state['offers'] as $year => &$yearItems) {
                 $options = [];
                 $options['year'] = (int) $year;
                 $options['currency'] = $this->state['currency'];
