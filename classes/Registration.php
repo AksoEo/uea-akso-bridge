@@ -463,7 +463,7 @@ class Registration extends Form {
         }
 
         if ($this->state['registered']) {
-            $serializedState = array_merge($serializedState, $this->loadRegistered($this->state['dataIds']));
+            $serializedState = $this->loadRegistered($this->state['dataIds']);
             $this->state['needs_login'] = $serializedState['needs_login'];
             $this->state['dataIds'] = $serializedState['dataIds'];
             $this->state['year_statuses'] = $serializedState['year_statuses'];
@@ -721,7 +721,7 @@ class Registration extends Form {
                     // TODO: handle error?
                     return;
                 }
-                $org = $this->paymentOrgs[$paymentOrg];
+                $org = &$this->paymentOrgs[$paymentOrg];
 
                 // TODO: validate method id and currency maybe?
 
