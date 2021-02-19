@@ -783,8 +783,8 @@ class Registration extends Form {
                             'currency' => $this->state['currency'],
                             'amount' => $sum,
                         ),
-                        'triggers' => 'registration',
-                        'dataId' => $this->state['dataIds'][$year],
+                        'triggers' => 'registration_entry',
+                        'registrationEntryId' => Utils::base32_decode($this->state['dataIds'][$year]),
                     );
                 }
 
@@ -809,8 +809,8 @@ class Registration extends Form {
 
                     $paymentsHost = $this->plugin->getGrav()['config']->get('plugins.akso-bridge.payments_host');
                     $redirectTarget = $paymentsHost . '/i/' . $paymentId . '?return=' . urlencode($returnTarget);
+                    $this->plugin->getGrav()->redirectLangSafe($redirectTarget, 303);
                 } else {
-                    // TODO: handle error
                     if ($res['sc'] === 400) $this->state['form_error'] = $this->locale['payment_error_bad_request'];
                     else if ($res['sc'] === 417) $this->state['form_error'] = $this->locale['payment_error_too_high'];
                     else if ($res['sc'] === 500) $this->state['form_error'] = $this->locale['payment_error_server_error'];
