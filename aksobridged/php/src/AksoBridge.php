@@ -311,4 +311,8 @@ class AksoBridge {
     public function renderAddress(array $fields, $countryName) {
         return $this->request('render_addr', array('f' => $fields, 'c' => $countryName));
     }
+
+    public function validateAddress(array $fields) {
+        return $this->request('validate_addr', array('f' => $fields))['c'];
+    }
 }

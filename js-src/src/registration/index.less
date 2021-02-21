@@ -230,6 +230,7 @@
             opacity: 0.5;
         }
 
+        #split-name-checkbox,
         #split-country-checkbox {
             .checkbox();
             vertical-align: -0.2em;
@@ -237,10 +238,15 @@
         #registration-split-country {
             display: none;
         }
+        #codeholder-split-name:checked ~ .settings-field .field-description #split-name-checkbox,
         #registration-split-country:checked ~ .settings-field .field-description #split-country-checkbox {
             .checkbox-checked();
         }
+        #codeholder-split-name:not(:checked) ~ #codeholder-split-name-contents,
         #registration-split-country:not(:checked) ~ #registration-address-country {
+            display: none;
+        }
+        #codeholder-split-name:checked ~ .settings-field .inner-field #codeholder-first-name-required {
             display: none;
         }
     }

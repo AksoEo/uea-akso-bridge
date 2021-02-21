@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const { Cashify } = require('cashify');
 const fetch = require('cross-fetch');
 const Markdown = require('markdown-it');
-const { formatAddress } = require('@cpsdqs/google-i18n-address');
+const { formatAddress, normalizeAddress } = require('@cpsdqs/google-i18n-address');
 
 process.on('uncaughtException', err => {
     error(`!!!! uncaught exception`);
@@ -787,6 +787,14 @@ const messageHandlers = {
     },
     render_addr: async (conn, { f, c }) => {
         return { c: await formatAddress(f, false, undefined, c) };
+    },
+    validate_addr: async (conn, { f }) => {
+        try {
+            await normalizeAddress(f);
+        } catch {
+            return { c: false };
+        }
+        return { c: true };
     },
     x: async (conn) => {
         conn.flushSendCookies();

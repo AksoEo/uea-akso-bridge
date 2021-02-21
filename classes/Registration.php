@@ -12,8 +12,6 @@ class Registration extends Form {
     private const STEP_OFFERS = '1';
     private const STEP_SUMMARY = '2';
     private const STEP_ENTRY_CREATE = 'create_entry';
-    private const STEP_PAYMENT = 'p1';
-    private const STEP_PAYMENT_COMMIT = 'p2';
     private const DATAID = 'dataId';
     private const ADDONS = 'aldonebloj';
     private const PAYMENT_SUCCESS_RETURN = 'payment_success_return';
@@ -541,6 +539,7 @@ class Registration extends Form {
             if ($res['k']) {
                 $ch = $res['b'];
                 $ch['splitCountry'] = true; // always read address and fee country separately
+                $ch['splitName'] = true;
             }
         } else if (!$registered && isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
             $ch = $_POST['codeholder'];
@@ -548,12 +547,20 @@ class Registration extends Form {
             $ch = (isset($serializedState['codeholder']) && gettype($serializedState['codeholder']) === 'array')
                 ? $serializedState['codeholder']
                 : [];
+            $ch['splitCountry'] = true;
+            $ch['splitName'] = true;
         }
 
         {
             $this->state['codeholder'] = array(
-                'firstNameLegal' => $this->readSafe('string', $ch, 'firstNameLegal'),
-                'lastNameLegal' => $this->readSafe('string', $ch, 'lastNameLegal'),
+                'firstName' => $this->readSafe('string', $ch, 'firstName'),
+                'lastName' => $this->readSafe('string', $ch, 'lastName'),
+                'firstNameLegal' => (isset($ch['splitName']) && $ch['splitName'])
+                    ? $this->readSafe('string', $ch, 'firstNameLegal')
+                    : $this->readSafe('string', $ch, 'firstName'),
+                'lastNameLegal' => isset($ch['splitName']) && $ch['splitName']
+                    ? $this->readSafe('string', $ch, 'lastNameLegal')
+                    : $this->readSafe('string', $ch, 'lastName'),
                 'honorific' => $this->readSafe('string', $ch, 'honorific'),
                 'birthdate' => $this->readSafe('string', $ch, 'birthdate'),
                 'email' => $this->readSafe('string', $ch, 'email'),
@@ -597,9 +604,17 @@ class Registration extends Form {
                 $addressFmt = '(Nevalida adreso)';
             }
 
+            $feeCountryName = '';
+            foreach ($this->getCachedCountries() as $entry) {
+                if ($entry['code'] == $this->state['codeholder']['feeCountry']) {
+                    $feeCountryName = $entry['name_eo'];
+                    break;
+                }
+            }
             $this->state['codeholder_derived'] = array(
                 'birthdate' => Utils::formatDate($this->state['codeholder']['birthdate']),
                 'address' => $addressFmt,
+                'fee_country' => $feeCountryName,
             );
         }
 
@@ -917,7 +932,23 @@ class Registration extends Form {
             }
         }
 
-        // TODO: validate this stuff
+        if (!$registered) {
+            $err = $this->getCodeholderError();
+
+            if ($err) {
+                $this->state['form_error'] = $err;
+                $this->state['step'] = 0;
+                $creatingEntry = false;
+            } else if ($this->state['step'] >= 1) {
+                $err = $this->getOfferError();
+
+                if ($err) {
+                    $this->state['form_error'] = $err;
+                    $this->state['step'] = 1;
+                    $creatingEntry = false;
+                }
+            }
+        }
 
         if ($creatingEntry) {
             $errors = [];
@@ -930,6 +961,17 @@ class Registration extends Form {
                     $options['codeholderData'] = $this->plugin->aksoUser['id'];
                 } else {
                     $options['codeholderData'] = $this->state['codeholder'];
+                    foreach (array_keys($options['codeholderData']['address']) as $k) {
+                        if (empty($options['codeholderData']['address'][$k])) {
+                            unset($options['codeholderData']['address'][$k]);
+                        }
+                    }
+                    foreach (array_keys($options['codeholderData']) as $k) {
+                        // codeholder fields generally default to null instead of empty-string
+                        if (gettype($options['codeholderData'][$k]) === 'string' && empty($options['codeholderData'][$k])) {
+                            $options['codeholderData'][$k] = null;
+                        }
+                    }
                 }
 
                 $options['offers'] = [];
@@ -996,6 +1038,80 @@ class Registration extends Form {
         ));
     }
 
+    // Returns a best-effort error message for the codeholder data.
+    private function getCodeholderError() {
+        $ch = $this->state['codeholder'];
+
+        if (empty(trim($ch['firstNameLegal']))) {
+            return $this->localize('codeholder_error_name_required');
+        }
+        $birthdate = \DateTime::createFromFormat('Y-m-d', $ch['birthdate']);
+        $now = new \DateTime();
+        if (!$birthdate) {
+            return $this->localize('codeholder_error_birthdate_required');
+        }
+        if ($birthdate->diff($now)->invert) {
+            // this is a future date
+            return $this->localize('codeholder_error_invalid_birthdate');
+        }
+        // HTML will take care of validating email
+        // no need to check if countries are in the country set because it's a <select>
+        // TODO: validate phone number
+        $addr = $ch['address'];
+        $addr['countryCode'] = $ch['address']['country'];
+        if (!$this->app->bridge->validateAddress($addr)) {
+            // TODO: more granular validation?
+            return $this->localize('codeholder_error_invalid_address');
+        }
+
+        return null;
+    }
+
+    private function getOfferError() {
+        $categories = $this->loadAllCategories($this->getOfferCategoryIds($this->offers));
+        $addons = $this->loadAllAddons($this->getOfferAddonIds($this->offers));
+
+        $membershipCount = 0;
+        foreach ($this->state['offers'] as $year => $yearItems) {
+            if (!isset($this->offersByYear[$year])) return $this->localize('offers_error_inconsistent');
+            $offerYear = $this->offersByYear[$year];
+
+            foreach ($yearItems as $offerKey => $offer) {
+                $keyParts = explode('-', $offerKey);
+                $groupIndex = $keyParts[0];
+                $offerIndex = $keyParts[1];
+
+                if (!isset($offerYear['offers'][$groupIndex])) return $this->localize('offers_error_inconsistent');
+                $group = $offerYear['offers'][$groupIndex];
+                if (!isset($group['offers'][$offerIndex])) return $this->localize('offers_error_inconsistent');
+                $originalOffer = $group['offers'][$offerIndex];
+                if ($originalOffer['type'] !== $offer['type']) return $this->localize('offers_error_inconsistent');
+                if ($originalOffer['id'] !== $offer['id']) return $this->localize('offers_error_inconsistent');
+
+                $minPrice = 1;
+                $offerName = '';
+                if ($offer['type'] === 'membership') {
+                    if (!$originalOffer['price']) return $this->localize('offers_error_inconsistent');
+                    $minPrice = $originalOffer['price']['amount'];
+                    $offerName = $categories[$offer['id']]['name'];
+                    $membershipCount++;
+                } else if ($offer['type'] === 'addon') {
+                    $offerName = $addons[$offerYear['paymentOrgId']][$offer['id']]['name'];
+                } else {
+                    return $this->localize('offers_error_inconsistent');
+                }
+
+                if ($offer['amount'] < $minPrice) {
+                    return $this->localize('offers_error_min_price', $offerName);
+                }
+            }
+        }
+
+        if ($membershipCount == 0) {
+            return $this->localize('offers_error_no_membership');
+        }
+    }
+
     public function run() {
         $this->update();
 
@@ -1005,8 +1121,6 @@ class Registration extends Form {
             'offers' => $path . '?' . self::STEP . '=' . self::STEP_OFFERS,
             'summary' => $path . '?' . self::STEP . '=' . self::STEP_SUMMARY,
             'entry_create' => $path . '?' . self::STEP . '=' . self::STEP_ENTRY_CREATE,
-            'payment' => $path . '?' . self::STEP . '=' . self::STEP_PAYMENT,
-            'payment_commit' => $path . '?' . self::STEP . '=' . self::STEP_PAYMENT_COMMIT,
         ];
 
         $offers = $this->offers;
@@ -1017,8 +1131,8 @@ class Registration extends Form {
             $categories = $this->loadAllCategories($this->getRegisteredOfferCategoryIds($this->state['offers']));
             $addons = $this->loadAllAddons($this->getRegisteredOfferAddonIds($this->state['offers']));
         } else if ($offers) {
-            $categories = $this->loadAllCategories($this->getOfferCategoryIds($offers));
-            $addons = $this->loadAllAddons($this->getOfferAddonIds($offers));
+            $categories = $this->loadAllCategories($this->getOfferCategoryIds($this->offers));
+            $addons = $this->loadAllAddons($this->getOfferAddonIds($this->offers));
         }
 
         $thisYear = (int) (new \DateTime())->format('Y');

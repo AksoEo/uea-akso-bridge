@@ -47,8 +47,14 @@
                 {% if not akso_registration.state.needs_login %}
                 <div class="summary-name">
                     {{akso_registration.state.codeholder.honorific|e}}
+                    {{akso_registration.state.codeholder.firstName|e}}
+                    {{akso_registration.state.codeholder.lastName|e}}
+                    {% if akso_registration.state.codeholder.firstName != akso_registration.state.codeholder.firstNameLegal
+                        or akso_registration.state.codeholder.lastName != akso_registration.state.codeholder.lastNameLegal %}
+                    ({{akso_locale.registration.codeholder_name_legal}}:
                     {{akso_registration.state.codeholder.firstNameLegal|e}}
-                    {{akso_registration.state.codeholder.lastNameLegal|e}}
+                    {{akso_registration.state.codeholder.lastNameLegal|e}})
+                    {% endif %}
                 </div>
                 <div class="summary-birthdate">
                     {{akso_locale.registration.codeholder_birthdate}}:
@@ -60,6 +66,10 @@
                 </div>
                 <div class="summary-address">
                     {{akso_registration.state.codeholder_derived.address|e}}
+                </div>
+                <div class="summary-payment">
+                    {{akso_locale.registration.codeholder_summary_fee_country}}:
+                    {{akso_registration.state.codeholder_derived.fee_country|e}}
                 </div>
                 {% endif %}
             </div>
@@ -151,26 +161,68 @@
                 <div class="settings-section">
                     {{akso_locale.registration.codeholder_name}}
                 </div>
+                <input
+                    type="checkbox"
+                    id="codeholder-split-name"
+                    {% if akso_registration.state.codeholder.firstName != akso_registration.state.codeholder.firstNameLegal
+                        or akso_registration.state.codeholder.lastName != akso_registration.state.codeholder.lastNameLegal %}
+                    checked
+                    {% endif %}
+                    name="codeholder[splitName]"
+                    class="hidden-input" />
                 <div class="settings-field" data-el="input" data-type="text">
                     <div class="inner-field">
                         <label>
-                            {{akso_locale.registration.codeholder_first_name_legal}}
-                            <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                            {{akso_locale.registration.codeholder_first_name}}
+                            <span
+                                class="required-star"
+                                id="codeholder-first-name-required"
+                                title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
                         </label>
                         <input
-                            name="codeholder[firstNameLegal]"
+                            name="codeholder[firstName]"
                             type="text"
                             required
-                            value="{{akso_registration.state.codeholder.firstNameLegal|e('html_attr')}}" />
+                            value="{{akso_registration.state.codeholder.firstName|e('html_attr')}}" />
                     </div>
                 </div>
                 <div class="settings-field" data-el="input" data-type="text">
                     <div class="inner-field">
-                        <label>{{akso_locale.registration.codeholder_last_name_legal}}</label>
+                        <label>{{akso_locale.registration.codeholder_last_name}}</label>
                         <input
-                            name="codeholder[lastNameLegal]"
+                            name="codeholder[lastName]"
                             type="text"
-                            value="{{akso_registration.state.codeholder.lastNameLegal|e('html_attr')}}" />
+                            value="{{akso_registration.state.codeholder.lastName|e('html_attr')}}" />
+                    </div>
+                    <div class="field-description">
+                        <label for="codeholder-split-name" aria-role="checkbox" tabindex="0" id="split-name-checkbox"></label>
+                        <label for="codeholder-split-name">
+                            {{akso_locale.registration.codeholder_name_split}}
+                        </label>
+                    </div>
+                </div>
+                <div id="codeholder-split-name-contents">
+                    <div class="settings-field" data-el="input" data-type="text">
+                        <div class="inner-field">
+                            <label>
+                                {{akso_locale.registration.codeholder_first_name_legal}}
+                                <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
+                            </label>
+                            <input
+                                name="codeholder[firstNameLegal]"
+                                type="text"
+                                required
+                                value="{{akso_registration.state.codeholder.firstNameLegal|e('html_attr')}}" />
+                        </div>
+                    </div>
+                    <div class="settings-field" data-el="input" data-type="text">
+                        <div class="inner-field">
+                            <label>{{akso_locale.registration.codeholder_last_name_legal}}</label>
+                            <input
+                                name="codeholder[lastNameLegal]"
+                                type="text"
+                                value="{{akso_registration.state.codeholder.lastNameLegal|e('html_attr')}}" />
+                        </div>
                     </div>
                 </div>
                 <div class="settings-field" data-el="input" data-type="text">
