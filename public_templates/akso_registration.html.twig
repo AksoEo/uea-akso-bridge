@@ -95,9 +95,19 @@
                                 {{akso_registration.categories[offer.id].name|e}}
                             </div>
                             <div class="item-price">
-                                {{offer.amount_rendered|e}}
+                                {{offer.amount_original_rendered|e}}
                             </div>
                         </div>
+                        {% if offer.amount_addon > 0 %}
+                        <div class="item-addon">
+                            <div class="item-name">
+                                {{akso_locale.registration.offers_price_addon_label}}
+                            </div>
+                            <div class="item-price">
+                                {{offer.amount_addon_rendered|e}}
+                            </div>
+                        </div>
+                        {% endif %}
                         {% elseif offer.type == 'addon' %}
                         <div class="item-inner">
                             <div class="item-name">

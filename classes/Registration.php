@@ -312,7 +312,7 @@ class Registration extends Form {
         return $result;
     }
 
-    public function loadRegistered($dataIds, $addons) {
+    public function loadRegistered($dataIds, $addons, $membershipAddons) {
         $needsLogin = false;
         $currency = '';
         $hasCodeholder = false;
@@ -358,14 +358,37 @@ class Registration extends Form {
                 $selectedItems = [];
                 foreach ($res['b']['offers'] as $offer) {
                     $offersSum += $offer['amount'];
+                    $offer['amount_original'] = $offer['amount'];
+                    $offer['amount_addon'] = null;
+
+                    if ($offer['type'] === 'membership') {
+                        if (isset($membershipAddons[$res['b']['year']][$offer['id']])) {
+                            $addon = $membershipAddons[$res['b']['year']][$offer['id']];
+                            $offer['amount_original'] = $offer['amount'] - $addon['amount'];
+                            $offer['amount_addon'] = $addon['amount'];
+                        }
+                    }
+
                     $scriptCtx->pushScript(array(
                         'currency' => array('t' => 's', 'v' => $res['b']['currency']),
                         'value' => array('t' => 'n', 'v' => $offer['amount']),
+                        'value_orig' => array('t' => 'n', 'v' => $offer['amount_original']),
+                        'value_addon' => array('t' => 'n', 'v' => $offer['amount_addon']),
                     ));
                     $offer['amount_rendered'] = $scriptCtx->eval(array(
                         't' => 'c',
                         'f' => 'currency_fmt',
                         'a' => ['currency', 'value'],
+                    ))['v'];
+                    $offer['amount_original_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value_orig'],
+                    ))['v'];
+                    $offer['amount_addon_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value_addon'],
                     ))['v'];
                     $scriptCtx->popScript();
                     $selectedItems[] = $offer;
@@ -478,6 +501,7 @@ class Registration extends Form {
         }
 
         if ($this->state['registered']) {
+            $indexedMembershipAddons = [];
             $addons = [];
             if (isset($_GET[self::ADDONS]) && gettype($_GET[self::ADDONS]) === 'string') {
                 $yearStrings = explode('~', $_GET[self::ADDONS]);
@@ -487,18 +511,25 @@ class Registration extends Form {
                     if (count($parts) < 2) continue;
                     $year = (int) $parts[0];
                     $yearItems = [];
+                    $membershipYearItems = [];
                     foreach (array_slice($parts, 1) as $addonString) {
                         $addonData = explode('-', $addonString);
                         if (count($addonData) != 2) continue;
-                        $addonId = (int) $addonData[0];
+                        $addonType = substr($addonData[0], 0, 1);
+                        $addonId = (int) substr($addonData[0], 1);
                         $addonAmount = (int) $addonData[1];
-                        $yearItems[] = array('type' => 'addon' , 'id' => $addonId, 'amount' => $addonAmount);
+                        if ($addonType === 'a') {
+                            $yearItems[] = array('type' => 'addon', 'id' => $addonId, 'amount' => $addonAmount);
+                        } else if ($addonType === 'm') {
+                            $membershipYearItems[$addonId] = array('type' => 'membership', 'id' => $addonId, 'amount' => $addonAmount);
+                        }
                     }
                     $addons[$year] = $yearItems;
+                    $indexedMembershipAddons[$year] = $membershipYearItems;
                 }
             }
 
-            $serializedState = $this->loadRegistered($this->state['dataIds'], $addons);
+            $serializedState = $this->loadRegistered($this->state['dataIds'], $addons, $indexedMembershipAddons);
             $this->state['needs_login'] = $serializedState['needs_login'];
             $this->state['dataIds'] = $serializedState['dataIds'];
             $this->state['year_statuses'] = $serializedState['year_statuses'];
@@ -819,6 +850,7 @@ class Registration extends Form {
                     if ($this->state['year_statuses'][$year] !== 'submitted') continue;
                     $yearItems = $this->state['offers'][$year];
                     $sum = 0;
+                    $originalAmountSum = 0;
                     foreach ($yearItems as $offer) {
                         if ($offer['type'] === 'membership') {
                             if ($purposeDescription) $purposeDescription .= "\n";
@@ -830,6 +862,14 @@ class Registration extends Form {
                                 $purposeDescription .= '(Eraro)';
                             }
                             $sum += $offer['amount'];
+                            $originalAmountSum += $offer['amount_original'];
+
+                            if ($offer['amount_addon'] > 0) {
+                                $purposeDescription .= "\n    - ";
+                                $purposeDescription .= $this->localize('offers_price_addon_label');
+                                $purposeDescription .= ': ';
+                                $purposeDescription .= $offer['amount_addon_rendered'];
+                            }
                         } else if ($offer['type'] === 'addon') {
                             $addonAmount = $this->convertCurrency($this->state['currency'], $currency, $offer['amount']);
                             $addonPurposes[] = array(
@@ -845,12 +885,17 @@ class Registration extends Form {
                     if (!$sum) continue;
 
                     $convertedAmount = $this->convertCurrency($this->state['currency'], $currency, $sum);
+                    $originalAmount = null;
+                    if ($sum !== $originalAmountSum) {
+                        $originalAmount = $this->convertCurrency($this->state['currency'], $currency, $originalAmountSum);
+                    }
 
                     $purposes[] = array(
                         'type' => 'trigger',
                         'title' => $purposeTitle,
                         'description' => $purposeDescription,
                         'amount' => $convertedAmount,
+                        'originalAmount' => $originalAmount,
                         'triggerAmount' => array(
                             'currency' => $this->state['currency'],
                             'amount' => $sum,
@@ -1017,11 +1062,18 @@ class Registration extends Form {
                         'amount' => $itemData['amount'],
                     );
 
-
                     if ($itemData['type'] === 'addon') {
                         $addons[] = $data;
                     } else {
                         $options['offers'][] = $data;
+
+                        if ($itemData['amount_addon']) {
+                            $addons[] = array(
+                                'type' => 'membership',
+                                'id' => $itemData['id'],
+                                'amount' => $itemData['amount_addon'],
+                            );
+                        }
                     }
                 }
 
@@ -1050,7 +1102,10 @@ class Registration extends Form {
                     if ($addonsSerialized) $addonsSerialized .= '~';
                     $addonsSerialized .= $year;
                     foreach ($addons as $addon) {
-                        $addonsSerialized .= '+' . $addon['id'] . '-' . $addon['amount'];
+                        $addonsSerialized .= '+';
+                        if ($addon['type'] === 'membership') $addonsSerialized .= 'm';
+                        else $addonsSerialized .= 'a';
+                        $addonsSerialized .= $addon['id'] . '-' . $addon['amount'];
                     }
                 }
 
