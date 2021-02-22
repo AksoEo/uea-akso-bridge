@@ -47,10 +47,17 @@
                 {% if not akso_registration.state.needs_login %}
                 <div class="summary-name">
                     {{akso_registration.state.codeholder.honorific|e}}
+                    {% if akso_registration.state.codeholder.firstName %}
                     {{akso_registration.state.codeholder.firstName|e}}
+                    {% else %}
+                    {{akso_registration.state.codeholder.firstNameLegal|e}}
+                    {% endif %}
+                    {% if akso_registration.state.codeholder.lastName %}
                     {{akso_registration.state.codeholder.lastName|e}}
-                    {% if akso_registration.state.codeholder.firstName != akso_registration.state.codeholder.firstNameLegal
-                        or akso_registration.state.codeholder.lastName != akso_registration.state.codeholder.lastNameLegal %}
+                    {% else %}
+                    {{akso_registration.state.codeholder.lastNameLegal|e}}
+                    {% endif %}
+                    {% if akso_registration.state.codeholder.firstName or akso_registration.state.codeholder.lastName %}
                     ({{akso_locale.registration.codeholder_name_legal}}:
                     {{akso_registration.state.codeholder.firstNameLegal|e}}
                     {{akso_registration.state.codeholder.lastNameLegal|e}})
@@ -82,19 +89,23 @@
                     {% for offer in yearItems %}
                     <div class="offer-item">
                         {% if offer.type == 'membership' %}
-                        <div class="item-name">
-                            <span class="item-abbrev">{{akso_registration.categories[offer.id].nameAbbrev|e}}</span>
-                            {{akso_registration.categories[offer.id].name|e}}
-                        </div>
-                        <div class="item-price">
-                            {{offer.amount_rendered|e}}
+                        <div class="item-inner">
+                            <div class="item-name">
+                                <span class="item-abbrev">{{akso_registration.categories[offer.id].nameAbbrev|e}}</span>
+                                {{akso_registration.categories[offer.id].name|e}}
+                            </div>
+                            <div class="item-price">
+                                {{offer.amount_rendered|e}}
+                            </div>
                         </div>
                         {% elseif offer.type == 'addon' %}
-                        <div class="item-name">
-                            {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
-                        </div>
-                        <div class="item-price">
-                            {{offer.amount_rendered|e}}
+                        <div class="item-inner">
+                            <div class="item-name">
+                                {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
+                            </div>
+                            <div class="item-price">
+                                {{offer.amount_rendered|e}}
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -118,19 +129,33 @@
                         {% set offerIndex = offerKeyParts[1] %}
                         <div class="offer-item">
                             {% if offer.type == 'membership' %}
-                            <div class="item-name">
-                                <span class="item-abbrev">{{akso_registration.categories[offer.id].nameAbbrev|e}}</span>
-                                {{akso_registration.categories[offer.id].name|e}}
+                            <div class="item-inner">
+                                <div class="item-name">
+                                    <span class="item-abbrev">{{akso_registration.categories[offer.id].nameAbbrev|e}}</span>
+                                    {{akso_registration.categories[offer.id].name|e}}
+                                </div>
+                                <div class="item-price">
+                                    {{offer.amount_rendered|e}}
+                                </div>
                             </div>
-                            <div class="item-price">
-                                {{akso_registration.offers_indexed[offerYear.year].offers[groupIndex].offers[offerIndex].price.amount|e}}
+                            {% if offer.amount_addon > 0 %}
+                            <div class="item-addon">
+                                <div class="item-name">
+                                    {{akso_locale.registration.offers_price_addon_label}}
+                                </div>
+                                <div class="item-price">
+                                    {{offer.amount_addon_rendered|e}}
+                                </div>
                             </div>
+                            {% endif %}
                             {% elseif offer.type == 'addon' %}
-                            <div class="item-name">
-                                {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
-                            </div>
-                            <div class="item-price">
-                                {{offer.amount_rendered|e}}
+                            <div class="item-inner">
+                                <div class="item-name">
+                                    {{akso_registration.addons[offerYear.paymentOrgId][offer.id].name|e}}
+                                </div>
+                                <div class="item-price">
+                                    {{offer.amount_rendered|e}}
+                                </div>
                             </div>
                             {% endif %}
                         </div>
@@ -451,6 +476,7 @@
                         {% endif %}
 
                         {% if available %}
+                        {% set selectedOfferItem = akso_registration.state.offers_indexed[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex] %}
                         <input
                             class="offer-item-selection"
                             {% if akso_registration.categories[offer.id].givesMembership %}
@@ -461,7 +487,7 @@
                             type="checkbox"
                             name="offers[{{offerYear.year|e}}][{{groupIndex|e}}][{{offerIndex|e}}][{{offer.type}}-{{offer.id}}]"
                             {% endif %}
-                            {% if akso_registration.state.offers_indexed[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex] %}
+                            {% if selectedOfferItem %}
                             checked
                             {% endif %}
                             id="{{id|e('html_attr')}}" />
@@ -517,6 +543,38 @@
                                 <div class="inner-description">
                                     <div class="inner-title">{{akso_locale.registration.offer_price_desc_title}}</div>
                                     {{offer.price.description}}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if offer.type == 'membership' and offer.price %}
+                            <div class="item-price-addon">
+                                <input
+                                    class="price-addon-checkbox"
+                                    id="{{id|e('html_attr')}}-var-price"
+                                    {% if selectedOfferItem and selectedOfferItem.amount_addon > 0 %}
+                                    checked
+                                    {% endif %}
+                                    type="checkbox" />
+                                <label class="price-addon-checkbox-label" for="{{id|e('html_attr')}}-var-price">
+                                    {{akso_locale.registration.offers_use_price_addon}}
+                                </label>
+                                <div class="price-addon-description">
+                                    {{akso_locale.registration.offers_use_price_addon_desc}}
+                                </div>
+                                <div class="price-addon-inner">
+                                    <label class="price-addon-inner-label">
+                                        {{akso_locale.registration.offers_price_addon_label}}
+                                    </label>
+                                    <input
+                                        class="price-input"
+                                        name="offer_amount_addon[{{offerYear.year|e}}-{{groupIndex}}-{{offerIndex}}]"
+                                        value="{{akso_registration.state.offers_indexed_amount_addons[offerYear.year ~ '-' ~ groupIndex ~ '-' ~ offerIndex]|e('html_attr')}}"
+                                        type="text"
+                                        placeholder="{{akso_registration.state.currency_placeholder}}"
+                                        inputmode="numeric" />
+                                    <span class="price-currency">
+                                        {{akso_registration.state.currency}}
+                                    </span>
                                 </div>
                             </div>
                             {% endif %}

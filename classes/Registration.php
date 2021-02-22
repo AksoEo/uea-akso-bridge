@@ -553,8 +553,12 @@ class Registration extends Form {
 
         {
             $this->state['codeholder'] = array(
-                'firstName' => $this->readSafe('string', $ch, 'firstName'),
-                'lastName' => $this->readSafe('string', $ch, 'lastName'),
+                'firstName' => (isset($ch['splitName']) && $ch['splitName'])
+                    ? $this->readSafe('string', $ch, 'firstName')
+                    : null,
+                'lastName' => (isset($ch['splitName']) && $ch['splitName'])
+                    ? $this->readSafe('string', $ch, 'lastName')
+                    : null,
                 'firstNameLegal' => (isset($ch['splitName']) && $ch['splitName'])
                     ? $this->readSafe('string', $ch, 'firstNameLegal')
                     : $this->readSafe('string', $ch, 'firstName'),
@@ -643,10 +647,14 @@ class Registration extends Form {
                         if ($type !== 'membership' && $type !== 'addon') continue;
 
                         $amount = null;
+                        $amountAddon = 0;
                         if (isset($_POST['offer_amount'])) {
                             $k = "$year-$groupIndex-$offerIndex";
                             if (isset($_POST['offer_amount'][$k])) {
-                                $amount = (int) (floatval($_POST['offer_amount'][$k]) * $currencyMult);
+                                $amount = (int) (self::floatval($_POST['offer_amount'][$k]) * $currencyMult);
+                            }
+                            if (isset($_POST['offer_amount_addon'][$k])) {
+                                $amountAddon = (int) (self::floatval($_POST['offer_amount_addon'][$k]) * $currencyMult);
                             }
                         }
 
@@ -654,6 +662,7 @@ class Registration extends Form {
                             'type' => $type,
                             'id' => $id,
                             'amount' => $amount,
+                            'amount_addon' => $amountAddon,
                         );
 
                         continue;
@@ -675,10 +684,14 @@ class Registration extends Form {
                         if ($type !== 'membership' && $type !== 'addon') continue;
 
                         $amount = null;
+                        $amountAddon = 0;
                         if (isset($_POST['offer_amount'])) {
                             $k = "$year-$groupIndex-$offerIndex";
                             if (isset($_POST['offer_amount'][$k])) {
                                 $amount = (int) (floatval($_POST['offer_amount'][$k]) * $currencyMult);
+                            }
+                            if (isset($_POST['offer_amount_addon'][$k])) {
+                                $amountAddon = (int) (floatval($_POST['offer_amount_addon'][$k] * $currencyMult));
                             }
                         }
 
@@ -686,6 +699,7 @@ class Registration extends Form {
                             'type' => $type,
                             'id' => $id,
                             'amount' => $amount,
+                            'amount_addon' => $amountAddon,
                         );
                     }
                 }
@@ -706,6 +720,7 @@ class Registration extends Form {
                         'type' => $item['type'],
                         'id' => $item['id'],
                         'amount' => isset($item['amount']) ? ((float) $item['amount']) : null,
+                        'amount_addon' => isset($item['amount_addon']) ? ((float) $item['amount_addon']) : 0,
                     );
                 }
                 if (!empty($items)) $this->state['offers'][$year] = $items;
@@ -883,6 +898,7 @@ class Registration extends Form {
 
             $this->state['offers_indexed'] = [];
             $this->state['offers_indexed_amounts'] = [];
+            $this->state['offers_indexed_amount_addons'] = [];
             $this->state['offers_sum'] = 0;
             $scriptCtx = new FormScriptExecCtx($this->app);
             foreach ($this->state['offers'] as $year => &$yearItems) {
@@ -891,28 +907,42 @@ class Registration extends Form {
                     $keyParts = explode('-', $key);
                     $group = $keyParts[0];
                     $id = $keyParts[1];
-                    $this->state['offers_indexed']["$year-$group-$id"] = true;
-                    $this->state['offers_indexed_amounts']["$year-$group-$id"] = ((float) $offer['amount']) / $currencyMult;
 
                     if ($offer['type'] === 'membership') {
                         $apiOffer = null;
                         if (isset($this->offersByYear[$year]['offers'][$group]['offers'][$id])) {
                             $apiOffer = $this->offersByYear[$year]['offers'][$group]['offers'][$id];
                         }
-                        if ($apiOffer) $offer['amount'] = $apiOffer['price']['value'];
-                        else $offer['amount'] = 2147483647; // FIXME
+                        if ($apiOffer) {
+                            $offer['amount_addon'] = max(0, $offer['amount_addon']);
+                            $offer['original_amount'] = $apiOffer['price']['value'];
+                            $offer['amount'] = $apiOffer['price']['value'] + $offer['amount_addon'];
+                        } else $offer['amount'] = 2147483647; // FIXME
                     } else if ($offer['type'] === 'addon') {
-                        $scriptCtx->pushScript(array(
-                            'currency' => array('t' => 's', 'v' => $this->state['currency']),
-                            'value' => array('t' => 'n', 'v' => $offer['amount']),
-                        ));
-                        $offer['amount_rendered'] = $scriptCtx->eval(array(
-                            't' => 'c',
-                            'f' => 'currency_fmt',
-                            'a' => ['currency', 'value'],
-                        ))['v'];
-                        $scriptCtx->popScript();
+                        $offer['amount'] = max(1, $offer['amount']);
+                        $offer['original_amount'] = $offer['amount'];
                     }
+
+                    $this->state['offers_indexed_amounts']["$year-$group-$id"] = ((float) $offer['amount']) / $currencyMult;
+                    $this->state['offers_indexed_amount_addons']["$year-$group-$id"] = ((float) $offer['amount_addon']) / $currencyMult;
+                    $this->state['offers_indexed']["$year-$group-$id"] = $offer;
+
+                    $scriptCtx->pushScript(array(
+                        'currency' => array('t' => 's', 'v' => $this->state['currency']),
+                        'value' => array('t' => 'n', 'v' => $offer['original_amount']),
+                        'value_addon' => array('t' => 'n', 'v' => $offer['amount_addon']),
+                    ));
+                    $offer['amount_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value'],
+                    ))['v'];
+                    $offer['amount_addon_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value_addon'],
+                    ))['v'];
+                    $scriptCtx->popScript();
 
                     $this->state['offers_sum'] += $offer['amount'];
                 }
@@ -932,14 +962,14 @@ class Registration extends Form {
             }
         }
 
-        if (!$registered) {
+        if (!$registered && $this->state['step'] > 0) {
             $err = $this->getCodeholderError();
 
             if ($err) {
                 $this->state['form_error'] = $err;
                 $this->state['step'] = 0;
                 $creatingEntry = false;
-            } else if ($this->state['step'] >= 1) {
+            } else if ($this->state['step'] > 1) {
                 $err = $this->getOfferError();
 
                 if ($err) {
@@ -1149,5 +1179,13 @@ class Registration extends Form {
             'thisYear' => $thisYear,
             'payment_orgs' => $this->paymentOrgs,
         );
+    }
+
+    static function floatval($n) {
+        if (gettype($n) === 'float' || gettype($n) === 'integer') return $n;
+        if (gettype($n) === 'string') {
+            return floatval(str_replace(',', '.', $n));
+        }
+        return 0.0;
     }
 }
