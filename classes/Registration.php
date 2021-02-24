@@ -11,10 +11,11 @@ class Registration extends Form {
     private const STEP = 'p';
     private const STEP_OFFERS = '1';
     private const STEP_SUMMARY = '2';
-    private const STEP_ENTRY_CREATE = 'create_entry';
+    private const STEP_ENTRY_CREATE = '3';
     private const DATAID = 'dataId';
     private const ADDONS = 'aldonebloj';
     private const PAYMENT_SUCCESS_RETURN = 'payment_success_return';
+    private const SESSION_KEY_NAME = 'akso_alighilo_sess';
 
     private const CODEHOLDER_FIELDS = [
         'firstNameLegal', 'lastNameLegal', 'honorific', 'birthdate', 'email',
@@ -64,28 +65,32 @@ class Registration extends Form {
             $scriptCtx = new FormScriptExecCtx($this->app);
             {
                 $codeholder = $this->state['codeholder'];
-                $scriptCtx->setFormVar('birthdate', $codeholder['birthdate']);
+                if (isset($codeholder['birthdate'])) {
+                    // simple check to see if codeholder data exists ^
 
-                $age = null;
-                $agePrimo = null;
-                {
-                    $birthdate = \DateTime::createFromFormat('Y-m-d', $codeholder['birthdate']);
-                    if ($birthdate) {
-                        $now = new \DateTime();
-                        $age = (int) $birthdate->diff($now)->format('y');
+                    $scriptCtx->setFormVar('birthdate', $codeholder['birthdate']);
 
-                        $beginningOfYear = new \DateTime();
-                        $beginningOfYear->setISODate($now->format('Y'), 1, 1);
-                        $agePrimo = (int) $birthdate->diff($beginningOfYear)->format('y');
+                    $age = null;
+                    $agePrimo = null;
+                    {
+                        $birthdate = \DateTime::createFromFormat('Y-m-d', $codeholder['birthdate']);
+                        if ($birthdate) {
+                            $now = new \DateTime();
+                            $age = (int) $birthdate->diff($now)->format('y');
+
+                            $beginningOfYear = new \DateTime();
+                            $beginningOfYear->setISODate($now->format('Y'), 1, 1);
+                            $agePrimo = (int) $birthdate->diff($beginningOfYear)->format('y');
+                        }
                     }
-                }
-                $scriptCtx->setFormVar('age', $age);
-                $scriptCtx->setFormVar('agePrimo', $agePrimo);
-                $scriptCtx->setFormVar('feeCountry', $codeholder['feeCountry']);
+                    $scriptCtx->setFormVar('age', $age);
+                    $scriptCtx->setFormVar('agePrimo', $agePrimo);
+                    $scriptCtx->setFormVar('feeCountry', $codeholder['feeCountry']);
 
-                // TODO: fetch these variables
-                $scriptCtx->setFormVar('feeCountryGroups', []);
-                $scriptCtx->setFormVar('isActiveMember', false);
+                    // TODO: fetch these variables
+                    $scriptCtx->setFormVar('feeCountryGroups', []);
+                    $scriptCtx->setFormVar('isActiveMember', false);
+                }
 
                 $currency = $this->state['currency'];
 
@@ -322,7 +327,6 @@ class Registration extends Form {
         $yearStatuses = [];
 
         $scriptCtx = new FormScriptExecCtx($this->app);
-        $offersSum = 0;
 
         foreach ($dataIds as $id) {
             $res = $this->app->bridge->get("/registration/entries/$id", array(
@@ -341,10 +345,7 @@ class Registration extends Form {
                             $chRes = $this->app->bridge->get("/codeholders/$chId", array(
                                 'fields' => self::CODEHOLDER_FIELDS,
                             ));
-                            if ($chRes['k']) {
-                                $codeholder = $chRes['b'];
-                                $codeholder['splitCountry'] = true;
-                            }
+                            if ($chRes['k']) $codeholder = $chRes['b'];
                         }
                     } else {
                         $codeholder = $res['b']['codeholderData'];
@@ -357,7 +358,6 @@ class Registration extends Form {
                 $currency = $res['b']['currency'];
                 $selectedItems = [];
                 foreach ($res['b']['offers'] as $offer) {
-                    $offersSum += $offer['amount'];
                     $offer['amount_original'] = $offer['amount'];
                     $offer['amount_addon'] = null;
 
@@ -368,45 +368,11 @@ class Registration extends Form {
                             $offer['amount_addon'] = $addon['amount'];
                         }
                     }
-
-                    $scriptCtx->pushScript(array(
-                        'currency' => array('t' => 's', 'v' => $res['b']['currency']),
-                        'value' => array('t' => 'n', 'v' => $offer['amount']),
-                        'value_orig' => array('t' => 'n', 'v' => $offer['amount_original']),
-                        'value_addon' => array('t' => 'n', 'v' => $offer['amount_addon']),
-                    ));
-                    $offer['amount_rendered'] = $scriptCtx->eval(array(
-                        't' => 'c',
-                        'f' => 'currency_fmt',
-                        'a' => ['currency', 'value'],
-                    ))['v'];
-                    $offer['amount_original_rendered'] = $scriptCtx->eval(array(
-                        't' => 'c',
-                        'f' => 'currency_fmt',
-                        'a' => ['currency', 'value_orig'],
-                    ))['v'];
-                    $offer['amount_addon_rendered'] = $scriptCtx->eval(array(
-                        't' => 'c',
-                        'f' => 'currency_fmt',
-                        'a' => ['currency', 'value_addon'],
-                    ))['v'];
-                    $scriptCtx->popScript();
                     $selectedItems[] = $offer;
                 }
 
                 if (isset($addons[$res['b']['year']])) {
                     foreach ($addons[$res['b']['year']] as $addon) {
-                        $offersSum += $addon['amount'];
-                        $scriptCtx->pushScript(array(
-                            'currency' => array('t' => 's', 'v' => $res['b']['currency']),
-                            'value' => array('t' => 'n', 'v' => $addon['amount']),
-                        ));
-                        $addon['amount_rendered'] = $scriptCtx->eval(array(
-                            't' => 'c',
-                            'f' => 'currency_fmt',
-                            'a' => ['currency', 'value'],
-                        ))['v'];
-                        $scriptCtx->popScript();
                         $selectedItems[] = $addon;
                     }
                 }
@@ -417,18 +383,10 @@ class Registration extends Form {
             }
         }
 
-        $offersSumRendered;
-        {
-            $scriptCtx->pushScript(array(
-                'currency' => array('t' => 's', 'v' => $currency),
-                'value' => array('t' => 'n', 'v' => $offersSum),
-            ));
-            $offersSumRendered = $scriptCtx->eval(array(
-                't' => 'c',
-                'f' => 'currency_fmt',
-                'a' => ['currency', 'value'],
-            ))['v'];
-            $scriptCtx->popScript();
+        if ($codeholder) {
+            $codeholder['locked'] = true;
+            $codeholder['splitCountry'] = true;
+            $codeholder['splitName'] = true;
         }
 
         return array(
@@ -438,8 +396,6 @@ class Registration extends Form {
             'offers' => $offersByYear,
             'year_statuses' => $yearStatuses,
             'dataIds' => $yearDataIds,
-            'offers_sum' => $offersSum,
-            'offers_sum_rendered' => $offersSumRendered,
         );
     }
 
@@ -447,104 +403,86 @@ class Registration extends Form {
     private $offersByYear = null;
     private $paymentOrgs = null;
 
-    public function update() {
-        // TODO: split this method up
+    // Returns the target path for the current page
+    private function getEditTarget() {
+        $editTarget = $this->plugin->getGrav()['uri']->path();
+        if (count($this->state['dataIds'])) {
+            $dataIds = implode('-', $this->state['dataIds']);
 
-        $step = 'init';
-        $this->state = array('step' => 0);
+            $addonsSerialized = '';
+            foreach ($this->state['addons'] as $year => $addons) {
+                if ($addonsSerialized) $addonsSerialized .= '~';
+                $addonsSerialized .= $year;
+                foreach ($addons as $addon) {
+                    $addonsSerialized .= '+';
+                    if ($addon['type'] === 'membership') $addonsSerialized .= 'm';
+                    else $addonsSerialized .= 'a';
+                    $addonsSerialized .= $addon['id'] . '-' . $addon['amount'];
+                }
+            }
 
-        $creatingEntry = false;
+            $editTarget .= '?' . self::DATAID . '=' . $dataIds .
+                '&' . self::ADDONS . '=' . $addonsSerialized;
+        }
+        return $editTarget;
+    }
 
+    // Reads form state
+    private function readFormState() {
         $this->state['dataIds'] = [];
         if (isset($_GET[self::DATAID]) && gettype($_GET[self::DATAID]) === 'string') {
             $this->state['dataIds'] = explode('-', $_GET[self::DATAID]);
-            $this->state['step'] = 3;
-        }
-        $this->state['registered'] = count($this->state['dataIds']) > 0;
-        $registered = $this->state['registered'];
-
-        $editTarget = $this->plugin->getGrav()['uri']->path();
-        if (count($this->state['dataIds'])) {
-            $editTarget .= '?' . self::DATAID . '=' . implode('-', $this->state['dataIds']);
         }
 
         if (isset($_GET[self::PAYMENT_SUCCESS_RETURN])) {
             $_SESSION[self::PAYMENT_SUCCESS_RETURN] = true;
-            // redirect to the same page without payment_success_retunr
-            $this->plugin->getGrav()->redirectLangSafe($editTarget, 302);
+            // redirect to the same page without the payment_success_return url parameter
+            $this->plugin->getGrav()->redirectLangSafe($this->getEditTarget(), 302);
+            // which leads us...
         }
         if (isset($_SESSION[self::PAYMENT_SUCCESS_RETURN])) {
-            // this is the payment success page
+            // ...here!
+            // show a payment success message
             $this->state['payment_success'] = true;
             unset($_SESSION[self::PAYMENT_SUCCESS_RETURN]);
         }
 
+        // read the current registration step
         if (isset($_GET[self::STEP]) && gettype($_GET[self::STEP]) === 'string') {
             $step = $_GET[self::STEP];
-            if (!$registered) {
-                // TODO: validate before allowing step forward
-                if ($step === self::STEP_OFFERS) $this->state['step'] = 1;
-                if ($step === self::STEP_SUMMARY) $this->state['step'] = 2;
-                if ($step === self::STEP_ENTRY_CREATE) {
-                    $this->state['step'] = 2;
-                    $creatingEntry = true;
-                }
-            }
+            if ($step === self::STEP_OFFERS) $this->state['step'] = 1;
+            if ($step === self::STEP_SUMMARY) $this->state['step'] = 2;
+            if ($step === self::STEP_ENTRY_CREATE) $this->state['step'] = 3;
+        }
+        if (count($this->state['dataIds'])) {
+            // there are registered items!
+            $this->state['step'] = 3; // force step 3
         }
 
-        $serializedState = [];
+        // load saved state
+        $this->state['unsafe_deserialized'] = [];
         if (isset($_POST['state_serialized'])) {
             try {
                 $decoded = json_decode($_POST['state_serialized'], true);
-                if (gettype($decoded) === 'array') $serializedState = $decoded;
+                if (gettype($decoded) === 'array') $this->state['unsafe_deserialized'] = $decoded;
             } catch (\Exception $e) {}
+        } else if (isset($_SESSION[self::SESSION_KEY_NAME]) && gettype($_SESSION[self::SESSION_KEY_NAME]) === 'array') {
+            $this->state['unsafe_deserialized'] = $_SESSION[self::SESSION_KEY_NAME];
         }
-
-        if ($this->state['registered']) {
-            $indexedMembershipAddons = [];
-            $addons = [];
-            if (isset($_GET[self::ADDONS]) && gettype($_GET[self::ADDONS]) === 'string') {
-                $yearStrings = explode('~', $_GET[self::ADDONS]);
-                foreach ($yearStrings as $yearString) {
-                    // + turns into spaces
-                    $parts = explode(' ', $yearString);
-                    if (count($parts) < 2) continue;
-                    $year = (int) $parts[0];
-                    $yearItems = [];
-                    $membershipYearItems = [];
-                    foreach (array_slice($parts, 1) as $addonString) {
-                        $addonData = explode('-', $addonString);
-                        if (count($addonData) != 2) continue;
-                        $addonType = substr($addonData[0], 0, 1);
-                        $addonId = (int) substr($addonData[0], 1);
-                        $addonAmount = (int) $addonData[1];
-                        if ($addonType === 'a') {
-                            $yearItems[] = array('type' => 'addon', 'id' => $addonId, 'amount' => $addonAmount);
-                        } else if ($addonType === 'm') {
-                            $membershipYearItems[$addonId] = array('type' => 'membership', 'id' => $addonId, 'amount' => $addonAmount);
-                        }
-                    }
-                    $addons[$year] = $yearItems;
-                    $indexedMembershipAddons[$year] = $membershipYearItems;
-                }
-            }
-
-            $serializedState = $this->loadRegistered($this->state['dataIds'], $addons, $indexedMembershipAddons);
-            $this->state['needs_login'] = $serializedState['needs_login'];
-            $this->state['dataIds'] = $serializedState['dataIds'];
-            $this->state['year_statuses'] = $serializedState['year_statuses'];
-        }
-
+    }
+    private function updateCurrencyState() {
         $currencies = $this->getCachedCurrencies();
-        $this->state['currency'] = array_keys($currencies)[0]; // default
-        if (isset($_POST['currency'])
-            && gettype($_POST['currency']) === 'string'
-            && isset($currencies[$_POST['currency']])) {
-            $this->state['currency'] = $_POST['currency'];
-        } else if (isset($serializedState['currency'])
-            && gettype($serializedState['currency']) === 'string'
-            && isset($currencies[$serializedState['currency']])) {
-            $this->state['currency'] = $serializedState['currency'];
+        if (!isset($this->state['currency'])) {
+            $this->state['currency'] = array_keys($currencies)[0]; // default
+            if (isset($_POST['currency'])
+                && gettype($_POST['currency']) === 'string'
+                && isset($currencies[$_POST['currency']])) {
+                $this->state['currency'] = $_POST['currency'];
+            } else if (isset($serializedState['currency'])
+                && gettype($serializedState['currency']) === 'string'
+                && isset($currencies[$serializedState['currency']])) {
+                $this->state['currency'] = $serializedState['currency'];
+            }
         }
 
         // render a “0,00” placeholder for currency inputs
@@ -559,30 +497,32 @@ class Registration extends Form {
             }
         }
 
-        $currencyMult = $currencies[$this->state['currency']];
+        $this->state['currency_mult'] = $currencies[$this->state['currency']];
+    }
+
+    private function updateCodeholderState() {
+        if ($this->state['needs_login']) return;
 
         $ch = [];
-        if (!$registered && $this->plugin->aksoUser) {
-            $codeholderId = $this->plugin->aksoUser['id'];
-            $res = $this->app->bridge->get("/codeholders/$codeholderId", array(
-                'fields' => self::CODEHOLDER_FIELDS,
-            ));
-            if ($res['k']) {
-                $ch = $res['b'];
-                $ch['splitCountry'] = true; // always read address and fee country separately
-                $ch['splitName'] = true;
-            }
-        } else if (!$registered && isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
-            $ch = $_POST['codeholder'];
-        } else {
-            $ch = (isset($serializedState['codeholder']) && gettype($serializedState['codeholder']) === 'array')
-                ? $serializedState['codeholder']
-                : [];
-            $ch['splitCountry'] = true;
-            $ch['splitName'] = true;
-        }
+        if (!isset($this->state['codeholder']['locked'])) {
+            $serializedState = $this->state['unsafe_deserialized'];
 
-        {
+            if ($this->plugin->aksoUser) {
+                $codeholderId = $this->plugin->aksoUser['id'];
+                $res = $this->app->bridge->get("/codeholders/$codeholderId", array(
+                    'fields' => self::CODEHOLDER_FIELDS,
+                ));
+                if ($res['k']) {
+                    $ch = $res['b'];
+                    $ch['splitCountry'] = true; // always read address and fee country separately
+                    $ch['splitName'] = true;
+                } else {
+                    throw new \Exception("could not fetch codeholder");
+                }
+            } else if (isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
+                $ch = $_POST['codeholder'];
+            }
+
             $this->state['codeholder'] = array(
                 'firstName' => (isset($ch['splitName']) && $ch['splitName'])
                     ? $this->readSafe('string', $ch, 'firstName')
@@ -613,54 +553,54 @@ class Registration extends Form {
                     'streetAddress' => $this->readSafe('string', $ch, 'address.streetAddress'),
                 ),
             );
+        }
 
-            $addressFmt = '';
-            try {
-                $addr = $this->state['codeholder']['address'];
-                $countryName = '';
-                foreach ($this->getCachedCountries() as $entry) {
-                    if ($entry['code'] == $addr['country']) {
-                        $countryName = $entry['name_eo'];
-                        break;
-                    }
-                }
-                $addressFmt = $this->app->bridge->renderAddress(array(
-                    'countryCode' => $addr['country'],
-                    'countryArea' => $addr['countryArea'],
-                    'city' => $addr['city'],
-                    'cityArea' => $addr['cityArea'],
-                    'streetAddress' => $addr['streetAddress'],
-                    'postalCode' => $addr['postalCode'],
-                    'sortingCode' => $addr['sortingCode'],
-                ), $countryName)['c'];
-                $addressFmt = implode(', ', explode("\n", $addressFmt));
-            } catch (\Exception $e) {
-                // FIXME: this
-                $addressFmt = '(Nevalida adreso)';
-            }
-
-            $feeCountryName = '';
+        $addressFmt = '';
+        try {
+            $addr = $this->state['codeholder']['address'];
+            $countryName = '';
             foreach ($this->getCachedCountries() as $entry) {
-                if ($entry['code'] == $this->state['codeholder']['feeCountry']) {
-                    $feeCountryName = $entry['name_eo'];
+                if ($entry['code'] == $addr['country']) {
+                    $countryName = $entry['name_eo'];
                     break;
                 }
             }
-            $this->state['codeholder_derived'] = array(
-                'birthdate' => Utils::formatDate($this->state['codeholder']['birthdate']),
-                'address' => $addressFmt,
-                'fee_country' => $feeCountryName,
-            );
+            $addressFmt = $this->app->bridge->renderAddress(array(
+                'countryCode' => $addr['country'],
+                'countryArea' => $addr['countryArea'],
+                'city' => $addr['city'],
+                'cityArea' => $addr['cityArea'],
+                'streetAddress' => $addr['streetAddress'],
+                'postalCode' => $addr['postalCode'],
+                'sortingCode' => $addr['sortingCode'],
+            ), $countryName)['c'];
+            $addressFmt = implode(', ', explode("\n", $addressFmt));
+        } catch (\Exception $e) {
+            $addressFmt = '(Nevalida adreso)';
         }
 
+        $feeCountryName = '';
+        foreach ($this->getCachedCountries() as $entry) {
+            if ($entry['code'] == $this->state['codeholder']['feeCountry']) {
+                $feeCountryName = $entry['name_eo'];
+                break;
+            }
+        }
+        $this->state['codeholder_derived'] = array(
+            'birthdate' => Utils::formatDate($this->state['codeholder']['birthdate']),
+            'address' => $addressFmt,
+            'fee_country' => $feeCountryName,
+        );
+    }
+
+    private function updateOffersState() {
+        $serializedState = $this->state['unsafe_deserialized'];
         $this->state['offers'] = [];
-        if ($registered) {
-            $this->state['offers'] = $serializedState['offers'];
-            $this->state['offers_sum'] = $serializedState['offers_sum'];
-            $this->state['offers_sum_rendered'] = $serializedState['offers_sum_rendered'];
-        } else if (isset($_POST['offers']) && gettype($_POST['offers']) === 'array') {
+
+        if (isset($_POST['offers']) && gettype($_POST['offers']) === 'array') {
             foreach ($_POST['offers'] as $_year => $yearItems) {
                 $year = (int) $_year;
+                if (isset($this->state['locked_offers'][$year])) continue;
                 $this->state['offers'][$year] = [];
 
                 // key format: [year][group][offer][type-id]
@@ -682,10 +622,10 @@ class Registration extends Form {
                         if (isset($_POST['offer_amount'])) {
                             $k = "$year-$groupIndex-$offerIndex";
                             if (isset($_POST['offer_amount'][$k])) {
-                                $amount = (int) (self::floatval($_POST['offer_amount'][$k]) * $currencyMult);
+                                $amount = (int) (self::floatval($_POST['offer_amount'][$k]) * $this->state['currency_mult']);
                             }
                             if (isset($_POST['offer_amount_addon'][$k])) {
-                                $amountAddon = (int) (self::floatval($_POST['offer_amount_addon'][$k]) * $currencyMult);
+                                $amountAddon = (int) (self::floatval($_POST['offer_amount_addon'][$k]) * $this->state['currency_mult']);
                             }
                         }
 
@@ -719,10 +659,10 @@ class Registration extends Form {
                         if (isset($_POST['offer_amount'])) {
                             $k = "$year-$groupIndex-$offerIndex";
                             if (isset($_POST['offer_amount'][$k])) {
-                                $amount = (int) (floatval($_POST['offer_amount'][$k]) * $currencyMult);
+                                $amount = (int) (floatval($_POST['offer_amount'][$k]) * $this->state['currency_mult']);
                             }
                             if (isset($_POST['offer_amount_addon'][$k])) {
-                                $amountAddon = (int) (floatval($_POST['offer_amount_addon'][$k] * $currencyMult));
+                                $amountAddon = (int) (floatval($_POST['offer_amount_addon'][$k] * $this->state['currency_mult']));
                             }
                         }
 
@@ -737,6 +677,7 @@ class Registration extends Form {
             }
         } else if (isset($serializedState['offers']) && gettype($serializedState['offers']) === 'array') {
             foreach ($serializedState['offers'] as $year => $yearItems) {
+                if (isset($this->state['locked_offers'][$year])) continue;
                 if (gettype($yearItems) !== 'array') continue;
                 $items = [];
                 foreach ($yearItems as $key => $item) {
@@ -758,16 +699,104 @@ class Registration extends Form {
             }
         }
 
-        if ($registered) {
-            $this->offers = $this->loadAllOffers(true);
+        foreach ($this->state['locked_offers'] as $year => $items) {
+            $this->state['offers'][$year] = $items;
+        }
+
+        if ($this->state['step'] >= 1) {
+            $this->offers = $this->loadAllOffers();
             $this->offersByYear = [];
             foreach ($this->offers as $offerYear) {
                 $this->offersByYear[$offerYear['year']] = $offerYear;
             }
 
+            $this->state['offers_indexed'] = [];
+            $this->state['offers_indexed_amounts'] = [];
+            $this->state['offers_indexed_amount_addons'] = [];
+            $this->state['offers_sum'] = 0;
+            $scriptCtx = new FormScriptExecCtx($this->app);
+            foreach ($this->state['offers'] as $year => &$yearItems) {
+                $isLocked = isset($this->state['locked_offers'][$year]);
+                foreach ($yearItems as $key => &$offer) {
+                    $group = -1;
+                    $id = -1;
+                    if (!$isLocked) {
+                        $keyParts = explode('-', $key);
+                        $group = $keyParts[0];
+                        $id = $keyParts[1];
+                    }
+
+                    if (!isset($offer['amount_original'])) $offer['amount_original'] = $offer['amount'];
+                    if (!isset($offer['amount_addon'])) $offer['amount_addon'] = 0;
+
+                    if (!$isLocked) {
+                        // verify amounts from api data
+                        if ($offer['type'] === 'membership') {
+                            $apiOffer = null;
+                            if (isset($this->offersByYear[$year]['offers'][$group]['offers'][$id])) {
+                                $apiOffer = $this->offersByYear[$year]['offers'][$group]['offers'][$id];
+                            }
+                            if ($apiOffer) {
+                                $offer['amount_addon'] = max(0, $offer['amount_addon']);
+                                $offer['amount_original'] = $apiOffer['price']['value'];
+                                $offer['amount'] = $apiOffer['price']['value'] + $offer['amount_addon'];
+                            } else $offer['amount'] = 2147483647; // FIXME
+                        } else if ($offer['type'] === 'addon') {
+                            $offer['amount'] = max(1, $offer['amount']);
+                            $offer['amount_original'] = $offer['amount'];
+                        }
+                    }
+
+                    $this->state['offers_indexed_amounts']["$year-$group-$id"] = ((float) $offer['amount']) / $this->state['currency_mult'];
+                    $this->state['offers_indexed_amount_addons']["$year-$group-$id"] = ((float) $offer['amount_addon']) / $this->state['currency_mult'];
+                    $this->state['offers_indexed']["$year-$group-$id"] = $offer;
+
+                    $scriptCtx->pushScript(array(
+                        'currency' => array('t' => 's', 'v' => $this->state['currency']),
+                        'value' => array('t' => 'n', 'v' => $offer['amount']),
+                        'value_orig' => array('t' => 'n', 'v' => $offer['amount_original']),
+                        'value_addon' => array('t' => 'n', 'v' => $offer['amount_addon']),
+                    ));
+                    $offer['amount_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value'],
+                    ))['v'];
+                    $offer['amount_original_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value_orig'],
+                    ))['v'];
+                    $offer['amount_addon_rendered'] = $scriptCtx->eval(array(
+                        't' => 'c',
+                        'f' => 'currency_fmt',
+                        'a' => ['currency', 'value_addon'],
+                    ))['v'];
+                    $scriptCtx->popScript();
+
+                    $this->state['offers_sum'] += $offer['amount'];
+                }
+            }
+
+            {
+                $scriptCtx->pushScript(array(
+                    'currency' => array('t' => 's', 'v' => $this->state['currency']),
+                    'value' => array('t' => 'n', 'v' => $this->state['offers_sum']),
+                ));
+                $this->state['offers_sum_rendered'] = $scriptCtx->eval(array(
+                    't' => 'c',
+                    'f' => 'currency_fmt',
+                    'a' => ['currency', 'value'],
+                ))['v'];
+                $scriptCtx->popScript();
+            }
+        }
+    }
+    
+    private function updatePaymentsState() {
+        if ($this->state['step'] >= 2) {
             $paymentOrgIds = new \Ds\Set();
             foreach ($this->offers as $offerYear) {
-                if (!isset($this->state['year_statuses'][$offerYear['year']])) continue;
                 $paymentOrgIds->add($offerYear['paymentOrgId']);
             }
             $this->paymentOrgs = $this->loadPaymentOrgs($paymentOrgIds);
@@ -781,11 +810,13 @@ class Registration extends Form {
                 $org['offers_sum'] = 0;
                 foreach ($this->offers as $offerYear) {
                     if ($offerYear['paymentOrgId'] == $org['id']) {
-                        if (!isset($this->state['year_statuses'][$offerYear['year']])) continue;
                         $org['years'][] = $offerYear['year'];
-                        $yearStatus = $this->state['year_statuses'][$offerYear['year']];
+                        $yearStatus = '';
+                        if (isset($this->state['year_statuses'][$offerYear['year']])) {
+                            $yearStatus = $this->state['year_statuses'][$offerYear['year']];
+                        }
                         $org['statuses'][$offerYear['year']] = $yearStatus;
-                        if ($yearStatus === 'submitted') $org['can_pay'] = true;
+                        if (!$yearStatus || $yearStatus === 'submitted') $org['can_pay'] = true;
 
                         if (isset($this->state['offers'][$offerYear['year']])) {
                             $offers = $this->state['offers'][$offerYear['year']];
@@ -814,318 +845,305 @@ class Registration extends Form {
                 $paymentMethodId = (int) $_POST['payment_method_id'];
                 $currency = (string) $_POST['payment_currency'];
 
-                if (!isset($this->paymentOrgs[$paymentOrg])) {
-                    // invalid
-                    // TODO: handle error?
-                    return;
+                $this->createIntent($paymentOrg, $paymentMethodId, $currency);
+            }
+        }
+    }
+
+    private function createEntries($years) {
+        $errors = [];
+        foreach ($years as $year) {
+            if (isset($this->state['locked_offers'][$year])) continue;
+            $yearItems = &$this->state['offers'][$year];
+            $options = [];
+            $options['year'] = (int) $year;
+            $options['currency'] = $this->state['currency'];
+
+            if ($this->plugin->aksoUser) {
+                $options['codeholderData'] = $this->plugin->aksoUser['id'];
+            } else {
+                $options['codeholderData'] = $this->state['codeholder'];
+                foreach (array_keys($options['codeholderData']['address']) as $k) {
+                    if (empty($options['codeholderData']['address'][$k])) {
+                        unset($options['codeholderData']['address'][$k]);
+                    }
                 }
-                $org = &$this->paymentOrgs[$paymentOrg];
+                foreach (array_keys($options['codeholderData']) as $k) {
+                    // codeholder fields generally default to null instead of empty-string
+                    if (gettype($options['codeholderData'][$k]) === 'string' && empty($options['codeholderData'][$k])) {
+                        $options['codeholderData'][$k] = null;
+                    }
+                }
+            }
 
-                // TODO: validate method id and currency maybe?
+            $options['offers'] = [];
+            $addons = [];
+            foreach ($yearItems as $itemId => $itemData) {
+                $itemIdParts = explode('-', $itemId);
+                $groupIndex = $itemIdParts[0];
+                $offerIndex = $itemIdParts[1];
 
-                $codeholderId = null;
-                $customerName = '';
-                if ($this->plugin->aksoUser) {
-                    $codeholderId = $this->plugin->aksoUser['id'];
-                    $customerName = $this->plugin->aksoUserFormattedName;
+                $data = array(
+                    'type' => $itemData['type'],
+                    'id' => $itemData['id'],
+                    'amount' => $itemData['amount'],
+                );
+
+                if ($itemData['type'] === 'addon') {
+                    $addons[] = $data;
                 } else {
-                    $customerName = [
-                        $this->state['codeholder']['honorific'],
-                        $this->state['codeholder']['firstNameLegal'],
-                        $this->state['codeholder']['lastNameLegal'],
-                    ];
-                    $customerName = implode(' ', array_filter($customerName, function ($v) {
-                        return !empty($v);
-                    }));
-                }
+                    $options['offers'][] = $data;
 
-                $purposes = [];
-                $addonPurposes = [];
-                $categories = $this->loadAllCategories($this->getRegisteredOfferCategoryIds($this->state['offers']));
-                foreach ($org['years'] as $year) {
-                    $purposeTitle = $this->locale['payment_purpose_title_singular'] . ' ' . $org['years'][0];
-                    $purposeDescription = '';
-
-                    if (!isset($this->state['offers'][$year])) continue;
-                    if ($this->state['year_statuses'][$year] !== 'submitted') continue;
-                    $yearItems = $this->state['offers'][$year];
-                    $sum = 0;
-                    $originalAmountSum = 0;
-                    foreach ($yearItems as $offer) {
-                        if ($offer['type'] === 'membership') {
-                            if ($purposeDescription) $purposeDescription .= "\n";
-                            $purposeDescription .= '- '; // render a list
-                            if (isset($categories[$offer['id']])) {
-                                $cat = $categories[$offer['id']];
-                                $purposeDescription .= $cat['nameAbbrev'] . ' ' . $cat['name'];
-                            } else {
-                                $purposeDescription .= '(Eraro)';
-                            }
-                            $sum += $offer['amount'];
-                            $originalAmountSum += $offer['amount_original'];
-
-                            if ($offer['amount_addon'] > 0) {
-                                $purposeDescription .= "\n    - ";
-                                $purposeDescription .= $this->localize('offers_price_addon_label');
-                                $purposeDescription .= ': ';
-                                $purposeDescription .= $offer['amount_addon_rendered'];
-                            }
-                        } else if ($offer['type'] === 'addon') {
-                            $addonAmount = $this->convertCurrency($this->state['currency'], $currency, $offer['amount']);
-                            $addonPurposes[] = array(
-                                'type' => 'addon',
-                                'paymentAddonId' => $offer['id'],
-                                'amount' => $addonAmount,
-                            );
-                        } else {
-                            $purposeDescription .= '(Eraro)';
-                        }
+                    if ($itemData['amount_addon']) {
+                        $addons[] = array(
+                            'type' => 'membership',
+                            'id' => $itemData['id'],
+                            'amount' => $itemData['amount_addon'],
+                        );
                     }
-
-                    if (!$sum) continue;
-
-                    $convertedAmount = $this->convertCurrency($this->state['currency'], $currency, $sum);
-                    $originalAmount = null;
-                    if ($sum !== $originalAmountSum) {
-                        $originalAmount = $this->convertCurrency($this->state['currency'], $currency, $originalAmountSum);
-                    }
-
-                    $purposes[] = array(
-                        'type' => 'trigger',
-                        'title' => $purposeTitle,
-                        'description' => $purposeDescription,
-                        'amount' => $convertedAmount,
-                        'originalAmount' => $originalAmount,
-                        'triggerAmount' => array(
-                            'currency' => $this->state['currency'],
-                            'amount' => $sum,
-                        ),
-                        'triggers' => 'registration_entry',
-                        'registrationEntryId' => Utils::base32_decode($this->state['dataIds'][$year]),
-                    );
-                }
-
-                $res = $this->app->bridge->post('/aksopay/payment_intents', array(
-                    'codeholderId' => $codeholderId,
-                    'customer' => array(
-                        'name' => $customerName,
-                        'email' => $this->state['codeholder']['email'],
-                    ),
-                    'paymentOrgId' => $paymentOrg,
-                    'paymentMethodId' => $paymentMethodId,
-                    'currency' => $currency,
-                    'customerNotes' => null,
-                    'purposes' => array_merge($purposes, $addonPurposes),
-                ), array(), []);
-
-                if ($res['k']) {
-                    $paymentId = $res['h']['x-identifier'];
-
-                    $returnTarget = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") .
-                        "://$_SERVER[HTTP_HOST]" . $editTarget;
-
-                    $paymentsHost = $this->plugin->getGrav()['config']->get('plugins.akso-bridge.payments_host');
-                    $redirectTarget = $paymentsHost . '/i/' . $paymentId . '?return=' . urlencode($returnTarget);
-                    $this->plugin->getGrav()->redirectLangSafe($redirectTarget, 303);
-                } else {
-                    if ($res['sc'] === 400) $this->state['form_error'] = $this->locale['payment_error_bad_request'];
-                    else if ($res['sc'] === 417) $this->state['form_error'] = $this->locale['payment_error_too_high'];
-                    else if ($res['sc'] === 500) $this->state['form_error'] = $this->locale['payment_error_server_error'];
-                    else $this->state['form_error'] = $this->locale['payment_error_generic'];
-                }
-            }
-        } else if ($this->state['step'] >= 1 && !$registered) {
-            $this->offers = $this->loadAllOffers();
-            $this->offersByYear = [];
-            foreach ($this->offers as $offerYear) {
-                $this->offersByYear[$offerYear['year']] = $offerYear;
-            }
-
-            $this->state['offers_indexed'] = [];
-            $this->state['offers_indexed_amounts'] = [];
-            $this->state['offers_indexed_amount_addons'] = [];
-            $this->state['offers_sum'] = 0;
-            $scriptCtx = new FormScriptExecCtx($this->app);
-            foreach ($this->state['offers'] as $year => &$yearItems) {
-                $price_sum = 0;
-                foreach ($yearItems as $key => &$offer) {
-                    $keyParts = explode('-', $key);
-                    $group = $keyParts[0];
-                    $id = $keyParts[1];
-
-                    if ($offer['type'] === 'membership') {
-                        $apiOffer = null;
-                        if (isset($this->offersByYear[$year]['offers'][$group]['offers'][$id])) {
-                            $apiOffer = $this->offersByYear[$year]['offers'][$group]['offers'][$id];
-                        }
-                        if ($apiOffer) {
-                            $offer['amount_addon'] = max(0, $offer['amount_addon']);
-                            $offer['original_amount'] = $apiOffer['price']['value'];
-                            $offer['amount'] = $apiOffer['price']['value'] + $offer['amount_addon'];
-                        } else $offer['amount'] = 2147483647; // FIXME
-                    } else if ($offer['type'] === 'addon') {
-                        $offer['amount'] = max(1, $offer['amount']);
-                        $offer['original_amount'] = $offer['amount'];
-                    }
-
-                    $this->state['offers_indexed_amounts']["$year-$group-$id"] = ((float) $offer['amount']) / $currencyMult;
-                    $this->state['offers_indexed_amount_addons']["$year-$group-$id"] = ((float) $offer['amount_addon']) / $currencyMult;
-                    $this->state['offers_indexed']["$year-$group-$id"] = $offer;
-
-                    $scriptCtx->pushScript(array(
-                        'currency' => array('t' => 's', 'v' => $this->state['currency']),
-                        'value' => array('t' => 'n', 'v' => $offer['original_amount']),
-                        'value_addon' => array('t' => 'n', 'v' => $offer['amount_addon']),
-                    ));
-                    $offer['amount_rendered'] = $scriptCtx->eval(array(
-                        't' => 'c',
-                        'f' => 'currency_fmt',
-                        'a' => ['currency', 'value'],
-                    ))['v'];
-                    $offer['amount_addon_rendered'] = $scriptCtx->eval(array(
-                        't' => 'c',
-                        'f' => 'currency_fmt',
-                        'a' => ['currency', 'value_addon'],
-                    ))['v'];
-                    $scriptCtx->popScript();
-
-                    $this->state['offers_sum'] += $offer['amount'];
                 }
             }
 
-            {
-                $scriptCtx->pushScript(array(
-                    'currency' => array('t' => 's', 'v' => $this->state['currency']),
-                    'value' => array('t' => 'n', 'v' => $this->state['offers_sum']),
-                ));
-                $this->state['offers_sum_rendered'] = $scriptCtx->eval(array(
-                    't' => 'c',
-                    'f' => 'currency_fmt',
-                    'a' => ['currency', 'value'],
-                ))['v'];
-                $scriptCtx->popScript();
+            $res = $this->app->bridge->post('/registration/entries', $options, [], []);
+            if ($res['k']) {
+                $this->state['dataIds'][$year] = $res['h']['x-identifier'];
+                $this->state['addons'][$year] = $addons;
+            } else if (!$res['k']) {
+                if ($res['sc'] === 400) $errors[$year] = $this->localize('create_entry_bad_request');
+                else $errors[$year] = $this->localize('create_entry_internal_error');
             }
         }
 
-        if (!$registered && $this->state['step'] > 0) {
+        if (count($errors) > 0) {
+            $this->state['form_error'] = '';
+            foreach ($errors as $year => $err) {
+                $this->state['form_error'] .= '<div>' .
+                    $this->localize('create_entry_year_failed', $year) .
+                    htmlspecialchars($err) . '</div>';
+            }
+        } else {
+            return true;
+        }
+    }
+
+    private function createIntent($paymentOrg, $paymentMethodId, $currency) {
+        if ($this->state['needs_login']) {
+            $this->state['form_error'] = $this->localize('payment_error_needs_login');
+            return;
+        }
+
+        if (!isset($this->paymentOrgs[$paymentOrg])) {
+            // invalid
+            // TODO: handle error?
+            return;
+        }
+        $org = &$this->paymentOrgs[$paymentOrg];
+
+        // TODO: validate method id and currency maybe?
+
+        if (!$this->createEntries($org['years'])) {
+            return;
+        }
+
+        $codeholderId = null;
+        $customerName = '';
+        if ($this->plugin->aksoUser) {
+            $codeholderId = $this->plugin->aksoUser['id'];
+            $customerName = $this->plugin->aksoUserFormattedName;
+        } else {
+            $customerName = [
+                $this->state['codeholder']['honorific'],
+                $this->state['codeholder']['firstNameLegal'],
+                $this->state['codeholder']['lastNameLegal'],
+            ];
+            $customerName = implode(' ', array_filter($customerName, function ($v) {
+                return !empty($v);
+            }));
+        }
+
+        $purposes = [];
+        $addonPurposes = [];
+        $categories = $this->loadAllCategories($this->getRegisteredOfferCategoryIds($this->state['offers']));
+        foreach ($org['years'] as $year) {
+            $purposeTitle = $this->locale['payment_purpose_title_singular'] . ' ' . $org['years'][0];
+            $purposeDescription = '';
+
+            if (!isset($this->state['offers'][$year])) continue;
+            if (isset($this->state['year_statuses'][$year]) && $this->state['year_statuses'][$year] !== 'submitted') continue;
+            $yearItems = $this->state['offers'][$year];
+            $sum = 0;
+            $originalAmountSum = 0;
+            foreach ($yearItems as $offer) {
+                if ($offer['type'] === 'membership') {
+                    if ($purposeDescription) $purposeDescription .= "\n";
+                    $purposeDescription .= '- '; // render a list
+                    if (isset($categories[$offer['id']])) {
+                        $cat = $categories[$offer['id']];
+                        $purposeDescription .= $cat['nameAbbrev'] . ' ' . $cat['name'];
+                    } else {
+                        $purposeDescription .= '(Eraro)';
+                    }
+                    $sum += $offer['amount'];
+                    $originalAmountSum += $offer['amount_original'];
+
+                    if ($offer['amount_addon'] > 0) {
+                        $purposeDescription .= "\n    - ";
+                        $purposeDescription .= $this->localize('offers_price_addon_label');
+                        $purposeDescription .= ': ';
+                        $purposeDescription .= $offer['amount_addon_rendered'];
+                    }
+                } else if ($offer['type'] === 'addon') {
+                    $addonAmount = $this->convertCurrency($this->state['currency'], $currency, $offer['amount']);
+                    $addonPurposes[] = array(
+                        'type' => 'addon',
+                        'paymentAddonId' => $offer['id'],
+                        'amount' => $addonAmount,
+                    );
+                } else {
+                    $purposeDescription .= '(Eraro)';
+                }
+            }
+
+            if (!$sum) continue;
+
+            $convertedAmount = $this->convertCurrency($this->state['currency'], $currency, $sum);
+            $originalAmount = null;
+            if ($sum !== $originalAmountSum) {
+                $originalAmount = $this->convertCurrency($this->state['currency'], $currency, $originalAmountSum);
+            }
+
+            $purposes[] = array(
+                'type' => 'trigger',
+                'title' => $purposeTitle,
+                'description' => $purposeDescription,
+                'amount' => $convertedAmount,
+                'originalAmount' => $originalAmount,
+                'triggerAmount' => array(
+                    'currency' => $this->state['currency'],
+                    'amount' => $sum,
+                ),
+                'triggers' => 'registration_entry',
+                'registrationEntryId' => Utils::base32_decode($this->state['dataIds'][$year]),
+            );
+        }
+
+        $res = $this->app->bridge->post('/aksopay/payment_intents', array(
+            'codeholderId' => $codeholderId,
+            'customer' => array(
+                'name' => $customerName,
+                'email' => $this->state['codeholder']['email'],
+            ),
+            'paymentOrgId' => $paymentOrg,
+            'paymentMethodId' => $paymentMethodId,
+            'currency' => $currency,
+            'customerNotes' => null,
+            'purposes' => array_merge($purposes, $addonPurposes),
+        ), array(), []);
+
+        if ($res['k']) {
+            $paymentId = $res['h']['x-identifier'];
+
+            $returnTarget = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") .
+                "://$_SERVER[HTTP_HOST]" . $this->getEditTarget();
+
+            $paymentsHost = $this->plugin->getGrav()['config']->get('plugins.akso-bridge.payments_host');
+            $redirectTarget = $paymentsHost . '/i/' . $paymentId . '?return=' . urlencode($returnTarget);
+            $this->plugin->getGrav()->redirectLangSafe($redirectTarget, 303);
+        } else {
+            if ($res['sc'] === 400) $this->state['form_error'] = $this->locale['payment_error_bad_request'];
+            else if ($res['sc'] === 417) $this->state['form_error'] = $this->locale['payment_error_too_high'];
+            else if ($res['sc'] === 500) $this->state['form_error'] = $this->locale['payment_error_server_error'];
+            else $this->state['form_error'] = $this->locale['payment_error_generic'];
+        }
+    }
+
+    public function update() {
+        $this->state = array(
+            'step' => 0,
+            'needs_login' => false,
+            'codeholder' => [],
+            'offers' => [],
+            'locked_offers' => [],
+            'addons' => [],
+        );
+        $this->readFormState();
+
+        if (count($this->state['dataIds']) > 0) {
+            // there are submitted entries!
+            $indexedMembershipAddons = [];
+            $addons = [];
+            if (isset($_GET[self::ADDONS]) && gettype($_GET[self::ADDONS]) === 'string') {
+                $yearStrings = explode('~', $_GET[self::ADDONS]);
+                foreach ($yearStrings as $yearString) {
+                    // + turns into spaces
+                    $parts = explode(' ', $yearString);
+                    if (count($parts) < 2) continue;
+                    $year = (int) $parts[0];
+                    $yearItems = [];
+                    $membershipYearItems = [];
+                    foreach (array_slice($parts, 1) as $addonString) {
+                        $addonData = explode('-', $addonString);
+                        if (count($addonData) != 2) continue;
+                        $addonType = substr($addonData[0], 0, 1);
+                        $addonId = (int) substr($addonData[0], 1);
+                        $addonAmount = (int) $addonData[1];
+                        if ($addonType === 'a') {
+                            $yearItems[] = array('type' => 'addon', 'id' => $addonId, 'amount' => $addonAmount);
+                        } else if ($addonType === 'm') {
+                            $membershipYearItems[$addonId] = array('type' => 'membership', 'id' => $addonId, 'amount' => $addonAmount);
+                        }
+                    }
+                    $addons[$year] = $yearItems;
+                    $indexedMembershipAddons[$year] = $membershipYearItems;
+                }
+            }
+
+            $res = $this->loadRegistered($this->state['dataIds'], $addons, $indexedMembershipAddons);
+            $this->state['codeholder'] = $res['codeholder'];
+            $this->state['currency'] = $res['currency'];
+            $this->state['needs_login'] = $res['needs_login'];
+            $this->state['dataIds'] = $res['dataIds'];
+            $this->state['year_statuses'] = $res['year_statuses'];
+            $this->state['locked_offers'] = $res['offers'];
+        }
+
+        $this->updateCurrencyState();
+        $this->updateCodeholderState();
+        $this->updateOffersState();
+
+        if ($this->state['step'] > 0) {
             $err = $this->getCodeholderError();
 
             if ($err) {
                 $this->state['form_error'] = $err;
                 $this->state['step'] = 0;
-                $creatingEntry = false;
             } else if ($this->state['step'] > 1) {
                 $err = $this->getOfferError();
 
                 if ($err) {
                     $this->state['form_error'] = $err;
                     $this->state['step'] = 1;
-                    $creatingEntry = false;
                 }
             }
         }
 
-        if ($creatingEntry) {
-            $errors = [];
-            foreach ($this->state['offers'] as $year => &$yearItems) {
-                $options = [];
-                $options['year'] = (int) $year;
-                $options['currency'] = $this->state['currency'];
+        $this->updatePaymentsState();
 
-                if ($this->plugin->aksoUser) {
-                    $options['codeholderData'] = $this->plugin->aksoUser['id'];
-                } else {
-                    $options['codeholderData'] = $this->state['codeholder'];
-                    foreach (array_keys($options['codeholderData']['address']) as $k) {
-                        if (empty($options['codeholderData']['address'][$k])) {
-                            unset($options['codeholderData']['address'][$k]);
-                        }
-                    }
-                    foreach (array_keys($options['codeholderData']) as $k) {
-                        // codeholder fields generally default to null instead of empty-string
-                        if (gettype($options['codeholderData'][$k]) === 'string' && empty($options['codeholderData'][$k])) {
-                            $options['codeholderData'][$k] = null;
-                        }
-                    }
-                }
-
-                $options['offers'] = [];
-                $addons = [];
-                foreach ($yearItems as $itemId => $itemData) {
-                    $itemIdParts = explode('-', $itemId);
-                    $groupIndex = $itemIdParts[0];
-                    $offerIndex = $itemIdParts[1];
-
-                    $data = array(
-                        'type' => $itemData['type'],
-                        'id' => $itemData['id'],
-                        'amount' => $itemData['amount'],
-                    );
-
-                    if ($itemData['type'] === 'addon') {
-                        $addons[] = $data;
-                    } else {
-                        $options['offers'][] = $data;
-
-                        if ($itemData['amount_addon']) {
-                            $addons[] = array(
-                                'type' => 'membership',
-                                'id' => $itemData['id'],
-                                'amount' => $itemData['amount_addon'],
-                            );
-                        }
-                    }
-                }
-
-                $res = $this->app->bridge->post('/registration/entries', $options, [], []);
-                if ($res['k']) {
-                    $this->state['dataIds'][$year] = $res['h']['x-identifier'];
-                    $this->state['addons'][$year] = $addons;
-                } else if (!$res['k']) {
-                    if ($res['sc'] === 400) $errors[$year] = $this->localize('create_entry_bad_request');
-                    else $errors[$year] = $this->localize('create_entry_internal_error');
-                }
-            }
-
-            if (count($errors) > 0) {
-                $this->state['form_error'] = '';
-                foreach ($errors as $year => $err) {
-                    $this->state['form_error'] .= '<div>' .
-                        $this->localize('create_entry_year_failed', $year) .
-                        htmlspecialchars($err) . '</div>';
-                }
-            } else if (count($this->state['dataIds']) > 0) {
-                $dataIds = implode('-', $this->state['dataIds']);
-
-                $addonsSerialized = '';
-                foreach ($this->state['addons'] as $year => $addons) {
-                    if ($addonsSerialized) $addonsSerialized .= '~';
-                    $addonsSerialized .= $year;
-                    foreach ($addons as $addon) {
-                        $addonsSerialized .= '+';
-                        if ($addon['type'] === 'membership') $addonsSerialized .= 'm';
-                        else $addonsSerialized .= 'a';
-                        $addonsSerialized .= $addon['id'] . '-' . $addon['amount'];
-                    }
-                }
-
-                $route = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $dataIds .
-                    '&' . self::ADDONS . '=' . $addonsSerialized;
-                $this->plugin->getGrav()->redirectLangSafe($route, 303);
-            }
-        }
-
-        $this->state['serialized'] = json_encode(array(
+        $serializedState = array(
             'currency' => $this->state['currency'],
             'codeholder' => $this->state['codeholder'],
             'offers' => $this->state['offers'],
             'dataIds' => $this->state['dataIds'],
-        ));
+        );
+        $this->state['serialized'] = json_encode($serializedState);
+        $_SESSION[self::SESSION_KEY_NAME] = $serializedState;
     }
 
     // Returns a best-effort error message for the codeholder data.
     private function getCodeholderError() {
+        if ($this->state['needs_login']) return null;
         $ch = $this->state['codeholder'];
+        if (isset($ch['locked'])) return null;
 
         if (empty(trim($ch['firstNameLegal']))) {
             return $this->localize('codeholder_error_name_required');
@@ -1158,6 +1176,10 @@ class Registration extends Form {
 
         $membershipCount = 0;
         foreach ($this->state['offers'] as $year => $yearItems) {
+            if (isset($this->state['locked_offers'][$year])) {
+                $membershipCount++;
+                continue;
+            }
             if (!isset($this->offersByYear[$year])) return $this->localize('offers_error_inconsistent');
             $offerYear = $this->offersByYear[$year];
 
@@ -1212,10 +1234,7 @@ class Registration extends Form {
         $offersIndexed = $this->offersByYear;
         $categories = [];
         $addons = [];
-        if ($this->state['registered']) {
-            $categories = $this->loadAllCategories($this->getRegisteredOfferCategoryIds($this->state['offers']));
-            $addons = $this->loadAllAddons($this->getRegisteredOfferAddonIds($this->state['offers']));
-        } else if ($offers) {
+        if ($this->offers) {
             $categories = $this->loadAllCategories($this->getOfferCategoryIds($this->offers));
             $addons = $this->loadAllAddons($this->getOfferAddonIds($this->offers));
         }
