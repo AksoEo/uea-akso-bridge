@@ -562,32 +562,19 @@ class MarkdownExt {
                 $res = $self->bridge->get("/congresses/$congressId/instances/$instanceId", array(
                     'fields' => ['id', 'name', 'dateFrom', 'dateTo', 'tz'],
                 ));
-                if ($res['k']) {
-                    $doc = new \DOMDocument();
-                    $container = $doc->createElement('a');
-                    $container->setAttribute('class', 'akso-congress-poster');
-                    $container->setAttribute('href', $href);
-                    if ($imgHref) {
-                        $img = $doc->createElement('img');
-                        $img->setAttribute('class', 'congress-poster-image');
-                        $img->setAttribute('src', $imgHref);
-                        $container->appendChild($img);
-                    }
-                    $detailsContainer = $doc->createElement('div');
-                    $detailsContainer->setAttribute('class', 'congress-details' . ($imgHref ? ' has-image' : ''));
-                    $details = $doc->createElement('div');
-                    $details->setAttribute('class', 'congress-inner-details');
-                    $name = $doc->createElement('div');
-                    $name->setAttribute('class', 'congress-name');
-                    $name->textContent = $res['b']['name'];
-                    $button = $doc->createElement('button');
-                    $button->setAttribute('class', 'open-button');
-                    $button->textContent = $self->plugin->locale['content']['congress_poster_button_label'];
-                    $details->appendChild($name);
-                    $detailsContainer->appendChild($details);
-                    $detailsContainer->appendChild($button);
-                    $container->appendChild($detailsContainer);
 
+                $text = '';
+
+                if ($res['k']) {
+                    $info = array(
+                        'name' => $res['b']['name'],
+                        'href' => $href,
+                        'imgHref' => $imgHref,
+                        'countdown' => false,
+                        'date' => '',
+                        'countdownTimestamp' => '',
+                        'buttonLabel' => $self->plugin->locale['content']['congress_poster_button_label'],
+                    );
                     if ($showCountdown) {
                         // TODO: dedup code
                         $firstEventRes = $self->bridge->get("/congresses/$congressId/instances/$instanceId/programs", array(
@@ -610,35 +597,23 @@ class MarkdownExt {
                             $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
                         }
 
-                        $timeDetails = $doc->createElement('div');
-                        $timeDetails->setAttribute('class', 'congress-time-details');
-
-                        $congressDate = $doc->createElement('span');
-                        $congressDate->setAttribute('class', 'congress-date');
-                        $congressDate->textContent = Utils::formatDayMonth($res['b']['dateFrom']) . '–'. Utils::formatDayMonth($res['b']['dateTo']);
-                        $timeDetails->appendChild($congressDate);
-
-                        $timeDetails->appendChild($doc->createTextNode(' · '));
-
-                        $countdown = $doc->createElement('span');
-                        $countdown->setAttribute('class', 'congress-countdown live-countdown');
-                        $countdown->setAttribute('data-timestamp', $congressStartTime->getTimestamp());
-                        $timeDetails->appendChild($countdown);
-                        $details->appendChild($timeDetails);
+                        $info['date'] = Utils::formatDayMonth($res['b']['dateFrom']) . '–'. Utils::formatDayMonth($res['b']['dateTo']);
+                        $info['countdownTimestamp'] = $congressStartTime->getTimestamp();
+                        $info['countdown'] = true;
                     }
 
-                    $renderedCongresses = $doc->saveHtml($container);
+                    $text = json_encode($info);
                 } else {
-                    // TODO
+                    $text = '!';
                 }
 
                 return array(
                     'element' => array(
                         'name' => 'div',
                         'attributes' => array(
-                            'class' => 'akso-congresses',
+                            'class' => 'akso-congresses unhandled-akso-congress-poster',
                         ),
-                        'text' => $renderedCongresses,
+                        'text' => $text,
                     ),
                 );
             }
@@ -782,6 +757,7 @@ class MarkdownExt {
         $this->handleHTMLNews($document);
         $this->handleHTMLMagazines($document);
         $this->handleHTMLIfMembers($document);
+        $this->handleHTMLCongressPosters($document);
         $this->congressFields->handleHTMLCongressStuff($document);
 
         $this->nonces = $this->removeXSS($document);
@@ -1191,6 +1167,66 @@ class MarkdownExt {
                 $membersOnlyBox->appendChild($signUpLink);
                 $membersOnlyBox->appendChild(new Element('span', '.'));
             }
+        }
+    }
+
+    protected function handleHTMLCongressPosters($doc) {
+        $unhandledPosters = $doc->find('.unhandled-akso-congress-poster');
+        foreach ($unhandledPosters as $poster) {
+            $textContent = $poster->text();
+            if (strncmp($textContent, '!', 1) === 0) {
+                // this is an error; set class and skip
+                $poster->class = 'akso-congresses is-error';
+                continue;
+            }
+
+            $info = json_decode($textContent, true);
+
+            $outerContainer = $doc->createElement('div');
+            $outerContainer->class = 'akso-congresses';
+
+            $container = $doc->createElement('a');
+
+            $container->setAttribute('class', 'akso-congress-poster');
+            $container->setAttribute('href', $info['href']);
+            if ($info['imgHref']) {
+                $img = $doc->createElement('img');
+                $img->setAttribute('class', 'congress-poster-image');
+                $img->setAttribute('src', $info['imgHref']);
+                $container->appendChild($img);
+            }
+            $detailsContainer = $doc->createElement('div');
+            $detailsContainer->setAttribute('class', 'congress-details' . ($info['imgHref'] ? ' has-image' : ''));
+            $details = $doc->createElement('div');
+            $details->setAttribute('class', 'congress-inner-details');
+            $name = new Element('div', $info['name']);
+            $name->setAttribute('class', 'congress-name');
+            $button = $doc->createElement('button', $info['buttonLabel']);
+            $button->setAttribute('class', 'open-button');
+            $details->appendChild($name);
+
+            if ($info['countdown']) {
+                $timeDetails = $doc->createElement('div');
+                $timeDetails->setAttribute('class', 'congress-time-details');
+
+                $congressDate = new Element('span', $info['date']);
+                $congressDate->setAttribute('class', 'congress-date');
+                $timeDetails->appendChild($congressDate);
+
+                $timeDetails->appendChild($doc->createTextNode(' · '));
+
+                $countdown = $doc->createElement('span');
+                $countdown->setAttribute('class', 'congress-countdown live-countdown');
+                $countdown->setAttribute('data-timestamp', $info['countdownTimestamp']);
+                $timeDetails->appendChild($countdown);
+                $details->appendChild($timeDetails);
+            }
+            $detailsContainer->appendChild($details);
+            $detailsContainer->appendChild($button);
+            $container->appendChild($detailsContainer);
+            $outerContainer->appendChild($container);
+
+            $poster->replace($outerContainer);
         }
     }
 

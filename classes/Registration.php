@@ -13,8 +13,14 @@ class Registration extends Form {
     private const STEP_SUMMARY = '2';
     private const STEP_ENTRY_CREATE = '3';
     private const DATAID = 'dataId';
+
+    // $_GET parameter where addons associated with dataIds are stored
     private const ADDONS = 'aldonebloj';
+
+    // see AKSO Pay
     private const PAYMENT_SUCCESS_RETURN = 'payment_success_return';
+
+    // $_SESSION key where ephemeral state will be stored
     private const SESSION_KEY_NAME = 'akso_alighilo_sess';
 
     private const CODEHOLDER_FIELDS = [
@@ -32,12 +38,10 @@ class Registration extends Form {
         $this->locale = $plugin->locale['registration'];
     }
 
-    // state array: stores the current user input and some derived data
-    // keys:
-    // - codeholder: codeholder data for new members (form page 1)
-    // - offers: selected offers (form page 2)
+    // state array: stores the current state
     private $state;
 
+    // Reads a key string like 'a.b.c' inside $obj and checks for its type.
     private function readSafe($typechk, $obj, $key) {
         $keyParts = explode('.', $key);
         $keyPart = $keyParts[0];
@@ -50,6 +54,7 @@ class Registration extends Form {
         return $obj[$keyPart];
     }
 
+    // Loads all available offer years.
     private function loadAllOffers($skipOffers = false) {
         $fields = ['year', 'paymentOrgId', 'currency'];
         if (!$skipOffers) $fields[] = 'offers';
@@ -66,7 +71,7 @@ class Registration extends Form {
             {
                 $codeholder = $this->state['codeholder'];
                 if (isset($codeholder['birthdate'])) {
-                    // simple check to see if codeholder data exists ^
+                    // codeholder data exists; we can set form variables
 
                     $scriptCtx->setFormVar('birthdate', $codeholder['birthdate']);
 
@@ -94,6 +99,7 @@ class Registration extends Form {
 
                 $currency = $this->state['currency'];
 
+                // compute all prices for the current codeholder
                 foreach ($offerYears as &$offerYear) {
                     if (!isset($offerYear['offers'])) continue;
                     $yearCurrency = $offerYear['currency'];
@@ -156,6 +162,7 @@ class Registration extends Form {
         }
         return [];
     }
+
     private function getOfferCategoryIds($offerYears) {
         $ids = new \Ds\Set();
         foreach ($offerYears as $year) {
