@@ -199,8 +199,8 @@
                 <input
                     type="checkbox"
                     id="codeholder-split-name"
-                    {% if akso_registration.state.codeholder.firstName != akso_registration.state.codeholder.firstNameLegal
-                        or akso_registration.state.codeholder.lastName != akso_registration.state.codeholder.lastNameLegal %}
+                    {% if (akso_registration.state.codeholder.firstName and akso_registration.state.codeholder.firstName != akso_registration.state.codeholder.firstNameLegal)
+                        or (akso_registration.state.codeholder.lastName and akso_registration.state.codeholder.lastName != akso_registration.state.codeholder.lastNameLegal) %}
                     checked
                     {% endif %}
                     name="codeholder[splitName]"
@@ -214,20 +214,28 @@
                                 id="codeholder-first-name-required"
                                 title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
                         </label>
+                        {% set chFirstName = akso_registration.state.codeholder.firstName %}
+                        {% if chFirstName is empty %}
+                            {% set chFirstName = akso_registration.state.codeholder.firstNameLegal %}
+                        {% endif %}
                         <input
                             name="codeholder[firstName]"
                             type="text"
                             required
-                            value="{{akso_registration.state.codeholder.firstName|e('html_attr')}}" />
+                            value="{{chFirstName|e('html_attr')}}" />
                     </div>
                 </div>
                 <div class="settings-field" data-el="input" data-type="text">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.codeholder_last_name}}</label>
+                        {% set chLastName = akso_registration.state.codeholder.lastName %}
+                        {% if chLastName is empty %}
+                            {% set chLastName = akso_registration.state.codeholder.lastNameLegal %}
+                        {% endif %}
                         <input
                             name="codeholder[lastName]"
                             type="text"
-                            value="{{akso_registration.state.codeholder.lastName|e('html_attr')}}" />
+                            value="{{chLastName|e('html_attr')}}" />
                     </div>
                     <div class="field-description">
                         <label for="codeholder-split-name" aria-role="checkbox" tabindex="0" id="split-name-checkbox"></label>
@@ -246,7 +254,6 @@
                             <input
                                 name="codeholder[firstNameLegal]"
                                 type="text"
-                                required
                                 value="{{akso_registration.state.codeholder.firstNameLegal|e('html_attr')}}" />
                         </div>
                     </div>

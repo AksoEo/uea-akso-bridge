@@ -528,6 +528,10 @@ class Registration extends Form {
                 }
             } else if (isset($_POST['codeholder']) && gettype($_POST['codeholder']) === 'array') {
                 $ch = $_POST['codeholder'];
+            } else if (isset($serializedState['codeholder']) && gettype($serializedState['codeholder'] === 'array')) {
+                $ch = $serializedState['codeholder'];
+                $ch['splitCountry'] = true;
+                $ch['splitName'] = true;
             }
 
             $this->state['codeholder'] = array(
