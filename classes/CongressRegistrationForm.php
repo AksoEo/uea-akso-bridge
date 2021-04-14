@@ -169,25 +169,6 @@ class CongressRegistrationForm extends Form {
         return (string) $value;
     }
 
-    // returns list of akso countries and their name_eo
-    private $cachedCountries = null;
-    function getCountries() {
-        if (!$this->cachedCountries) {
-            $res = $this->app->bridge->get('/countries', array(
-                'limit' => 300,
-                'fields' => ['code', 'name_eo'],
-                'order' => [['name_eo', 'asc']],
-            ), 600);
-            if ($res['k']) {
-                $this->cachedCountries = $res['b'];
-            } else {
-                // TODO: handle failure better
-                throw new Exception('Failed to load countries');
-            }
-        }
-        return $this->cachedCountries;
-    }
-
     private $cachedCodeholder = null;
     function getCodeholder() {
         if (!$this->cachedCodeholder) {

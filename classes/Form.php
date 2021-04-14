@@ -13,6 +13,7 @@ function localize($locale, $key, ...$params) {
         $out .= $locale[$key . '_' . $i];
         return $out;
     }
+    if (!isset($locale[$key])) return '???' . $key;
     return $locale[$key];
 }
 
@@ -227,7 +228,6 @@ class FormInputTime extends FormInputText {
             $maxMins = $maxMins->format('H') * 60 + $maxMins->format('i');
         }
 
-
         if ($item['min'] && $item['max']) {
             if ($minMins > $timeMins || $maxMins < $timeMins) {
                 return localize($extra['locale'], 'err_datetime_range', $item['min'], $item['max']);
@@ -290,6 +290,7 @@ class FormInputDateTime extends FormInputText {
 class FormInputBooleanTable extends FormInputText {
     public const ID = 'boolean_table';
     public function readFromPost($data, $extra) {
+        $item = $extra['item'];
         $excludedCells = [];
         if ($item['excludeCells'] !== null) {
             foreach ($item['excludeCells'] as $xy) {
@@ -363,16 +364,16 @@ class Form {
     public function __construct($app) {
         $this->app = $app;
 
-        $this->inputTypes[] = new FormInputBoolean();
-        $this->inputTypes[] = new FormInputNumber();
-        $this->inputTypes[] = new FormInputText();
-        $this->inputTypes[] = new FormInputMoney();
-        $this->inputTypes[] = new FormInputEnum();
-        $this->inputTypes[] = new FormInputCountry();
-        $this->inputTypes[] = new FormInputDate();
-        $this->inputTypes[] = new FormInputTime();
-        $this->inputTypes[] = new FormInputDateTime();
-        $this->inputTypes[] = new FormInputBooleanTable();
+        $this->inputTypes[FormInputBoolean::ID] = new FormInputBoolean();
+        $this->inputTypes[FormInputNumber::ID] = new FormInputNumber();
+        $this->inputTypes[FormInputText::ID] = new FormInputText();
+        $this->inputTypes[FormInputMoney::ID] = new FormInputMoney();
+        $this->inputTypes[FormInputEnum::ID] = new FormInputEnum();
+        $this->inputTypes[FormInputCountry::ID] = new FormInputCountry();
+        $this->inputTypes[FormInputDate::ID] = new FormInputDate();
+        $this->inputTypes[FormInputTime::ID] = new FormInputTime();
+        $this->inputTypes[FormInputDateTime::ID] = new FormInputDateTime();
+        $this->inputTypes[FormInputBooleanTable::ID] = new FormInputBooleanTable();
     }
 
     protected $cachedCurrencies = null;
@@ -497,7 +498,7 @@ class Form {
                     'req' => $req,
                     'locale' => $this->locale,
                 ));
-                if (!$err) return null;
+                if ($err) return $err;
             }
         }
 
@@ -518,7 +519,8 @@ class Form {
                     $value = $this->data[$item['name']];
                     $fieldError = $this->getFieldError($scriptCtx, $item, $value);
                 } else {
-                    $fieldError = $this->localize('err_data_field_missing', $item['name']);
+                    // fields can be nullable actually!!
+                    // $fieldError = $this->localize('err_data_field_missing', $item['name']);
                 }
                 if ($fieldError) $ok = false;
                 $this->errors[$item['name']] = $fieldError;
