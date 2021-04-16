@@ -148,7 +148,7 @@ The `[[nurmembroj]]` block construct shows an alert box saying the content is on
 ### Additional Extensions
 Probably not commonly used; mostly for the home page.
 
-- `[[aktuale]]`: shows a news carousel or sidebar depending on layout
+- `[[aktuale /path 4]]`: shows a news carousel or sidebar depending on layout. The path should point to the blog page and the number indicates how many items to show.
 - `[[revuoj 1 2 3]]`: shows the given magazines (space-separated ids)
 - `[[kongreso 1/2 /path/to/target optional_header_image.jpg]]`: shows the given congress instance
     - (upload the image to the same page)

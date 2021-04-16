@@ -7,6 +7,7 @@ use Grav\Common\Plugin;
 use Grav\Common\Markdown\Parsedown;
 use RocketTheme\Toolbox\Event\Event;
 use Grav\Plugin\AksoBridge\CongressFields;
+use Grav\Plugin\AksoBridge\Utils;
 
 // loaded from AKSO bridge
 class MarkdownExt {
@@ -512,9 +513,12 @@ class MarkdownExt {
 
         $markdown->addBlockType('[', 'AksoNews');
         $markdown->blockAksoNews = function($line, $block) use ($self) {
-            if (preg_match('/^\[\[aktuale\]\]/', $line['text'], $matches)) {
+            if (preg_match('/^\[\[aktuale\s+([^\s]+)\s+(\d+)\]\]/', $line['text'], $matches)) {
                 $error = null;
                 $codeholders = [];
+
+                $target = $matches[1];
+                $count = (int) $matches[2];
 
                 return array(
                     'element' => array(
@@ -522,7 +526,10 @@ class MarkdownExt {
                         'attributes' => array(
                             'class' => 'news-sidebar',
                         ),
-                        'text' => 'news goes here'
+                        'text' => json_encode(array(
+                            'target' => $target,
+                            'count' => $count,
+                        )),
                     ),
                 );
             }
@@ -636,6 +643,8 @@ class MarkdownExt {
     public function onPageContentProcessed(Event $event) {
         $this->app->close();
     }
+
+    private $nonces = array('scripts' => [], 'styles' => []);
 
     public function onOutputGenerated(Event $event) {
         if ($this->plugin->isAdmin()) {
@@ -1055,29 +1064,73 @@ class MarkdownExt {
                 continue;
             }
 
-            $newNews = new Element('ul');
+            $newNews = new Element('aside');
             $newNews->class = 'news-sidebar';
 
             try {
-                $newNews->setInnerHTML('<li class="news-item">
-                        <a href="testo" class="item-title">Cats Exist</a>
-                        <div class="item-meta">April 7th, 2020</div>
-                        <div class="item-description">
-                            After a thorough peer-reviewed study of reality, a team of researchers has determined that cats do, in fact, exist, and are not simply a myth as was previously believed.
-                        </div>
-                    </li><li class="news-item">
-                        <a href="katido" class="item-title">Important Announcement</a>
-                        <div class="item-meta">April 1st, 2020</div>
-                        <div class="item-description">
-                            Zamenhof’s constructed language “Esperanto” is canceled due to COVID-19, sorry everyone.
-                        </div>
-                    </li><li class="news-item">
-                        <a href="pri" class="item-title">UEA retejo ne havas API-on</a>
-                        <div class="item-meta">29-a de marto, 2020</div>
-                        <div class="item-description">
-                            La nova retejo de UEA ne ankoraŭ havas API-on, do ni uzas la novan inventon “vortoj” por skribi ĉi tiujn novaĵojn.
-                        </div>
-                    </li>');
+                $readMoreLabel = $this->plugin->locale['content']['news_read_more'];
+                $moreNewsLabel = $this->plugin->locale['content']['news_sidebar_more_news'];
+
+                $params = json_decode($textContent, true);
+
+                $newsPath = $params['target'];
+                $newsCount = $params['count'];
+
+                $newsPage = $this->plugin->getGrav()['pages']->find($newsPath);
+                $newsPostCollection = $newsPage->collection();
+
+                $newsPages = [];
+                for ($i = 0; $i < min($newsCount, $newsPostCollection->count()); $i++) {
+                    $newsPages[] = $newsPostCollection->current();
+                    $newsPostCollection->next();
+                }
+                $hasMore = count($newsPages) < $newsPostCollection->count();
+
+                $moreNews = new Element('div');
+                $moreNews->class = 'more-news-container';
+                $moreNewsLink = new Element('a', $moreNewsLabel);
+                $moreNewsLink->class = 'more-news-link link-button';
+                $moreNewsLink->href = $newsPath;
+                $moreNews->appendChild($moreNewsLink);
+
+                $title = new Element('h4', '[[News]]');
+                $title->class = 'news-title';
+                if ($hasMore) $title->appendChild($moreNews);
+                $newNews->appendChild($title);
+
+                $newNewsList = new Element('ul');
+                $newNewsList->class = 'news-items';
+
+                foreach ($newsPages as $page) {
+                    $li = new Element('li');
+                    $li->class = 'news-item';
+                    $pageLink = new Element('a', $page->title());
+                    $pageLink->class = 'item-title';
+                    $pageLink->href = $page->url();
+                    $li->appendChild($pageLink);
+                    $pageDate = $page->date();
+                    $itemMeta = new Element('div', Utils::formatDate((new \DateTime("@$pageDate"))->format('Y-m-d')));
+                    $itemMeta->class = 'item-meta';
+                    $li->appendChild($itemMeta);
+                    $itemDescription = new Element('div');
+                    $itemDescription->class = 'item-description';
+                    $itemDescription->setInnerHTML($page->summary());
+                    $li->appendChild($itemDescription);
+                    $itemReadMore = new Element('div');
+                    $itemReadMore->class = 'item-read-more';
+                    $itemReadMoreLink = new Element('a', $readMoreLabel);
+                    $itemReadMoreLink->href = $page->url();
+                    $itemReadMore->appendChild($itemReadMoreLink);
+                    $li->appendChild($itemReadMore);
+                    $newNewsList->appendChild($li);
+                }
+                $newNews->appendChild($newNewsList);
+
+                if ($hasMore) {
+                    $moreNews->class = 'more-news-container is-footer-container';
+                    $newNews->appendChild($moreNews);
+                }
+
                 $news->replace($newNews);
             } catch (Exception $e) {
                 // oh no
