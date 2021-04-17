@@ -791,7 +791,23 @@ class MarkdownExt {
                     $pChildren = $tlChild->children();
                     $newPChildren = array();
                     foreach ($pChildren as $pChild) {
+                        $link = null;
+                        $imageNode = null;
                         if ($pChild->isElementNode() && $pChild->tag === 'img') {
+                            $imageNode = $pChild;
+                        } else if ($pChild->isElementNode() && $pChild->tag === 'a') {
+                            $ch = $pChild->children();
+                            if (count($pChild->children()) === 1) {
+                                $firstChild = $ch[0];
+                                if ($firstChild->isElementNode() && $firstChild->tag === 'img') {
+                                    $link = $pChild->getAttribute('href');
+                                    if (!$link) $link = '';
+                                    $imageNode = $firstChild;
+                                }
+                            }
+                        }
+
+                        if ($imageNode) {
                             // split here
                             if (count($newPChildren) > 0) {
                                 $newP = new Element('p');
@@ -810,7 +826,8 @@ class MarkdownExt {
                             }
 
                             $pages[] = array(
-                                'img' => $pChild,
+                                'img' => $imageNode,
+                                'link' => $link,
                                 'caption' => new Element('figcaption')
                             );
                             $didPassImg = true;
@@ -849,7 +866,14 @@ class MarkdownExt {
             $pagesContainer->class = 'carousel-pages';
             $isFirst = true;
             foreach ($pages as $ntlChild) {
-                $pageContainer = new Element('div');
+                $pageContainer = null;
+                if ($ntlChild['link']) {
+                    $pageContainer = new Element('a');
+                    $link = $ntlChild['link'];
+                    $pageContainer->href = "$link";
+                } else {
+                    $pageContainer = new Element('div');
+                }
                 $pageContainer->class = 'carousel-page';
                 $pageContainer->appendChild($ntlChild['img']);
                 $pageContainer->appendChild($ntlChild['caption']);

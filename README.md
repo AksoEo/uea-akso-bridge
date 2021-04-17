@@ -42,6 +42,7 @@ Image carousels are a special kind of figure.
 katido
 ![katido](katido2.jpg)
 ![katido](katido3.jpg)
+[![linked carousel image](img.jpg)](/link)
 [[/bildkaruselo]]
 ```
 
