@@ -513,12 +513,13 @@ class MarkdownExt {
 
         $markdown->addBlockType('[', 'AksoNews');
         $markdown->blockAksoNews = function($line, $block) use ($self) {
-            if (preg_match('/^\[\[aktuale\s+([^\s]+)\s+(\d+)\]\]/', $line['text'], $matches)) {
+            if (preg_match('/^\[\[aktuale\s+([^\s]+)\s+(\d+)(?:\s+"([^"]+)")?\]\]/', $line['text'], $matches)) {
                 $error = null;
                 $codeholders = [];
 
                 $target = $matches[1];
                 $count = (int) $matches[2];
+                $title = isset($matches[3]) ? "$matches[3]" : '';
 
                 return array(
                     'element' => array(
@@ -527,6 +528,7 @@ class MarkdownExt {
                             'class' => 'news-sidebar',
                         ),
                         'text' => json_encode(array(
+                            'title' => $title,
                             'target' => $target,
                             'count' => $count,
                         )),
@@ -1073,6 +1075,7 @@ class MarkdownExt {
 
                 $params = json_decode($textContent, true);
 
+                $newsTitle = $params['title'];
                 $newsPath = $params['target'];
                 $newsCount = $params['count'];
 
@@ -1093,7 +1096,7 @@ class MarkdownExt {
                 $moreNewsLink->href = $newsPath;
                 $moreNews->appendChild($moreNewsLink);
 
-                $title = new Element('h4', '[[News]]');
+                $title = new Element('h4', $newsTitle);
                 $title->class = 'news-title';
                 if ($hasMore) $title->appendChild($moreNews);
                 $newNews->appendChild($title);
