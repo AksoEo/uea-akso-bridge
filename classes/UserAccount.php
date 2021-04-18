@@ -8,11 +8,18 @@ class UserAccount {
     // query parameter used for loading the profile picture
     const QUERY_PROFILE_PICTURE = 'profile_picture';
 
-    private $plugin, $bridge;
+    private $plugin, $bridge, $page;
 
-    public function __construct($plugin, $bridge) {
+    public function __construct($plugin, $bridge, $path) {
         $this->plugin = $plugin;
         $this->bridge = $bridge;
+
+        $this->loginsPath = $this->plugin->accountPath . $this->plugin->getGrav()['config']->get('plugins.akso-bridge.account_logins_path');
+        if ($path === $this->plugin->accountPath) {
+            $this->page = 'account';
+        } else if ($path === $this->loginsPath) {
+            $this->page = 'logins';
+        }
 
         $this->doc = new \DOMDocument();
     }
@@ -288,6 +295,19 @@ class UserAccount {
         );
     }
 
+    private function getLastLogins() {
+        $res = $this->bridge->get('/codeholders/self/logins', array(
+            'fields' => ['time', 'timezone', 'ip', 'userAgentParsed', 'userAgent', 'll', 'area', 'country', 'region', 'city'],
+            'order' => [['time', 'desc']],
+            'limit' => 100,
+        ));
+
+        if ($res['k']) {
+            return $res['b'];
+        }
+        return null;
+    }
+
     public function run() {
         if (isset($_GET[self::QUERY_PROFILE_PICTURE])) {
             $this->runProfilePicture();
@@ -298,14 +318,21 @@ class UserAccount {
             $this->renderMoreMembershipItems($offset);
         }
 
-        $details = $this->renderDetails();
-        $membership = $this->renderMembership();
-        $resetPassword = $this->renderResetPassword();
+        if ($this->page === 'account') {
+            $details = $this->renderDetails();
+            $membership = $this->renderMembership();
+            $resetPassword = $this->renderResetPassword();
 
-        return array(
-            'details' => $details,
-            'membership' => $membership,
-            'reset_password' => $resetPassword,
-        );
+            return array(
+                'details' => $details,
+                'membership' => $membership,
+                'reset_password' => $resetPassword,
+                'logins_link' => $this->loginsPath,
+            );
+        } else if ($this->page === 'logins') {
+            return array(
+                'logins' => $this->getLastLogins(),
+            );
+        }
     }
 }

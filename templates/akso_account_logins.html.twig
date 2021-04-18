@@ -1,0 +1,19 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+    <h1>{{ akso_locale.account.title }}</h1>
+    <h2>{{ akso_locale.account.logins_title }}</h2>
+    <ul>
+    {% for item in account.logins %}
+        <li>
+            <ul>
+                <li>{{item.time|date("c")}}</li>
+                <li>{{item.ll[0]}}, {{item.ll[1]}} / area {{item.area}}</li>
+                <li>{{item.timezone}}</li>
+                <li>{{item.country}} / {{item.region}} / {{item.city}}</li>
+                <li>{{item.ip}}</li>
+                <li title="{{item.userAgent}}">{{item.userAgentParsed}}</li>
+            </ul>
+        </li>
+    {% endfor %}
+    </ul>
+{% endblock %}

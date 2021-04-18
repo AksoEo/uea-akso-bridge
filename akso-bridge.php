@@ -42,6 +42,10 @@ class AksoBridgePlugin extends Plugin {
 
     public $locale;
 
+    function pathStartsWithComponent($path, $component) {
+        return str_starts_with($path, $component) && (strlen($path) === strlen($component) || substr($path, strlen($component), 1) === '/');
+    }
+
     // called at the beginning at some point
     public function onPluginsInitialized() {
         require_once __DIR__ . '/vendor/autoload.php';
@@ -79,7 +83,7 @@ class AksoBridgePlugin extends Plugin {
                 'onPagesInitialized' => ['addLoginPage', 0],
             ]);
             return;
-        } else if ($this->aksoUser && $this->path === $this->accountPath) {
+        } else if ($this->aksoUser && $this->pathStartsWithComponent($this->path, $this->accountPath)) {
             $this->enable([
                 'onPagesInitialized' => ['addAccountPage', 0],
             ]);
@@ -200,7 +204,6 @@ class AksoBridgePlugin extends Plugin {
                     $this->pageState = array(
                         'state' => 'reset-error',
                     );
-                    var_dump($res);
                 } else {
                     $this->pageState = array(
                         'state' => 'reset-success',
@@ -273,10 +276,10 @@ class AksoBridgePlugin extends Plugin {
                 $this->redirectTarget = $this->getReferrerPath();
                 $this->redirectStatus = 303;
             }
-        } else if ($this->path === $this->accountPath) {
+        } else if ($this->pathStartsWithComponent($this->path, $this->accountPath)) {
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/account.js');
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/account.css');
-            $acc = new UserAccount($this, $this->bridge);
+            $acc = new UserAccount($this, $this->bridge, $this->path);
             $this->pageState = $acc->run();
         }
     }
@@ -360,7 +363,9 @@ class AksoBridgePlugin extends Plugin {
         $this->addVirtualPage($this->loginPath, '/pages/akso_login.md');
     }
     public function addAccountPage() {
-        $this->addVirtualPage($this->accountPath, '/pages/akso_account.md');
+        $loginsPath = $this->grav['config']->get('plugins.akso-bridge.account_logins_path');
+        $this->addVirtualPage($this->accountPath . $loginsPath, '/pages/akso_account/logins/akso_account_logins.md');
+        $this->addVirtualPage($this->accountPath, '/pages/akso_account/akso_account.md');
     }
 
     function addVirtualPage($path, $template) {
@@ -487,7 +492,7 @@ class AksoBridgePlugin extends Plugin {
                 $twig->twig_vars['akso_congress'] = $programs->run();
                 $app->close();
             }
-        } else if ($templateId === 'akso_account') {
+        } else if (str_starts_with($templateId, 'akso_account')) {
             $twig->twig_vars['account'] = $state;
         } else if ($templateId === 'akso_registration') {
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
