@@ -6,7 +6,9 @@ use \DiDom\Element;
 use Grav\Common\Plugin;
 use Grav\Common\Markdown\Parsedown;
 use RocketTheme\Toolbox\Event\Event;
+use Grav\Plugin\AksoBridgePlugin;
 use Grav\Plugin\AksoBridge\CongressFields;
+use Grav\Plugin\AksoBridge\Magazines;
 use Grav\Plugin\AksoBridge\Utils;
 
 // loaded from AKSO bridge
@@ -543,7 +545,74 @@ class MarkdownExt {
                 $error = null;
                 $codeholders = [];
 
-                $ids = preg_split('/\s+/', $matches[1]);
+                $ids = [];
+                foreach (preg_split('/\s+/', $matches[1]) as $id) {
+                    if (!empty($id)) $ids[] = (int) $id;
+                }
+                $error = null;
+                $posters = [];
+
+                $magazines = [];
+                {
+                    $res = $this->app->bridge->get("/magazines", array(
+                        'fields' => ['id', 'name'],
+                        'filter' => array('id' => array('$in' => (array) $ids)),
+                        'limit' => count($ids),
+                    ));
+                    if (!$res['k']) {
+                        $error = 'Eraro';
+                    } else {
+                        foreach ($res['b'] as $item) {
+                            $magazines[$item['id']] = $item;
+                        }
+                    }
+                }
+
+                if (!$error) {
+                    foreach ($ids as $id) {
+                        $res = $self->bridge->get("/magazines/$id/editions", array(
+                            'fields' => ['id', 'idHuman', 'date', 'description'],
+                            'order' => [['date', 'desc']],
+                            'offset' => 0,
+                            'limit' => 1,
+                        ), 120);
+
+                        if (!$res['k'] || count($res['b']) < 1) {
+                            $error = 'Eraro';
+                            break;
+                        }
+
+                        $edition = $res['b'][0];
+                        $editionId = $edition['id'];
+                        $hasThumbnail = false;
+                        try {
+                            $path = "/magazines/$id/editions/$editionId/thumbnail/32px";
+                            $res = $this->app->bridge->getRaw($path, 120);
+                            if ($res['k']) {
+                                $hasThumbnail = true;
+                            }
+                            $this->app->bridge->releaseRaw($path);
+                        } catch (\Exception $e) {}
+
+                        $posters[] = array(
+                            'magazine' => $id,
+                            'edition' => $editionId,
+                            'info' => $magazines[$id],
+                            'idHuman' => $edition['idHuman'],
+                            'date' => $edition['date'],
+                            'description' => $edition['description'],
+                            'hasThumbnail' => $hasThumbnail,
+                        );
+                    }
+                }
+
+                $text = '!' . $error;
+                if ($error === null) {
+                    $text = json_encode(array(
+                        'posters' => $posters,
+                    ));
+                }
+
 
                 return array(
                     'element' => array(
@@ -551,7 +620,7 @@ class MarkdownExt {
                         'attributes' => array(
                             'class' => 'unhandled-akso-magazines',
                         ),
-                        'text' => 'magazines' . implode(' ', $ids) . ' go here'
+                        'text' => $text,
                     ),
                 );
             }
@@ -1181,19 +1250,42 @@ class MarkdownExt {
             $newMagazines->class = 'akso-magazines';
 
             try {
-                $newMagazines->setInnerHTML('<li class="magazine">
-                        <div class="magazine-cover-container">
-                            <img class="magazine-cover" src="https://uea.org/bildoj/bildoj_r/grandaj/Aprila20Reta.pdf.jpg">
-                        </div>
-                        <div class="magazine-title">Esperanto</div>
-                        <div class="magazine-meta">Aprilo 2020</div>
-                    </li><li class="magazine">
-                        <div class="magazine-cover-container">
-                            <img class="magazine-cover" src="https://uea.org/bildoj/bildoj_r/grandaj/Kontakto1_2020.pdf.jpg">
-                        </div>
-                        <div class="magazine-title">Kontakto</div>
-                        <div class="magazine-meta">Januaro-Februaro 2020</div>
-                    </li>');
+                $posters = json_decode($textContent, true)['posters'];
+
+                foreach ($posters as $poster) {
+                    $mag = new Element('li');
+                    $mag->class = 'magazine';
+                    $coverContainer = new Element('div');
+                    $coverContainer->class = 'magazine-cover-container';
+                    if ($poster['hasThumbnail']) {
+                        $img = new Element('img');
+                        $img->class = 'magazine-cover';
+                        $basePath = AksoBridgePlugin::MAGAZINE_COVER_PATH . '?'
+                            . Magazines::TH_MAGAZINE . '=' . $poster['magazine'] . '&'
+                            . Magazines::TH_EDITION . '=' . $poster['edition'] . '&'
+                            . Magazines::TH_SIZE;
+                        $img->src = "basePath=64px";
+                        $img->srcset = "$basePath=64px 64w, $basePath=128px 128w, $basePath=256px 256w, $basePath=512px 512w";
+                        $coverContainer->appendChild($img);
+                    } else {
+                        $coverContainer->class .= ' has-no-thumbnail';
+                        $inner = new Element('div');
+                        $inner->class = 'th-inner';
+                        $title = new Element('div', $poster['info']['name']);
+                        $title->class = 'th-title';
+                        $subtitle = new Element('div', $poster['idHuman']);
+                        $subtitle->class = 'th-subtitle';
+                        $inner->appendChild($title);
+                        $inner->appendChild($subtitle);
+                        $coverContainer->appendChild($inner);
+                    }
+                    $mag->appendChild($coverContainer);
+                    $magTitle = new Element('div', $poster['info']['name']);
+                    $mag->appendChild($magTitle);
+                    $magMeta = new Element('div', Utils::formatDate($poster['date']));
+                    $mag->appendChild($magMeta);
+                    $newMagazines->appendChild($mag);
+                }
                 $magazines->replace($newMagazines);
             } catch (Exception $e) {
                 // oh no

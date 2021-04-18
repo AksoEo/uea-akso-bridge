@@ -287,7 +287,7 @@ class AksoBridge {
         return $this->request('currencies', array())['v'];
     }
 
-    public function getRaw(string $path, float $cacheTime, $options) {
+    public function getRaw(string $path, float $cacheTime, $options = array()) {
         return $this->request('get_raw', array(
             'p' => $path,
             'c' => $cacheTime,

@@ -11,6 +11,7 @@ use Grav\Plugin\AksoBridge\AppBridge;
 use Grav\Plugin\AksoBridge\CongressLocations;
 use Grav\Plugin\AksoBridge\CongressPrograms;
 use Grav\Plugin\AksoBridge\CongressRegistration;
+use Grav\Plugin\AksoBridge\Magazines;
 use Grav\Plugin\AksoBridge\Registration;
 use Grav\Plugin\AksoBridge\UserAccount;
 
@@ -32,8 +33,10 @@ class AksoBridgePlugin extends Plugin {
         ];
     }
 
+    const RESOURCE_PATH = '/_';
     const CONGRESS_REGISTRATION_PATH = 'alighilo';
-    const CONGRESS_LOC_THUMBNAIL_PATH = '/_/kongresa_loko/bildo';
+    const CONGRESS_LOC_THUMBNAIL_PATH = self::RESOURCE_PATH . '/kongresa_loko/bildo';
+    const MAGAZINE_COVER_PATH = self::RESOURCE_PATH . '/revuo/bildo';
 
     // allow access to protected property
     public function getGrav() {
@@ -93,6 +96,12 @@ class AksoBridgePlugin extends Plugin {
             $app->open();
             $loc = new CongressLocations($this, $app, null, null);
             $loc->runThumbnail();
+            $app->close();
+        } else if ($this->path === self::MAGAZINE_COVER_PATH) {
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $mag = new Magazines($this, $app);
+            $mag->runThumbnail();
             $app->close();
         }
 
