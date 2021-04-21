@@ -43,28 +43,36 @@
         <span class="congress-date-span" data-from="{{ akso_congress.dateFrom|e('html_attr') }}" data-to="{{ akso_congress.dateTo|e('html_attr') }}" />
     </div>
 </div>
-{% if akso_congress_registration_enabled %}
+{% if akso_congress_user_is_org %}
+<div class="congress-registration">
+    <button disabled class="link-button congress-registration-button">
+        {{akso_locale.congress_instance.registration_button_org_not_allowed}}
+    </button>
+</div>
+{% elseif akso_congress_registration_enabled %}
 <div class="congress-registration">
     {% set reg_disabled = '' %}
+    {% set reg = 'a' %}
     {% if not akso_congress_registration_allowed %}
-    {% set reg_disabled = 'disabled title="Ne plu eblas aliĝi"' %}
+    {% set reg_disabled = 'disabled title="' ~ akso_locale.congress_instance.registration_button_cannot_sign_up|e('html_attr') ~ '"' %}
+    {% set akso_congress_registration_link = '' %}
+    {% set reg = 'button' %}
     {% endif %}
     {% if akso_congress_registration_guest_not_allowed %}
-    <a {{ reg_disabled }} class="link-button congress-registration-button needs-login" href={{ akso_congress_registration_link|e('html_attr') }}>
-        Ensaluti aŭ registriĝi por aliĝi
+    <{{reg}} {{ reg_disabled }} class="link-button congress-registration-button needs-login" href={{ akso_congress_registration_link|e('html_attr') }}>
+        {{akso_locale.congress_instance.registration_button_guest_not_allowed}}
         <span class="registration-icon" />
-    </a>
+    </{{reg}}>
     {% elseif akso_congress_registration_exists %}
     <a class="link-button is-primary congress-registration-button is-existing" href={{ akso_congress_registration_link|e('html_attr') }}>
-        Vidi vian aliĝon
+        {{akso_locale.congress_instance.registration_button_view}}
         <span class="registration-icon" />
     </a>
     {% else %}
-    <a {{ reg_disabled }} class="link-button is-primary congress-registration-button" href={{ akso_congress_registration_link|e('html_attr') }}>
-        Aliĝi
-        {# Vidi vian aliĝon #}
+    <{{reg}} {{ reg_disabled }} class="link-button is-primary congress-registration-button" href={{ akso_congress_registration_link|e('html_attr') }}>
+        {{akso_locale.congress_instance.registration_button}}
         <span class="registration-icon" />
-    </a>
+    </{{reg}}>
     {% endif %}
 </div>
 {% endif %}

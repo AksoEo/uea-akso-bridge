@@ -1,5 +1,13 @@
 {% extends 'partials/base.html.twig' %}
 {% block content %}
+    {% if akso_registration.disabled %}
+    <div class="akso-registration-page">
+        <h1>{{akso_locale.registration.title}}</h1>
+        <div class="error-banner">
+            {{akso_registration.disabled}}
+        </div>
+    </div>
+    {% else %}
     {% if akso_registration.state.step >= 3 %}
     <div class="akso-registration-page">
     {% else %}
@@ -700,5 +708,6 @@
     </div>
     {% else %}
     </form>
+    {% endif %}
     {% endif %}
 {% endblock %}

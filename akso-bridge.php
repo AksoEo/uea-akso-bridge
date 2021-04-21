@@ -343,7 +343,14 @@ class AksoBridgePlugin extends Plugin {
         $pages = $this->grav['pages'];
         $currentPath = $this->grav['uri']->path();
 
+        $userIsOrg = $this->aksoUser && str_starts_with($this->aksoUser['uea'], 'xx');
+
         foreach ($pages->all() as $page) {
+            if ($userIsOrg && $page->template() === 'akso_registration') {
+                // orgs can't sign up!
+                $page->visible(false);
+            }
+
             if ($page->template() === 'akso_congress_instance') {
                 // you can't add more than 1 page with the same SplFileInfo, otherwise *weird*
                 // *things* will happen.
@@ -679,6 +686,7 @@ class AksoBridgePlugin extends Plugin {
         ), 60);
         if ($formRes['k']) {
             // registration form exists
+            $twig->twig_vars['akso_congress_user_is_org'] = $this->aksoUser && str_starts_with($this->aksoUser['uea'], 'xx');
             $twig->twig_vars['akso_congress_registration_enabled'] = true;
             $twig->twig_vars['akso_congress_registration_allowed'] = $formRes['b']['allowUse'];
             $twig->twig_vars['akso_congress_registration_guest_not_allowed'] = !$formRes['b']['allowGuests'] && !$this->aksoUser;

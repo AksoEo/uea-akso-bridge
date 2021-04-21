@@ -38,6 +38,15 @@ class Registration extends Form {
         $this->locale = $plugin->locale['registration'];
     }
 
+    // if registration is disabled, will return an error. otherwise null
+    private function getDisabledError() {
+        // orgs can't sign up
+        if ($this->plugin->aksoUser && str_starts_with($this->plugin->aksoUser['uea'], 'xx')) {
+            return $this->locale['codeholder_cannot_be_org'];
+        }
+        return null;
+    }
+
     // state array: stores the current state
     private $state;
 
@@ -1152,6 +1161,9 @@ class Registration extends Form {
 
     // Returns a best-effort error message for the codeholder data.
     private function getCodeholderError() {
+        $disErr = $this->getDisabledError();
+        if ($disErr) return $disErr;
+
         if ($this->state['needs_login']) return null;
         $ch = $this->state['codeholder'];
         if (isset($ch['locked'])) return null;
@@ -1253,6 +1265,7 @@ class Registration extends Form {
         $thisYear = (int) (new \DateTime())->format('Y');
 
         return array(
+            'disabled' => $this->getDisabledError(),
             'countries' => $this->getCachedCountries(),
             'currencies' => $this->getCachedCurrencies(),
             'state' => $this->state,
