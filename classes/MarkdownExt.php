@@ -1302,12 +1302,12 @@ class MarkdownExt {
             $textContent = $magazines->text();
             if (strncmp($textContent, '!', 1) === 0) {
                 // this is an error; set class and skip
-                $magazines->class = 'akso-magazines is-error';
+                $magazines->class = 'akso-magazine-posters is-error';
                 continue;
             }
 
             $newMagazines = new Element('ul');
-            $newMagazines->class = 'akso-magazines';
+            $newMagazines->class = 'akso-magazine-posters';
 
             try {
                 $posters = json_decode($textContent, true)['posters'];
@@ -1324,8 +1324,8 @@ class MarkdownExt {
                             . Magazines::TH_MAGAZINE . '=' . $poster['magazine'] . '&'
                             . Magazines::TH_EDITION . '=' . $poster['edition'] . '&'
                             . Magazines::TH_SIZE;
-                        $img->src = "basePath=64px";
-                        $img->srcset = "$basePath=64px 64w, $basePath=128px 128w, $basePath=256px 256w, $basePath=512px 512w";
+                        $img->src = "$basePath=128px";
+                        $img->srcset = "$basePath=128px 1x, $basePath=256px 2x, $basePath=512px 3x";
                         $coverContainer->appendChild($img);
                     } else {
                         $coverContainer->class .= ' has-no-thumbnail';

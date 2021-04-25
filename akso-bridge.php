@@ -360,7 +360,8 @@ class AksoBridgePlugin extends Plugin {
                     continue;
                 }
                 $regPath = $page->route() . '/' . self::CONGRESS_REGISTRATION_PATH;
-                if (substr($currentPath, 0, strlen($regPath)) !== $regPath) continue;
+                if (!str_starts_with($currentPath, $regPath)) continue;
+                $page->activeChild = true;
 
                 $regPage = new Page();
                 $regPage->init(new \SplFileInfo(__DIR__ . '/pages/akso_congress_registration.md'));
@@ -371,6 +372,20 @@ class AksoBridgePlugin extends Plugin {
                 $regPageHeader->payment_org = $page->header()->payment_org;
                 $pages->addPage($regPage, $regPath);
                 break;
+            }
+            if ($page->template() === 'akso_magazines') {
+                $generatedPagePrefix = $page->route() . '/' . Magazines::MAGAZINE . '/';
+                $page->header()->path_base = $page->route();
+                $page->header()->path_subroute = '';
+                if (!str_starts_with($currentPath, $generatedPagePrefix)) continue;
+                $page->activeChild = true;
+
+                $generatedPage = new Page();
+                $generatedPage->init(new \SplFileInfo(__DIR__ . '/pages/akso_magazines/akso_magazines_magazine.md'));
+                $generatedPage->slug(basename($currentPath));
+                $generatedPage->header()->path_base = $page->route();
+                $generatedPage->header()->path_subroute = substr($currentPath, strlen($generatedPagePrefix));
+                $pages->addPage($generatedPage, $currentPath);
             }
         }
     }
@@ -519,6 +534,15 @@ class AksoBridgePlugin extends Plugin {
             $app->open();
             $registration = new Registration($this, $app);
             $twig->twig_vars['akso_registration'] = $registration->run();
+            $app->close();
+        } else if (str_starts_with($templateId, 'akso_magazines')) {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.js');
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $magazines = new Magazines($this, $app);
+            $twig->twig_vars['akso_magazine_cover_path'] = self::MAGAZINE_COVER_PATH;
+            $twig->twig_vars['akso_magazines'] = $magazines->run();
             $app->close();
         }
 

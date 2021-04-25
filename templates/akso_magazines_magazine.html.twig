@@ -1,0 +1,59 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+{% if akso_magazines.type == 'magazine' %}
+<div class="akso-magazines">
+    <a class="link-button" href="{{akso_magazines.path_components.base}}">
+        {{akso_locale.magazines.magazine_back_to_gallery}}
+    </a>
+    <h1>{{akso_magazines.magazine.name}}</h1>
+    <h2>{{akso_locale.magazines.magazine_editions_title}}</h2>
+    <ul>
+        {% for year, editions in akso_magazines.editions %}
+        <li>
+            <a href="#{{year}}">{{year}}</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% for year, editions in akso_magazines.editions %}
+    <h3 id="{{year}}">{{year}}</h3>
+    <ul class="magazines-cover-gallery">
+        {% for edition in editions %}
+        <li class="magazine-item">
+            {% set edition_path = akso_magazines.path_components.base ~ '/' ~ akso_magazines.path_components.magazine ~ '/'
+                ~ akso_magazines.magazine.id ~ '/' ~ akso_magazines.path_components.edition ~ '/' ~ edition.id %}
+            <div class="item-inner-card">
+                <h4 class="item-edition-title">{{edition.idHuman}}</h4>
+                <div class="item-edition-date">{{edition.date}}</div>
+                <a class="item-cover-link" href="{{edition_path}}">
+                    {% include 'partials/akso_magazine_cover.html.twig' with { magazine: akso_magazines.magazine, edition: edition } %}
+                </a>
+                <div class="item-download-container">
+                    <a class="link-button item-download">download or log in</a>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+</div>
+{% elseif akso_magazines.type == 'edition' %}
+<div class="akso-magazines">
+    <h1>{{akso_magazines.magazine.name}}</h1>
+    <h2>{{akso_magazines.edition.idHuman}}</h2>
+    <h3>{{akso_locale.magazines.edition_toc_title}}</h3>
+    <ul>
+        {% for entry in akso_magazines.toc_entries %}
+        <li>
+            {{entry.page}}
+            {{entry.title}}
+            {{entry.author}}
+            {{entry.recitationAuthor}}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% elseif akso_magazines.type == 'error' %}
+todo: error
+{% endif %}
+{% endblock %}

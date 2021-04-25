@@ -1,0 +1,25 @@
+{% extends 'partials/base.html.twig' %}
+{% block content %}
+<div class="akso-magazines">
+    <ul class="magazines-cover-gallery">
+        {% for magazine in akso_magazines.magazines %}
+        <li class="magazine-item">
+            {% set magazine_path = akso_magazines.path_components.base ~ '/' ~ akso_magazines.path_components.magazine ~ '/' ~ magazine.id %}
+            {% set magazine_latest_edition_path = magazine_path ~ '/' ~ akso_magazines.path_components.edition ~ '/' ~ magazine.latest.id %}
+            <div class="item-inner-card">
+                <a class="item-title" href="{{magazine_path}}">
+                    <h3 class="inner-title">{{magazine.name}}</h3>
+                </a>
+                <h4 class="item-subtitle">{{magazine.latest.idHuman}}</h4>
+                <a class="item-cover-link" href="{{magazine_latest_edition_path}}">
+                    {% include 'partials/akso_magazine_cover.html.twig' with { magazine: magazine, edition: magazine.latest } %}
+                </a>
+                <div class="item-download-container">
+                    <a class="link-button item-download" href="/TODO">download pdf or log in</a>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

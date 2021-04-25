@@ -88,6 +88,16 @@ export default [
             format: 'amd',
         },
     },
+    {
+        input: 'src/magazines.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/magazines.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'mag_[name].js',
+            format: 'amd',
+        },
+    },
 ];
 
 function iniPlugin() {

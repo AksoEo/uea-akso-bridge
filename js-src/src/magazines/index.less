@@ -1,0 +1,76 @@
+@import '../prelude';
+
+.akso-magazines {
+    .magazines-cover-gallery {
+        padding: 0;
+        list-style-type: none;
+
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        flex-wrap: wrap;
+
+        .magazine-item {
+            display: inline-block;
+            margin: 0.5em;
+            flex: 1;
+            min-width: 13em;
+            max-width: 16em;
+
+            .item-inner-card {
+                background: var(--bg);
+                border-radius: var(--radius);
+                box-shadow: @shade-both;
+                overflow: hidden;
+
+                .item-title {
+                    display: block;
+
+                    .inner-title {
+                        margin: 0;
+                        text-align: center;
+                        padding: 0.5em;
+                        padding-bottom: 0.2em;
+                    }
+                }
+                .item-subtitle {
+                    margin: 0;
+                    margin-bottom: 0.5em;
+                    text-align: center;
+                }
+
+                .item-edition-title {
+                    text-align: center;
+                    margin-top: 0.6em;
+                    margin-bottom: 0;
+                }
+                .item-edition-date {
+                    text-align: center;
+                    font-size: 0.875em;
+                    margin-bottom: 0.5em;
+                }
+
+                .item-cover-link {
+                    display: block;
+                    text-align: center;
+
+                    .magazine-cover-container {
+                        --magazine-cover-width: 10em;
+                    }
+                }
+
+                .item-download-container {
+                    margin: 0;
+
+                    .item-download {
+                        display: block;
+                        text-align: center;
+                        margin: 0;
+                        padding-top: 0.5em;
+                        padding-bottom: 0.5em;
+                    }
+                }
+            }
+        }
+    }
+}

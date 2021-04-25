@@ -1,0 +1,17 @@
+{% if edition.hasThumbnail %}
+{% set mtb = akso_magazine_cover_path ~ '?m=' ~ magazine.id ~ '&e=' ~ edition.id ~ '&s=' %}
+<div class="magazine-cover-container">
+    <img
+        alt="{{magazine.name}} - {{edition.idHuman}}"
+        class="magazine-cover"
+        src="{{mtb}}128px"
+        srcset="{{mtb}}128px 1x, {{mtb}}256px 2x, {{mtb}}512px 3x" />
+</div>
+{% else %}
+<div class="magazine-cover-container has-no-thumbnail">
+    <div class="th-inner">
+        <div class="th-title">{{magazine.name}}</div>
+        <div class="th-subtitle">{{edition.idHuman}}</div>
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,1 @@
+import './magazines/index.js';
