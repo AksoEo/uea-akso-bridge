@@ -1033,7 +1033,8 @@ class MarkdownExt {
         foreach ($secMarkers as $sm) {
             $text = $sm->text();
             $newSM = new Element('h3');
-            $newSM->class = 'section-marker';
+            $newSM->class = $sm->class;
+            if (isset($sm->id)) $newSM->id = $sm->id;
             $contentSpan = new Element('span', $text);
             $contentSpan->class = 'section-marker-inner';
             $newSM->appendChild($contentSpan);

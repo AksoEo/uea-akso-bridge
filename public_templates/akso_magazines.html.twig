@@ -12,6 +12,11 @@
                 </a>
                 <h4 class="item-subtitle">{{magazine.latest.idHuman}}</h4>
                 <a class="item-cover-link" href="{{magazine_latest_edition_path}}">
+                    {% if magazine.previous %}
+                    <div class="item-cover-stack-item">
+                        {% include 'partials/akso_magazine_cover.html.twig' with { magazine: magazine, edition: magazine.previous } %}
+                    </div>
+                    {% endif %}
                     {% include 'partials/akso_magazine_cover.html.twig' with { magazine: magazine, edition: magazine.latest } %}
                 </a>
                 <div class="item-download-container">

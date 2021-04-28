@@ -31,12 +31,12 @@
             value="{{ akso_registration.state.serialized|e('html_attr') }}" />
         {% if akso_registration.state.registered or akso_registration.state.step > 0 or akso_auth %}
         {% if akso_registration.state.step == 1 %}
-        <button class="form-back-button" type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
+        <button class="back-button" type="submit" formaction="{{akso_registration.targets.codeholder|e('html_attr')}}">
             <span class="back-icon"></span>
             {{akso_locale.registration.btn_back}}
         </button>
         {% elseif akso_registration.state.step == 2 %}
-        <button class="form-back-button" type="submit" formaction="{{akso_registration.targets.offers|e('html_attr')}}">
+        <button class="back-button" type="submit" formaction="{{akso_registration.targets.offers|e('html_attr')}}">
             <span class="back-icon"></span>
             {{akso_locale.registration.btn_back}}
         </button>

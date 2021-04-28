@@ -41,6 +41,7 @@
 
                 .item-edition-title {
                     text-align: center;
+                    font-size: 1.1em;
                     margin-top: 0.6em;
                     margin-bottom: 0;
                 }
@@ -52,7 +53,17 @@
 
                 .item-cover-link {
                     display: block;
+                    position: relative;
                     text-align: center;
+
+                    .item-cover-stack-item {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        width: 100%;
+                        transform: translate(-50%, -50%) rotate(4deg);
+                        pointer-events: none;
+                    }
 
                     .magazine-cover-container {
                         --magazine-cover-width: 10em;
@@ -69,6 +80,357 @@
                         padding-top: 0.5em;
                         padding-bottom: 0.5em;
                     }
+                }
+            }
+        }
+    }
+
+    .magazines-back-container {
+        padding-top: 1em;
+    }
+
+    &.is-magazine-page {
+        .magazine-edition-years {
+            padding: 1em;
+            box-shadow: @shade-both;
+            border-radius: var(--radius);
+            background: var(--bg);
+            list-style-type: none;
+
+            .edition-year-item {
+                margin: 0;
+                display: inline-block;
+                padding: 0 0.5em;
+            }
+        }
+
+        .edition-year-header {
+            white-space: nowrap;
+
+            &.pulse {
+                .section-marker-inner {
+                    position: relative;
+                    display: inline-block;
+                    animation: magazine-edition-year-header-pulse-mi 1s ease-out both;
+
+                    @keyframes magazine-edition-year-header-pulse-mi {
+                        15% {
+                            transform: scale(0.98);
+                        }
+                        40% {
+                            transform: scale(1.2);
+                        }
+                        65% {
+                            transform: scale(0.95);
+                        }
+                    }
+                }
+
+                position: relative;
+
+                &::after {
+                    content: '';
+                    position: absolute;
+                    display: block;
+                    width: 0.5em;
+                    height: var(--border-width);
+                    top: 50%;
+                    left: 0;
+                    transform-origin: 100% 0;
+                    background: var(--bg);
+                    animation: magazine-edition-year-header-pulse-a 0.5s 0.5s ease-out both;
+                    @keyframes magazine-edition-year-header-pulse-a {
+                        0% {
+                            transform: translateY(-50%) scaleX(0);
+                            opacity: 1;
+                        }
+                        100% {
+                            transform: translateY(-50%) scaleX(1);
+                            opacity: 0;
+                        }
+                    }
+                }
+
+                .section-marker-fill {
+                    position: relative;
+
+                    &::before {
+                        content: '';
+                        position: absolute;
+                        display: block;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: var(--bg);
+                        transform-origin: 0 0;
+                        animation: magazine-edition-year-header-pulse-mf 1s 0.5s ease-out both;
+
+                        @keyframes magazine-edition-year-header-pulse-mf {
+                            0% {
+                                transform: scaleX(0);
+                                opacity: 1;
+                            }
+                            100% {
+                                transform: scaleX(1);
+                                opacity: 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    &.is-edition-page {
+        .edition-magazine-title {
+            padding-left: 0;
+
+            .back-icon {
+                width: 0.5em;
+                transform: translateX(-0.5em);
+            }
+        }
+
+        .edition-page-content-split {
+            display: flex;
+            align-items: flex-start;
+            background: var(--bg);
+            border-radius: var(--radius);
+            box-shadow: @shade-both;
+
+            .edition-cover {
+                .inner-cover {
+                    display: block;
+                    width: 30vw;
+                    max-width: 300px;
+                    border-radius: var(--radius);
+                }
+            }
+
+            @media (max-width: 600px) {
+                flex-direction: column;
+                align-items: center;
+
+                .edition-cover .inner-cover {
+                    width: 50vw;
+                }
+            }
+            @media (max-width: 420px) {
+                .edition-cover .inner-cover {
+                    width: 70vw;
+                }
+            }
+        }
+
+        .edition-info {
+            padding: 1em;
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            align-self: stretch;
+
+            .edition-title {
+                font-size: 1.7em;
+            }
+
+            .edition-description {
+                flex: 1;
+                flex-shrink: 0;
+            }
+
+            .edition-downloads {
+
+            }
+        }
+
+        .edition-contents {
+            border-radius: var(--radius);
+            background: var(--bg2);
+            margin-top: 1em;
+            box-shadow: @inset-both;
+
+            .edition-contents-title {
+                padding: 0.5em 1em;
+                padding-top: 0.7em;
+
+                h2 {
+                    margin: 0;
+                    text-align: center;
+
+                    &::before {
+                        content: '*･゜ﾟ･*:.｡..｡.:*･ ';
+                    }
+                    &::after {
+                        content: ' ･*:.｡. .｡.:*･゜ﾟ･*';
+                    }
+                }
+            }
+
+            #edition-content-list-collapse {
+                display: none;
+            }
+
+            .edition-content-list {
+                margin: 0;
+                list-style-type: none;
+                padding: 0;
+
+                .content-list-item {
+                    padding: 0.5em 1em;
+                    border-top: 1px solid rgba(0, 0, 0, 0.1);
+                    line-height: 1.2;
+                    animation: magazine-edition-content-list-item-expand 0.5s cubic-bezier(.2, .3, 0, 1);
+                    transition: background 0.5s cubic-bezier(.2, .3, 0, 1);
+                    box-sizing: border-box;
+                    --li-approx-height: 2.25em;
+
+                    &.has-author {
+                        --li-approx-height: 3.25em;
+                    }
+                    &.has-recitation {
+                        --li-approx-height: 5.1em;
+                    }
+                    &.has-author.has-recitation {
+                        --li-approx-height: 6.1em;
+                    }
+
+                    @keyframes magazine-edition-content-list-item-expand {
+                        0% {
+                            height: 4px;
+                            padding-top: 0;
+                            padding-bottom: 0;
+                        }
+                        100% {
+                            height: var(--li-approx-height);
+                        }
+                    }
+
+                    .entry-title-line {
+                        display: flex;
+                        align-items: baseline;
+                        flex-wrap: wrap;
+
+                        .entry-dots {
+                            content: '';
+                            display: inline-block;
+                            width: 100%;
+                            flex: 1;
+                            margin: 0 0.2em;
+                            border-bottom: 1px dotted currentColor;
+                            opacity: 0.6;
+                        }
+                    }
+
+                    .entry-author-line {
+                        opacity: 0.8;
+                        font-size: 0.875em;
+                    }
+
+                    .entry-recitation {
+                        font-size: 0.875em;
+                        margin-top: 0.5em;
+                        border: 1px solid var(--light-separator);
+                        border-radius: var(--radius);
+                        padding: 0.5em;
+                    }
+                }
+            }
+
+            #edition-content-list-collapse:checked + .edition-content-list {
+                .content-list-item:not(.is-highlighted) {
+                    height: 4px;
+                    padding-top: 0;
+                    padding-bottom: 0;
+                    background: var(--light-separator);
+                    animation: magazine-edition-content-list-item-collapse 0.3s cubic-bezier(.2, .3, 0, 1);
+
+                    @keyframes magazine-edition-content-list-item-collapse {
+                        0% {
+                            height: var(--li-approx-height);
+                            padding-top: 0.5em;
+                            padding-bottom: 0.5em;
+                        }
+                    }
+
+                    & > * {
+                        display: none;
+                    }
+                }
+            }
+
+            .content-list-collapse-button {
+                display: block;
+                position: relative;
+                width: 100%;
+                box-sizing: border-box;
+                padding: 0.5em 1em;
+                text-align: center;
+                transition: margin-top 0.3s cubic-bezier(.2, .3, 0, 1);
+
+                &::before {
+                    content: '';
+                    position: absolute;
+                    background: linear-gradient(to top, var(--bg2), var(--bg2-0));
+                    pointer-events: none;
+                    height: 200%;
+                    left: 0;
+                    bottom: 0;
+                    right: 0;
+                    border-radius: 0 0 var(--radius) var(--radius);
+                    transition: opacity 0.3s cubic-bezier(.2, .3, 0, 1);
+                    opacity: 0;
+                }
+
+                .inner-collapse-icon {
+                    position: relative;
+                    display: inline-block;
+                    width: 1em;
+                    height: 1em;
+                    transition: transform 0.3s cubic-bezier(.2, .3, 0, 1);
+
+                    &::before, &::after {
+                        content: '';
+                        position: absolute;
+                        background: currentColor;
+                        width: 0.6em;
+                        height: 0.2em;
+                        top: 50%;
+                        left: 50%;
+                        transform-origin: 0.1em 0.1em;
+                        transition: transform 0.3s cubic-bezier(.2, .3, 0, 1);
+                    }
+                    &::before {
+                        transform: translate(-0.1em, -0.2em) rotate(45deg);
+                    }
+                    &::after {
+                        transform: translate(-0.1em, -0.2em) rotate(-225deg);
+                    }
+                }
+
+                &:hover .inner-collapse-icon {
+                    transform: translateY(-0.2em);
+                }
+            }
+
+            #edition-content-list-collapse:checked ~ .content-list-collapse-button {
+                margin-top: -0.5em;
+
+                &::before {
+                    opacity: 1;
+                }
+
+                .inner-collapse-icon {
+                    &::before {
+                        transform: translate(-0.1em, 0.2em) rotate(-45deg);
+                    }
+                    &::after {
+                        transform: translate(-0.1em, 0.2em) rotate(-135deg);
+                    }
+                }
+
+                &:hover .inner-collapse-icon {
+                    transform: translateY(0.2em);
                 }
             }
         }

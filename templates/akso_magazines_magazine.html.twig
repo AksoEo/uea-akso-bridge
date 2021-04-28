@@ -1,22 +1,30 @@
 {% extends 'partials/base.html.twig' %}
 {% block content %}
 {% if akso_magazines.type == 'magazine' %}
-<div class="akso-magazines">
-    <a class="link-button" href="{{akso_magazines.path_components.base}}">
-        {{akso_locale.magazines.magazine_back_to_gallery}}
-    </a>
+<div class="akso-magazines is-magazine-page">
+    <div class="magazines-back-container">
+        <a class="back-button" href="{{akso_magazines.path_components.base}}">
+            <span class="back-icon"></span>
+            {{akso_locale.magazines.magazine_back_to_gallery}}
+        </a>
+    </div>
     <h1>{{akso_magazines.magazine.name}}</h1>
+    <div class="magazine-description">
+        {{akso_magazines.magazine.description_rendered}}
+    </div>
     <h2>{{akso_locale.magazines.magazine_editions_title}}</h2>
-    <ul>
+    {% if count(akso_magazines.editions) > 1 %}
+    <ul class="magazine-edition-years">
         {% for year, editions in akso_magazines.editions %}
-        <li>
-            <a href="#{{year}}">{{year}}</a>
+        <li class="edition-year-item">
+            <a class="edition-year-link" href="#{{year}}">{{year}}</a>
         </li>
         {% endfor %}
     </ul>
+    {% endif %}
 
     {% for year, editions in akso_magazines.editions %}
-    <h3 id="{{year}}">{{year}}</h3>
+    <h3 class="section-marker edition-year-header" id="{{year}}">{{year}}</h3>
     <ul class="magazines-cover-gallery">
         {% for edition in editions %}
         <li class="magazine-item">
@@ -38,20 +46,82 @@
     {% endfor %}
 </div>
 {% elseif akso_magazines.type == 'edition' %}
-<div class="akso-magazines">
-    <h1>{{akso_magazines.magazine.name}}</h1>
-    <h2>{{akso_magazines.edition.idHuman}}</h2>
-    <h3>{{akso_locale.magazines.edition_toc_title}}</h3>
-    <ul>
-        {% for entry in akso_magazines.toc_entries %}
-        <li>
-            {{entry.page}}
-            {{entry.title}}
-            {{entry.author}}
-            {{entry.recitationAuthor}}
-        </li>
-        {% endfor %}
-    </ul>
+<div class="akso-magazines is-edition-page">
+    <h3 class="edition-magazine-title">
+        {% set magazine_path = akso_magazines.path_components.base ~ '/' ~ akso_magazines.path_components.magazine ~ '/'
+            ~ akso_magazines.magazine.id %}
+        <a class="back-button" href="{{magazine_path}}">
+            <span class="back-icon"></span>
+            {{akso_magazines.magazine.name}}
+        </a>
+    </h3>
+    <div class="edition-page-content-split">
+        {% if akso_magazines.edition.hasThumbnail %}
+        {% set mtb = akso_magazine_cover_path ~ '?m=' ~ akso_magazines.magazine.id ~ '&e=' ~ akso_magazines.edition.id ~ '&s=' %}
+        <div class="edition-cover">
+            <img
+                alt="{{akso_magazines.magazine.name}} - {{akso_magazines.edition.idHuman}}"
+                class="inner-cover"
+                src="{{mtb}}512px"
+                srcset="{{mtb}}512px 1x, {{mtb}}1024px 2x" />
+        </div>
+        {% endif %}
+        <div class="edition-info">
+            <h1 class="edition-title">{{akso_locale.magazines.edition_title_prefix}}{{akso_magazines.edition.idHuman}}</h1>
+            <div class="edition-date">{{akso_magazines.edition.date}}</div>
+            <div class="edition-description">
+                {{akso_magazines.edition.description_rendered}}
+            </div>
+            <div class="edition-downloads">
+                <button>download</button>
+                <button>aaa</button>
+            </div>
+        </div>
+    </div>
+    <div class="edition-contents">
+        <div class="edition-contents-title">
+            <h2>{{akso_locale.magazines.edition_toc_title}}</h2>
+        </div>
+        <input id="edition-content-list-collapse" type="checkbox" checked aria-hidden="true" />
+        <ul class="edition-content-list">
+            {% for entry in akso_magazines.toc_entries %}
+                {% set hasRecitation = entry.recitationAuthor is not empty %}
+                <li class="content-list-item {{entry.highlighted ? 'is-highlighted' : ''}} {{entry.author ? 'has-author' : ''}} {{hasRecitation ? 'has-recitation' : ''}}">
+                <div class="entry-title-line">
+                    <span class="entry-title">
+                        {{entry.title}}
+                    </span>
+                    <div class="entry-dots"></div>
+                    <span class="entry-page">
+                        {{entry.page}}
+                    </span>
+                </div>
+                <div class="entry-author-line">
+                    <span class="entry-author">
+                        {{entry.author}}
+                    </span>
+                </div>
+                {% if hasRecitation %}
+                <div class="entry-recitation">
+                    <button class="recitation-play-button">PLAY</button>
+                    <span class="recitation-label">
+                        {{akso_locale.magazines.edition_toc_recitation_title_0}}
+                        {{entry.recitationAuthor}}
+                        {{akso_locale.magazines.edition_toc_recitation_title_1}}
+                    </span>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <label
+            for="edition-content-list-collapse"
+            class="content-list-collapse-button"
+            aria-role="button"
+            aria-label="{{akso_locale.magazines.edition_toc_highlight_collapse_btn}}">
+            <span class="inner-collapse-icon"></span>
+        </label>
+    </div>
 </div>
 {% elseif akso_magazines.type == 'error' %}
 todo: error

@@ -1,0 +1,14 @@
+{% extends "forms/field.html.twig" %}
+
+{% block input %}
+<div class="akso-field-magazine-list">
+    <input
+        type="text"
+        class="akso-field-input"
+        name="{{ field_name|e('html_attr') }}"
+        value="{{ value|join(",")|e('html_attr') }}" />
+    <div class="akso-field-noscript">
+        [[Write 1,2,3 to show magazines with ids 1, 2, and 3, in that order. Do not insert whitespace. Vi povas vidi tiujn internajn numerojn en la URL de la paĝo en AKSO-Admin.]]
+    </div>
+</div>
+{% endblock %}

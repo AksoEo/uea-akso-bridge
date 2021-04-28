@@ -52,19 +52,22 @@ class Magazines {
         return $edition;
     }
 
-    function getLatestEdition($magazine) {
+    function getLatestEditions($magazine, $n) {
         $res = $this->app->bridge->get("/magazines/$magazine/editions", array(
             'fields' => ['id', 'idHuman', 'date', 'description'],
             'order' => [['date', 'desc']],
             'offset' => 0,
-            'limit' => 1,
+            'limit' => $n,
         ), 120);
 
         if ($res['k']) {
-            $edition = $res['b'][0];
-            $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
+            $editions = [];
+            foreach ($res['b'] as $edition) {
+                $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
+                $editions[] = $edition;
+            }
 
-            return $edition;
+            return $editions;
         }
         return null;
     }
@@ -80,8 +83,10 @@ class Magazines {
             ), 240);
             if ($res['k']) {
                 foreach ($res['b'] as $magazine) {
-                    $magazine['latest'] = $this->getLatestEdition($magazine['id']);
-                    if (!$magazine['latest']) continue;
+                    $latest = $this->getLatestEditions($magazine['id'], 2);
+                    if (!$latest || count($latest) < 1) continue;
+                    $magazine['latest'] = $latest[0];
+                    $magazine['previous'] = isset($latest[1]) ? $latest[1] : null;
                     $this->cachedMagazines[$magazine['id']] = $magazine;
                 }
             }
@@ -99,6 +104,10 @@ class Magazines {
             'fields' => ['id', 'name', 'description'],
         ), 240);
         if ($res['k']) {
+            $res['b']['description_rendered'] = $this->app->bridge->renderMarkdown(
+                $res['b']['description'] ? $res['b']['description'] : '',
+                ['emphasis', 'strikethrough', 'link', 'list', 'table'],
+            )['c'];
             return $res['b'];
         }
         return null;
@@ -137,11 +146,15 @@ class Magazines {
 
     function getMagazineEdition($magazine, $edition) {
         $res = $this->app->bridge->get("/magazines/$magazine/editions/$edition", array(
-            'fields' => ['id', 'idHuman', 'date'],
+            'fields' => ['id', 'idHuman', 'date', 'description'],
         ), 240);
         if ($res['k']) {
             $edition = $res['b'];
             $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
+            $edition['description_rendered'] = $this->app->bridge->renderMarkdown(
+                $edition['description'] ? $edition['description'] : '',
+                ['emphasis', 'strikethrough', 'link', 'list', 'table'],
+            )['c'];
             return $edition;
         }
         return null;
@@ -170,7 +183,15 @@ class Magazines {
         $path = $this->plugin->getGrav()['page']->header()->path_subroute;
         $route = ['type' => 'error'];
         if (!$path) {
-            $route = ['type' => 'list'];
+            $header = $this->plugin->getGrav()['page']->header();
+            $magazines = null;
+            if (isset($header->magazines)) {
+                $magazines = explode(',', $header->magazines);
+            }
+            $route = [
+                'type' => 'list',
+                'magazines' => $magazines,
+            ];
         } else if (preg_match('/^(\d+)$/', $path, $matches)) {
             $route = [
                 'type' => 'magazine',
@@ -191,10 +212,21 @@ class Magazines {
         );
 
         if ($route['type'] === 'list') {
+            $magazines = $this->listMagazines();
+            $list = null;
+            if ($route['magazines']) {
+                $list = [];
+                foreach ($route['magazines'] as $id) {
+                    if (isset($magazines[$id])) $list[] = $magazines[$id];
+                }
+            } else {
+                $list = $magazines;
+            }
+
             return array(
                 'path_components' => $pathComponents,
                 'type' => 'list',
-                'magazines' => $this->listMagazines(),
+                'magazines' => $list,
             );
         } else if ($route['type'] === 'magazine') {
             $magazine = $this->getMagazine($route['magazine']);
@@ -214,6 +246,7 @@ class Magazines {
             if (!$edition) return array('type' => 'error');
 
             return array(
+                'path_components' => $pathComponents,
                 'type' => 'edition',
                 'magazine' => $magazine,
                 'edition' => $edition,
