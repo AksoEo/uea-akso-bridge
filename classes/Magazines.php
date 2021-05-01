@@ -1,17 +1,19 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 
+use Grav\Plugin\AksoBridgePlugin;
 use Grav\Plugin\AksoBridge\Utils;
 
 class Magazines {
     const MAGAZINE = 'revuo';
     const EDITION = 'numero';
+    const TOC = 'enhavo';
 
-    private $plugin, $app;
+    private $plugin, $bridge;
 
-    public function __construct($plugin, $app) {
+    public function __construct($plugin, $bridge) {
         $this->plugin = $plugin;
-        $this->app = $app;
+        $this->bridge = $bridge;
     }
 
     public const TH_MAGAZINE = 'm';
@@ -23,16 +25,49 @@ class Magazines {
         $size = isset($_GET[self::TH_SIZE]) ? $_GET[self::TH_SIZE] : '?';
         $path = "/magazines/$magazine/editions/$edition/thumbnail/$size";
 
-        $res = $this->app->bridge->getRaw($path, 60);
+        $res = $this->bridge->getRaw($path, 60);
         if ($res['k']) {
             header('Content-Type: ' . $res['h']['content-type']);
             try {
                 readfile($res['ref']);
             } finally {
-                $this->app->bridge->releaseRaw($path);
+                $this->bridge->releaseRaw($path);
             }
             die();
         } else {
+            // TODO: error?
+            die();
+        }
+    }
+
+    public const DL_MAGAZINE = 'm';
+    public const DL_EDITION = 'e';
+    public const DL_ENTRY = 't';
+    public const DL_FORMAT = 'f';
+    public function runDownload() {
+        $magazine = isset($_GET[self::DL_MAGAZINE]) ? $_GET[self::DL_MAGAZINE] : '?';
+        $edition = isset($_GET[self::DL_EDITION]) ? $_GET[self::DL_EDITION] : '?';
+        $entry = isset($_GET[self::DL_ENTRY]) ? $_GET[self::DL_ENTRY] : '?';
+        $format = isset($_GET[self::DL_FORMAT]) ? $_GET[self::DL_FORMAT] : '?';
+
+        $path = null;
+        if ($entry !== '?') {
+            $path = "/magazines/$magazine/editions/$edition/toc/$entry/recitation/$format";
+        } else {
+            $path = "/magazines/$magazine/editions/$edition/files/$format";
+        }
+
+        $res = $this->bridge->getRaw($path, 60);
+        if ($res['k']) {
+            header('Content-Type: ' . $res['h']['content-type']);
+            try {
+                readfile($res['ref']);
+            } finally {
+                $this->bridge->releaseRaw($path);
+            }
+            die();
+        } else {
+            header('HTTP/1.1 500 Internal Server Error');
             // TODO: error?
             die();
         }
@@ -43,17 +78,44 @@ class Magazines {
         try {
             $editionId = $edition['id'];
             $path = "/magazines/$magazine/editions/$editionId/thumbnail/32px";
-            $res = $this->app->bridge->getRaw($path, 120);
+            $res = $this->bridge->getRaw($path, 120);
             if ($res['k']) {
                 $edition['hasThumbnail'] = true;
             }
-            $this->app->bridge->releaseRaw($path);
+            $this->bridge->releaseRaw($path);
+        } catch (\Exception $e) {}
+        return $edition;
+    }
+
+    function addEditionDownloadLinks($magazine, $edition, $magazineName) {
+        $edition['downloads'] = array('pdf' => null, 'epub' => null);
+        try {
+            $editionId = $edition['id'];
+            $path = "/magazines/$magazine/editions/$editionId/files";
+            $res = $this->bridge->get($path, array(
+                'fields' => ['format', 'downloads', 'size'],
+            ), 120);
+            if ($res['k']) {
+                foreach ($res['b'] as $item) {
+                    $fileName = Utils::escapeFileNameLossy($magazineName . ' - ' .$edition['idHuman']) . '.' . $item['format'];
+
+                    $edition['downloads'][$item['format']] = array(
+                        'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
+                            . '/' . $fileName
+                            . '?' . self::DL_MAGAZINE . '=' . $magazine
+                            . '&' . self::DL_EDITION . '=' . $editionId
+                            . '&' . self::DL_FORMAT . '=' . $item['format'],
+                        'size' => $item['size'],
+                    );
+                }
+            }
+            $this->bridge->releaseRaw($path);
         } catch (\Exception $e) {}
         return $edition;
     }
 
     function getLatestEditions($magazine, $n) {
-        $res = $this->app->bridge->get("/magazines/$magazine/editions", array(
+        $res = $this->bridge->get("/magazines/$magazine/editions", array(
             'fields' => ['id', 'idHuman', 'date', 'description'],
             'order' => [['date', 'desc']],
             'offset' => 0,
@@ -77,7 +139,7 @@ class Magazines {
         if (!$this->cachedMagazines) {
             $this->cachedMagazines = [];
             // TODO: handle case where there are more than 100 magazines
-            $res = $this->app->bridge->get('/magazines', array(
+            $res = $this->bridge->get('/magazines', array(
                 'fields' => ['id', 'name'],
                 'limit' => 100,
             ), 240);
@@ -100,11 +162,11 @@ class Magazines {
     }
 
     function getMagazine($id) {
-        $res = $this->app->bridge->get("/magazines/$id", array(
+        $res = $this->bridge->get("/magazines/$id", array(
             'fields' => ['id', 'name', 'description'],
         ), 240);
         if ($res['k']) {
-            $res['b']['description_rendered'] = $this->app->bridge->renderMarkdown(
+            $res['b']['description_rendered'] = $this->bridge->renderMarkdown(
                 $res['b']['description'] ? $res['b']['description'] : '',
                 ['emphasis', 'strikethrough', 'link', 'list', 'table'],
             )['c'];
@@ -116,7 +178,7 @@ class Magazines {
     function getMagazineEditions($magazine, $offset = 0) {
         $allEditions = [];
         while (true) {
-            $res = $this->app->bridge->get("/magazines/$magazine/editions", array(
+            $res = $this->bridge->get("/magazines/$magazine/editions", array(
                 'fields' => ['id', 'idHuman', 'date'],
                 'order' => [['date', 'desc']],
                 'offset' => count($allEditions),
@@ -144,14 +206,15 @@ class Magazines {
         return $editionsByYear;
     }
 
-    function getMagazineEdition($magazine, $edition) {
-        $res = $this->app->bridge->get("/magazines/$magazine/editions/$edition", array(
+    function getMagazineEdition($magazine, $edition, $magazineName) {
+        $res = $this->bridge->get("/magazines/$magazine/editions/$edition", array(
             'fields' => ['id', 'idHuman', 'date', 'description'],
         ), 240);
         if ($res['k']) {
             $edition = $res['b'];
             $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
-            $edition['description_rendered'] = $this->app->bridge->renderMarkdown(
+            $edition = $this->addEditionDownloadLinks($magazine, $edition, $magazineName);
+            $edition['description_rendered'] = $this->bridge->renderMarkdown(
                 $edition['description'] ? $edition['description'] : '',
                 ['emphasis', 'strikethrough', 'link', 'list', 'table'],
             )['c'];
@@ -160,24 +223,73 @@ class Magazines {
         return null;
     }
 
-    function getEditionTocEntries($magazine, $edition) {
+    private function addEntryDownloadUrl($magazine, $edition, $entry, $magazineName, $editionName) {
+        $fileNamePrefix = Utils::escapeFileNameLossy(
+            $magazineName . ' - ' . $editionName . ' - ' . $entry['page'] . ' ' . $entry['title'] . '.'
+        );
+
+        // TODO: use the actual field
+        $entry['recitationFormats'] = ['mp3', 'flac', 'wav'];
+
+        $entry['downloads'] = [];
+        foreach ($entry['recitationFormats'] as $fmt) {
+            $entry['downloads'][$fmt] = array(
+                'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
+                    . '/' . $fileNamePrefix . $fmt
+                    . '?' . self::DL_MAGAZINE . '=' . $magazine
+                    . '&' . self::DL_EDITION . '=' . $edition
+                    . '&' . self::DL_ENTRY . '=' . $entry['id']
+                    . '&' . self::DL_FORMAT . '=' . $fmt,
+                'format' => $fmt,
+            );
+        }
+        return $entry;
+    }
+
+    function getEditionTocEntries($magazine, $edition, $magazineName, $editionName) {
         $allEntries = [];
         while (true) {
-            $res = $this->app->bridge->get("/magazines/$magazine/editions/$edition/toc", array(
+            $res = $this->bridge->get("/magazines/$magazine/editions/$edition/toc", array(
                 'fields' => ['id', 'title', 'page', 'author', 'recitationAuthor', 'highlighted'],
                 'order' => [['page', 'asc']],
                 'offset' => count($allEntries),
                 'limit' => 100,
             ), 240);
             if (!$res['k']) return null;
+            $hasHighlighted = false;
             foreach ($res['b'] as $entry) {
+                if ($entry['highlighted']) $hasHighlighted = true;
+                $entry = $this->addEntryDownloadUrl($magazine, $edition, $entry, $magazineName, $editionName);
                 $allEntries[] = $entry;
+            }
+            if (!$hasHighlighted) {
+                // if there are no highlighted items, mark the first three as highlighted
+                for ($i = 0; $i < 3; $i++) {
+                    if (isset($allEntries[$i])) $allEntries[$i]['highlighted'] = true;
+                }
             }
             if (count($allEntries) >= $res['h']['x-total-items']) break;
         }
 
         return $allEntries;
     }
+
+    function getEditionTocEntry($magazine, $edition, $entry, $magazineName, $editionName) {
+        $res = $this->bridge->get("/magazines/$magazine/editions/$edition/toc/$entry", array(
+            'fields' => ['id', 'title', 'page', 'author', 'recitationAuthor', 'highlighted', 'text'],
+        ), 240);
+        if ($res['k']) {
+            $entry = $res['b'];
+            $entry['text_rendered'] = $this->bridge->renderMarkdown(
+                $entry['text'] ? $entry['text'] : '',
+                ['emphasis', 'strikethrough', 'link', 'list', 'table', 'image'],
+            )['c'];
+            $entry = $this->addEntryDownloadUrl($magazine, $edition, $entry, $magazineName, $editionName);
+            return $entry;
+        }
+        return null;
+    }
+
 
     public function run() {
         $path = $this->plugin->getGrav()['page']->header()->path_subroute;
@@ -203,13 +315,23 @@ class Magazines {
                 'magazine' => $matches[1],
                 'edition' => $matches[2],
             ];
+        } else if (preg_match('/^(\d+)\/' . self::EDITION . '\/(\d+)\/' . self::TOC . '\/(\d+)$/', $path, $matches)) {
+            $route = [
+                'type' => 'toc_entry',
+                'magazine' => $matches[1],
+                'edition' => $matches[2],
+                'entry' => $matches[3],
+            ];
         }
 
         $pathComponents = array( 
             'base' => $this->plugin->getGrav()['page']->header()->path_base,
             'magazine' => self::MAGAZINE,
             'edition' => self::EDITION,
+            'toc' => self::TOC,
         );
+
+        $canDownload = !!$this->plugin->aksoUser;
 
         if ($route['type'] === 'list') {
             $magazines = $this->listMagazines();
@@ -242,7 +364,7 @@ class Magazines {
         } else if ($route['type'] === 'edition') {
             $magazine = $this->getMagazine($route['magazine']);
             if (!$magazine) return array('type' => 'error');
-            $edition = $this->getMagazineEdition($route['magazine'], $route['edition']);
+            $edition = $this->getMagazineEdition($route['magazine'], $route['edition'], $magazine['name']);
             if (!$edition) return array('type' => 'error');
 
             return array(
@@ -250,7 +372,31 @@ class Magazines {
                 'type' => 'edition',
                 'magazine' => $magazine,
                 'edition' => $edition,
-                'toc_entries' => $this->getEditionTocEntries($route['magazine'], $route['edition']),
+                'toc_entries' => $this->getEditionTocEntries(
+                    $route['magazine'], $route['edition'], $magazine['name'], $edition['idHuman']
+                ),
+                'can_download' => $canDownload,
+            );
+        } else if ($route['type'] === 'toc_entry') {
+            if (!$canDownload) {
+                $this->plugin->getGrav()->redirectLangSafe($this->plugin->loginPath, 302);
+            }
+
+            $magazine = $this->getMagazine($route['magazine']);
+            if (!$magazine) return array('type' => 'error');
+            $edition = $this->getMagazineEdition($route['magazine'], $route['edition'], $magazine['name']);
+            if (!$edition) return array('type' => 'error');
+            $entry = $this->getEditionTocEntry(
+                $route['magazine'], $route['edition'], $route['entry'], $magazine['name'], $edition['idHuman']
+            );
+            if (!$edition) return array('type' => 'error');
+
+            return array(
+                'path_components' => $pathComponents,
+                'type' => 'toc_entry',
+                'magazine' => $magazine,
+                'edition' => $edition,
+                'entry' => $entry,
             );
         } else if ($route['type'] === 'error') {
             // TODO

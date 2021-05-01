@@ -37,6 +37,7 @@ class AksoBridgePlugin extends Plugin {
     const CONGRESS_REGISTRATION_PATH = 'alighilo';
     const CONGRESS_LOC_THUMBNAIL_PATH = self::RESOURCE_PATH . '/kongresa_loko/bildo';
     const MAGAZINE_COVER_PATH = self::RESOURCE_PATH . '/revuo/bildo';
+    const MAGAZINE_DOWNLOAD_PATH = self::RESOURCE_PATH . '/revuo/elshuto';
 
     // allow access to protected property
     public function getGrav() {
@@ -100,9 +101,11 @@ class AksoBridgePlugin extends Plugin {
         } else if ($this->path === self::MAGAZINE_COVER_PATH) {
             $app = new AppBridge($this->grav);
             $app->open();
-            $mag = new Magazines($this, $app);
+            $mag = new Magazines($this, $app->bridge);
             $mag->runThumbnail();
             $app->close();
+        } else if ($this->pathStartsWithComponent($this->path, self::MAGAZINE_DOWNLOAD_PATH)) {
+            $this->grav->redirectLangSafe($this->loginPath, 302);
         }
 
         $this->enable([
@@ -290,6 +293,9 @@ class AksoBridgePlugin extends Plugin {
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/account.css');
             $acc = new UserAccount($this, $this->bridge, $this->path);
             $this->pageState = $acc->run();
+        } else if ($this->pathStartsWithComponent($this->path, self::MAGAZINE_DOWNLOAD_PATH)) {
+            $magazines = new Magazines($this, $this->bridge);
+            $magazines->runDownload();
         }
     }
 
@@ -540,7 +546,7 @@ class AksoBridgePlugin extends Plugin {
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.js');
             $app = new AppBridge($this->grav);
             $app->open();
-            $magazines = new Magazines($this, $app);
+            $magazines = new Magazines($this, $app->bridge);
             $twig->twig_vars['akso_magazine_cover_path'] = self::MAGAZINE_COVER_PATH;
             $twig->twig_vars['akso_magazines'] = $magazines->run();
             $app->close();

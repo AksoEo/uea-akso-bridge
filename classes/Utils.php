@@ -111,4 +111,8 @@ class Utils {
         }
         return $binaryString;
     }
+
+    static function escapeFileNameLossy($name) {
+        return preg_replace('/[^ .,_\-+=!\(\)\[\]"\'„“”‚‘’«»…0-9a-zA-ZĥŝĝĉĵŭĤŜĜĈĴŬ]/', '_', $name);
+    }
 }
