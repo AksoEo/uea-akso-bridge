@@ -3,6 +3,7 @@ namespace Grav\Plugin\AksoBridge;
 
 use Grav\Plugin\AksoBridgePlugin;
 use Grav\Plugin\AksoBridge\Utils;
+use diversen\sendfile;
 
 class Magazines {
     const MAGAZINE = 'revuo';
@@ -57,11 +58,12 @@ class Magazines {
             $path = "/magazines/$magazine/editions/$edition/files/$format";
         }
 
-        $res = $this->bridge->getRaw($path, 60);
+        $res = $this->bridge->getRaw($path, 0); // no caching because user auth
         if ($res['k']) {
-            header('Content-Type: ' . $res['h']['content-type']);
             try {
-                readfile($res['ref']);
+                $sendFile = new sendfile();
+                $sendFile->contentType($res['h']['content-type']);
+                $sendFile->send($res['ref'], false);
             } finally {
                 $this->bridge->releaseRaw($path);
             }
@@ -231,6 +233,13 @@ class Magazines {
         // TODO: use the actual field
         $entry['recitationFormats'] = ['mp3', 'flac', 'wav'];
 
+        // \Grav\Common\Utils::getMimeByExtension returns incorrect types :(
+        $mimeTypes = [
+            'mp3' => 'audio/mpeg',
+            'flac' => 'audio/flac',
+            'wav' => 'audio/wav'
+        ];
+
         $entry['downloads'] = [];
         foreach ($entry['recitationFormats'] as $fmt) {
             $entry['downloads'][$fmt] = array(
@@ -240,6 +249,7 @@ class Magazines {
                     . '&' . self::DL_EDITION . '=' . $edition
                     . '&' . self::DL_ENTRY . '=' . $entry['id']
                     . '&' . self::DL_FORMAT . '=' . $fmt,
+                'mime' => $mimeTypes[$fmt],
                 'format' => $fmt,
             );
         }

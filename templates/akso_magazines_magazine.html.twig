@@ -139,7 +139,7 @@
                     <div class="recitation-audio">
                         <audio controls>
                             {% for format in entry.recitationFormats %}
-                                <source type="audio/{{format}}" src="{{entry.downloadUrlPrefix}}{{format}}" />
+                                <source type="{{entry.downloads[format].mime}}" src="{{entry.downloads[format].link}}" />
                             {% endfor %}
                         </audio>
                     </div>
@@ -190,7 +190,7 @@
         <div class="recitation-header">
             <audio controls>
                 {% for format in akso_magazines.entry.recitationFormats %}
-                    <source type="audio/{{format}}" src="{{akso_magazines.entry.downloadUrlPrefix}}{{format}}" />
+                    <source type="{{akso_magazines.entry.downloads[format].mime}}" src="{{akso_magazines.entry.downloads[format].link}}" />
                 {% endfor %}
             </audio>
             <span class="header-title">{{akso_locale.magazines.entry_recitation_header}}</span>
