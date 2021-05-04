@@ -10,4 +10,4 @@ form:
       label: 'Kongresa okazigo'
     header.congress_programs_path:
       type: string
-      label: 'Relative path to programs'
+      label: 'Relativa URL al paĝo pri kongresaj programeroj'

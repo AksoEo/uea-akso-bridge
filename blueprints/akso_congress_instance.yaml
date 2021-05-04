@@ -13,7 +13,7 @@ form:
       label: 'Pagorganizo'
     header.logo_url:
       type: text
-      label: '[[logo image url]]'
+      label: 'URL de emblemo'
     header.header_url:
       type: text
-      label: '[[header image url]]'
+      label: 'URL de kapa bildo'
