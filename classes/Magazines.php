@@ -103,7 +103,7 @@ class Magazines {
 
                     $edition['downloads'][$item['format']] = array(
                         'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
-                            . '/' . $fileName
+                            . '/' . urlencode($fileName)
                             . '?' . self::DL_MAGAZINE . '=' . $magazine
                             . '&' . self::DL_EDITION . '=' . $editionId
                             . '&' . self::DL_FORMAT . '=' . $item['format'],
@@ -244,7 +244,7 @@ class Magazines {
         foreach ($entry['recitationFormats'] as $fmt) {
             $entry['downloads'][$fmt] = array(
                 'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
-                    . '/' . $fileNamePrefix . $fmt
+                    . '/' . urlencode($fileNamePrefix) . $fmt
                     . '?' . self::DL_MAGAZINE . '=' . $magazine
                     . '&' . self::DL_EDITION . '=' . $edition
                     . '&' . self::DL_ENTRY . '=' . $entry['id']

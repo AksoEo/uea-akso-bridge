@@ -1,5 +1,6 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
+use Cocur\Slugify\Slugify;
 
 class Utils {
     static function setInnerHTML($node, $html) {
@@ -113,6 +114,34 @@ class Utils {
     }
 
     static function escapeFileNameLossy($name) {
-        return preg_replace('/[^ .,_\-+=!\(\)\[\]"\'„“”‚‘’«»…0-9a-zA-ZĥŝĝĉĵŭĤŜĜĈĴŬ]/', '_', $name);
+        $s = \Normalizer::normalize($name);
+        $latinizeEsperanto = function ($k) {
+            switch ($k) {
+                case 'Ĥ': return 'H';
+                case 'Ŝ': return 'S';
+                case 'Ĝ': return 'G';
+                case 'Ĉ': return 'C';
+                case 'Ĵ': return 'J';
+                case 'ĥ': return 'h';
+                case 'ŝ': return 's';
+                case 'ĝ': return 'g';
+                case 'ĉ': return 'c';
+                case 'ĵ': return 'j';
+            }
+            return $k;
+        };
+
+        $replaceHUpper = function (array $matches) use ($latinizeEsperanto) {
+            return $latinizeEsperanto($matches[1]) . 'H';
+        };
+        $replaceH = function (array $matches) use ($latinizeEsperanto) {
+            return $latinizeEsperanto($matches[1]) . 'h';
+        };
+
+        $s = preg_replace_callback('/([ĤŜĜĈĴ])(?=[A-ZĤŜĜĈĴ])/u', $replaceHUpper, $s);
+        $s = preg_replace_callback('/([ĥŝĝĉĵ])/ui', $replaceH, $s);
+
+        $slugify = new Slugify(['lowercase' => false]);
+        return $slugify->slugify($s);
     }
 }

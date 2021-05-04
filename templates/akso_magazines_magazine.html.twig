@@ -64,7 +64,9 @@
         </div>
         {% endif %}
         <div class="edition-info">
-            <h1 class="edition-title">{{akso_locale.magazines.edition_title_prefix}}{{akso_magazines.edition.idHuman}}</h1>
+            <h1 class="edition-title">
+                {{akso_magazines.magazine.name}}{{akso_locale.magazines.edition_title_separator}}{{akso_magazines.edition.idHuman}}
+            </h1>
             <div class="edition-date">{{akso_magazines.edition.date}}</div>
             <div class="edition-description">
                 {{akso_magazines.edition.description_rendered|raw}}
@@ -95,6 +97,7 @@
             </div>
         </div>
     </div>
+    {% if akso_magazines.toc_entries is not empty %}
     <div class="edition-contents">
         <div class="edition-contents-title">
             <h2>{{akso_locale.magazines.edition_toc_title}}</h2>
@@ -158,11 +161,14 @@
             for="edition-content-list-collapse"
             class="content-list-collapse-button"
             aria-role="button"
-            aria-label="{{akso_locale.magazines.edition_toc_highlight_collapse_btn}}">
+            aria-label="{{akso_locale.magazines.edition_toc_highlight_expand_btn}}">
             <span class="inner-collapse-icon"></span>
+            <span class="inner-expand-label">{{akso_locale.magazines.edition_toc_highlight_expand_btn}}</span>
+            <span class="inner-collapse-label">{{akso_locale.magazines.edition_toc_highlight_collapse_btn}}</span>
         </label>
         {% endif %}
     </div>
+    {% endif %}
 </div>
 {% elseif akso_magazines.type == 'toc_entry' %}
 <div class="akso-magazines is-toc-entry-page">
@@ -171,7 +177,7 @@
     <h3 class="magazines-inner-back-container">
         <a class="back-button" href="{{edition_path}}">
             <span class="back-icon"></span>
-            {{akso_magazines.magazine.name}} · {{akso_magazines.edition.idHuman}}
+            {{akso_magazines.magazine.name}}{{akso_locale.magazines.edition_title_separator}}{{akso_magazines.edition.idHuman}}
         </a>
     </h3>
     <div class="toc-entry-info">
