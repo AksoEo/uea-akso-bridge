@@ -541,12 +541,14 @@ class MarkdownExt {
 
         $markdown->addBlockType('[', 'AksoMagazines');
         $markdown->blockAksoMagazines = function($line, $block) use ($self) {
-            if (preg_match('/^\[\[revuoj((?:\s+\d+)+)\]\]/', $line['text'], $matches)) {
+            if (preg_match('/^\[\[revuoj\s+([\/\w]+)((?:\s+\d+)+)\]\]/', $line['text'], $matches)) {
                 $error = null;
                 $codeholders = [];
 
+                $pathTarget = $matches[1];
+
                 $ids = [];
-                foreach (preg_split('/\s+/', $matches[1]) as $id) {
+                foreach (preg_split('/\s+/', $matches[2]) as $id) {
                     if (!empty($id)) $ids[] = (int) $id;
                 }
                 $error = null;
@@ -609,6 +611,7 @@ class MarkdownExt {
                 $text = '!' . $error;
                 if ($error === null) {
                     $text = json_encode(array(
+                        'target' => $pathTarget,
                         'posters' => $posters,
                     ));
                 }
@@ -1311,12 +1314,18 @@ class MarkdownExt {
             $newMagazines->class = 'akso-magazine-posters';
 
             try {
-                $posters = json_decode($textContent, true)['posters'];
+                $data = json_decode($textContent, true);
+                $pathTarget = $data['target'];
+                $posters = $data['posters'];
 
                 foreach ($posters as $poster) {
+                    $link = $pathTarget . '/' . Magazines::MAGAZINE . '/' . $poster['magazine']
+                        . '/' . Magazines::EDITION . '/' . $poster['edition'];
+
                     $mag = new Element('li');
                     $mag->class = 'magazine';
-                    $coverContainer = new Element('div');
+                    $coverContainer = new Element('a');
+                    $coverContainer->href = $link;
                     $coverContainer->class = 'magazine-cover-container';
                     if ($poster['hasThumbnail']) {
                         $img = new Element('img');
@@ -1341,9 +1350,12 @@ class MarkdownExt {
                         $coverContainer->appendChild($inner);
                     }
                     $mag->appendChild($coverContainer);
-                    $magTitle = new Element('div', $poster['info']['name']);
+                    $magTitle = new Element('a', $poster['info']['name']);
+                    $magTitle->class = 'magazine-title';
+                    $magTitle->href = $link;
                     $mag->appendChild($magTitle);
                     $magMeta = new Element('div', Utils::formatDate($poster['date']));
+                    $magMeta->class = 'magazine-meta';
                     $mag->appendChild($magMeta);
                     $newMagazines->appendChild($mag);
                 }

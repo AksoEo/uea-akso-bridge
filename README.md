@@ -150,7 +150,7 @@ The `[[nurmembroj]]` block construct shows an alert box saying the content is on
 Probably not commonly used; mostly for the home page.
 
 - `[[aktuale /path 4 "title"]]`: shows a news carousel or sidebar depending on layout. The path should point to the blog page and the number indicates how many items to show.
-- `[[revuoj 1 2 3]]`: shows the given magazines (space-separated ids)
+- `[[revuoj /revuoj 1 2 3]]`: shows the given magazines (space-separated ids) given a magazines page at /revuoj
 - `[[kongreso 1/2 /path/to/target optional_header_image.jpg]]`: shows the given congress instance
     - (upload the image to the same page)
     - use `[[kongreso tempokalkulo 1/2 /path/to/target img.jpg]]` to add a countdown
