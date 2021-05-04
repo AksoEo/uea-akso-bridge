@@ -31,7 +31,9 @@
             {% set edition_path = akso_magazines.path_components.base ~ '/' ~ akso_magazines.path_components.magazine ~ '/'
                 ~ akso_magazines.magazine.id ~ '/' ~ akso_magazines.path_components.edition ~ '/' ~ edition.id %}
             <div class="item-inner-card">
-                <h4 class="item-edition-title">{{edition.idHuman}}</h4>
+                <h4 class="item-edition-title">
+                    <a href="{{edition_path}}">{{edition.idHuman}}</a>
+                </h4>
                 <div class="item-edition-date">{{edition.date}}</div>
                 <a class="item-cover-link" href="{{edition_path}}">
                     {% include 'partials/akso_magazine_cover.html.twig' with { magazine: akso_magazines.magazine, edition: edition } %}
@@ -64,29 +66,37 @@
         </div>
         {% endif %}
         <div class="edition-info">
-            <h1 class="edition-title">
-                {{akso_magazines.magazine.name}}{{akso_locale.magazines.edition_title_separator}}{{akso_magazines.edition.idHuman}}
-            </h1>
-            <div class="edition-date">{{akso_magazines.edition.date}}</div>
-            <div class="edition-description">
-                {{akso_magazines.edition.description_rendered|raw}}
+            <div class="edition-details-container">
+                <h1 class="edition-title">
+                    {{akso_magazines.magazine.name}}{{akso_locale.magazines.edition_title_separator}}{{akso_magazines.edition.idHuman}}
+                </h1>
+                <div class="edition-date">{{akso_magazines.edition.date}}</div>
+                <div class="edition-description">
+                    {{akso_magazines.edition.description_rendered|raw}}
+                </div>
             </div>
             <div class="edition-downloads">
                 {% set has_download = false %}
                 {% if akso_magazines.edition.downloads.pdf %}
                 {% set has_download = true %}
                     <a class="download-button link-button" href="{{akso_magazines.edition.downloads.pdf.link}}">
-                        {{akso_magazines.can_download
-                            ? akso_locale.magazines.edition_downloads_download_pdf
-                            : akso_locale.magazines.edition_downloads_login_pdf}}
+                        <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/pdf.svg" draggable="false" />
+                        <span class="download-label">
+                            {{akso_magazines.can_download
+                                ? akso_locale.magazines.edition_downloads_download_pdf
+                                : akso_locale.magazines.edition_downloads_login_pdf}}
+                        </span>
                     </a>
                 {% endif %}
                 {% if akso_magazines.edition.downloads.epub %}
                 {% set has_download = true %}
                     <a class="download-button link-button" href="{{akso_magazines.edition.downloads.epub.link}}">
-                        {{akso_magazines.can_download
-                            ? akso_locale.magazines.edition_downloads_download_epub
-                            : akso_locale.magazines.edition_downloads_login_epub}}
+                        <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/epub.svg" draggable="false" />
+                        <span class="download-label">
+                            {{akso_magazines.can_download
+                                ? akso_locale.magazines.edition_downloads_download_epub
+                                : akso_locale.magazines.edition_downloads_login_epub}}
+                        </span>
                     </a>
                 {% endif %}
                 {% if not has_download %}
@@ -185,11 +195,13 @@
             <span class="entry-page">{{akso_magazines.entry.page}}</span>
             {{akso_magazines.entry.title}}
         </h2>
+        {% if akso_magazines.entry.author %}
         <h5 class="entry-author">
             {{akso_locale.magazines.entry_author_label_0}}
             {{akso_magazines.entry.author}}
             {{akso_locale.magazines.entry_author_label_1}}
         </h5>
+        {% endif %}
     </div>
     {% if akso_magazines.entry.recitationAuthor %}
     <div class="toc-entry-recitation">
