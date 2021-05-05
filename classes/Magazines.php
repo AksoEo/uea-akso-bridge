@@ -99,11 +99,11 @@ class Magazines {
             ), 120);
             if ($res['k']) {
                 foreach ($res['b'] as $item) {
-                    $fileName = Utils::escapeFileNameLossy($magazineName . ' - ' .$edition['idHuman']) . '.' . $item['format'];
+                    $fileName = urlencode(Utils::escapeFileNameLossy($magazineName . ' - ' .$edition['idHuman'])) . '.' . $item['format'];
 
                     $edition['downloads'][$item['format']] = array(
                         'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
-                            . '/' . urlencode($fileName)
+                            . '/' . $fileName
                             . '?' . self::DL_MAGAZINE . '=' . $magazine
                             . '&' . self::DL_EDITION . '=' . $editionId
                             . '&' . self::DL_FORMAT . '=' . $item['format'],
@@ -244,7 +244,7 @@ class Magazines {
         foreach ($entry['recitationFormats'] as $fmt) {
             $entry['downloads'][$fmt] = array(
                 'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
-                    . '/' . urlencode($fileNamePrefix) . $fmt
+                    . '/' . urlencode($fileNamePrefix) . '.' . $fmt
                     . '?' . self::DL_MAGAZINE . '=' . $magazine
                     . '&' . self::DL_EDITION . '=' . $edition
                     . '&' . self::DL_ENTRY . '=' . $entry['id']
@@ -335,6 +335,7 @@ class Magazines {
         }
 
         $pathComponents = array( 
+            'login_path' => $this->plugin->loginPath,
             'base' => $this->plugin->getGrav()['page']->header()->path_base,
             'magazine' => self::MAGAZINE,
             'edition' => self::EDITION,

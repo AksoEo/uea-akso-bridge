@@ -16,6 +16,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const plugins = lessOut => [
     iniPlugin(),
+    svgPlugin(),
     lessModules({
         output: lessOut,
         exclude: [],
@@ -122,6 +123,21 @@ function iniPlugin() {
                 return null;
             }
         },
+    };
+}
+
+function svgPlugin() {
+    return {
+        name: 'svg',
+        transform(data, id) {
+            if (id.slice(-4) !== '.svg') return null;
+            let svg = data.replace(/<?xml[^?]?>/, '');
+
+            return {
+                code: `export default ${JSON.stringify(svg)}`,
+                map: { mappings: '' },
+            };
+        }
     };
 }
 

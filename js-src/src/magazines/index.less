@@ -1,4 +1,5 @@
 @import '../prelude';
+@import './audio-player.less';
 
 .akso-magazines {
     .magazines-cover-gallery {
@@ -265,6 +266,37 @@
                         flex: 1;
                         border-left: 1px solid var(--light-separator);
                         padding: 0.5em;
+                        text-align: left;
+                    }
+
+                    &.requires-login {
+                        .dl-login-arrow {
+                            display: inline-block;
+                            position: relative;
+                            width: 1em;
+                            height: 1em;
+                            margin-right: 0.5em;
+                            transition: transform 0.3s cubic-bezier(.2, .3, 0, 1);
+
+                            &::before, &::after {
+                                content: '';
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                width: 0.6em;
+                                height: 0.2em;
+                                background: currentColor;
+                                transform-origin: 0.1em 50%;
+                                transform: translate(-0.1em, -0.1em) rotate(135deg);
+                            }
+                            &::after {
+                                transform: translate(-0.1em, -0.1em) rotate(-135deg);
+                            }
+                        }
+
+                        &:hover .dl-login-arrow {
+                            transform: translateX(0.2em);
+                        }
                     }
                 }
 
@@ -276,6 +308,15 @@
                     flex: 1;
                     text-align: center;
                     font-size: 0.875em;
+                }
+
+                @media (max-width: 700px) {
+                    display: block;
+
+                    .download-button + .download-button {
+                        margin-top: 0.5em;
+                        margin-left: 0;
+                    }
                 }
             }
         }
@@ -354,30 +395,6 @@
                     .entry-author-line {
                         opacity: 0.8;
                         font-size: 0.875em;
-                    }
-
-                    .entry-recitation {
-                        font-size: 0.875em;
-                        margin-top: 0.5em;
-                        border: 1px solid var(--light-separator);
-                        border-radius: var(--radius);
-                        padding: 0.5em;
-                        display: flex;
-                        align-items: center;
-
-                        .recitation-audio {
-                            max-width: 300px;
-
-                            audio {
-                                margin: 0;
-                                display: block;
-                            }
-                        }
-
-                        .recitation-label {
-                            flex: 1;
-                            margin-left: 0.5em;
-                        }
                     }
                 }
             }
@@ -498,6 +515,38 @@
         }
     }
 
+    .entry-recitation {
+        font-size: 0.875em;
+        margin-top: 0.5em;
+        border: 1px solid var(--light-separator);
+        border-radius: var(--radius);
+        padding: 0.5em;
+        display: flex;
+        align-items: center;
+
+        .recitation-audio {
+            max-width: 300px;
+
+            audio {
+                margin: 0;
+                display: block;
+            }
+        }
+
+        .recitation-label {
+            flex: 1;
+            margin-left: 0.5em;
+        }
+
+        &.is-interactive-audio-player {
+            padding: 0;
+            display: block;
+            border: none;
+            border-radius: 0;
+            font-size: inherit;
+        }
+    }
+
     &.is-toc-entry-page {
         .toc-entry-info {
             margin-bottom: 0.5em;
@@ -508,6 +557,22 @@
                 margin-top: 0.5em;
                 margin-bottom: 0;
                 opacity: 0.8;
+            }
+        }
+
+        .toc-entry-recitation {
+            .recitation-download {
+                margin: 0.3em 0;
+                text-align: right;
+                font-size: 0.875em;
+
+                .download-link {
+                    display: inline-block;
+                }
+
+                :last-child {
+                    margin-right: 0;
+                }
             }
         }
 
