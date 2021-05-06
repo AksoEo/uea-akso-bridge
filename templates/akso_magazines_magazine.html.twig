@@ -80,7 +80,7 @@
                 {% if akso_magazines.can_download and has_download %}
                     {% if akso_magazines.edition.downloads.pdf %}
                         <a class="download-button link-button" href="{{akso_magazines.edition.downloads.pdf.link}}">
-                            <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/pdf.svg" draggable="false" />
+                            <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/pdf.svg" draggable="false" aria-hidden="true" />
                             <span class="download-label">
                                 {{akso_magazines.can_download
                                     ? akso_locale.magazines.edition_downloads_download_pdf
@@ -90,7 +90,7 @@
                     {% endif %}
                     {% if akso_magazines.edition.downloads.epub %}
                         <a class="download-button link-button" href="{{akso_magazines.edition.downloads.epub.link}}">
-                            <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/epub.svg" draggable="false" />
+                            <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/epub.svg" draggable="false" aria-hidden="true" />
                             <span class="download-label">
                                 {{akso_magazines.can_download
                                     ? akso_locale.magazines.edition_downloads_download_epub
@@ -101,9 +101,9 @@
                 {% elseif has_download %}
                     <a class="download-button link-button requires-login" href="{{akso_magazines.path_components.login_path}}">
                         {% if akso_magazines.edition.downloads.pdf %}
-                        <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/pdf.svg" draggable="false" />
+                        <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/pdf.svg" draggable="false" aria-hidden="true" />
                         {% else %}
-                        <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/epub.svg" draggable="false" />
+                        <img class="download-icon" src="/user/plugins/akso-bridge/assets/files/epub.svg" draggable="false" aria-hidden="true" />
                         {% endif %}
                         <span class="download-label">
                             {{akso_locale.magazines.edition_downloads_login}}
@@ -182,6 +182,7 @@
             for="edition-content-list-collapse"
             class="content-list-collapse-button"
             aria-role="button"
+            tabindex="0"
             aria-label="{{akso_locale.magazines.edition_toc_highlight_expand_btn}}">
             <span class="inner-collapse-icon"></span>
             <span class="inner-expand-label">{{akso_locale.magazines.edition_toc_highlight_expand_btn}}</span>
@@ -215,21 +216,21 @@
         {% endif %}
     </div>
     {% if akso_magazines.entry.recitationAuthor %}
-    <div class="toc-entry-recitation">
-        <div class="entry-recitation">
-            <div class="recitation-audio">
-                <audio controls preload="none">
-                    {% for format in akso_magazines.entry.recitationFormats %}
-                        <source type="{{akso_magazines.entry.downloads[format].mime}}" src="{{akso_magazines.entry.downloads[format].link}}" />
-                    {% endfor %}
-                </audio>
-            </div>
-            <span class="recitation-label">
-                {{akso_locale.magazines.entry_recitation_read_by_0}}
-                <span class="recitation-author">{{akso_magazines.entry.recitationAuthor}}</span>
-                {{akso_locale.magazines.entry_recitation_read_by_1}}
-            </span>
+    <div class="toc-sticky-recitation entry-recitation" data-sticky="true">
+        <div class="recitation-audio">
+            <audio controls preload="none">
+                {% for format in akso_magazines.entry.recitationFormats %}
+                    <source type="{{akso_magazines.entry.downloads[format].mime}}" src="{{akso_magazines.entry.downloads[format].link}}" />
+                {% endfor %}
+            </audio>
         </div>
+        <span class="recitation-label">
+            {{akso_locale.magazines.entry_recitation_read_by_0}}
+            <span class="recitation-author">{{akso_magazines.entry.recitationAuthor}}</span>
+            {{akso_locale.magazines.entry_recitation_read_by_1}}
+        </span>
+    </div>
+    <div class="toc-entry-recitation-meta">
         <div class="recitation-download">
             {% for format in akso_magazines.entry.recitationFormats %}
                 <a class="download-link" download href="{{akso_magazines.entry.downloads[format].link}}">

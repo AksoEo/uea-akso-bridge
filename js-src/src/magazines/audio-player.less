@@ -78,12 +78,13 @@
                 width: 16px;
                 height: 16px;
                 border-radius: 8px;
-                transform: translate(-50%, -50%) scale(0);
+                transform: translate(-50%, -50%) scale(0.001);
                 transition: transform 0.3s cubic-bezier(.2, .3, 0, 1);
             }
         }
 
-        &:hover .audio-player-timeline {
+        &:hover .audio-player-timeline,
+        &.is-dragging .audio-player-timeline {
             transform: translateY(2px);
             height: 6px;
 
@@ -147,6 +148,10 @@
 
                     &:active {
                         opacity: 0.5;
+                    }
+
+                    &:focus {
+                        box-shadow: 0 0 0 var(--border-width) var(--accent-50);
                     }
 
                     &.play-pause-button {

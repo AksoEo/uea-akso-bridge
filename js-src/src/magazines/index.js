@@ -143,6 +143,10 @@ class AudioPlayer {
         this.node.querySelector('.play-pause-button').addEventListener('click', () => this.togglePlaying());
         this.node.querySelector('.audio-back-button').addEventListener('click', () => this.jumpRelative(-15));
         this.node.querySelector('.audio-fwd-button').addEventListener('click', () => this.jumpRelative(15));
+        this.node.querySelector('.audio-back-button').disabled = true;
+        this.node.querySelector('.audio-fwd-button').disabled = true;
+        this.node.querySelector('.audio-back-button').setAttribute('aria-label', locale.magazines.entry_recitation_btn_back15);
+        this.node.querySelector('.audio-fwd-button').setAttribute('aria-label', locale.magazines.entry_recitation_btn_fwd15);
         this.audio.addEventListener('timeupdate', () => this.update());
         this.audio.addEventListener('pause', () => this.update());
         this.audio.addEventListener('play', () => this.update());
@@ -186,6 +190,7 @@ class AudioPlayer {
 
     pointerDown(x, y) {
         this.player.classList.remove('is-collapsed');
+        this.timelineContainer.classList.add('is-dragging');
         this.pointerIsDown = true;
         this.pointerMove(x, y);
     }
@@ -195,23 +200,33 @@ class AudioPlayer {
         x = x - nodeRect.left;
         y = y - nodeRect.top;
         if (this.audio.duration) {
-            this.audio.currentTime = x / nodeRect.width * this.audio.duration;
+            this.audio.currentTime = Math.max(0, Math.min(1, x / nodeRect.width)) * this.audio.duration;
         }
         this.update();
     }
     pointerUp() {
         this.pointerIsDown = false;
+        this.timelineContainer.classList.remove('is-dragging');
+    }
+
+    expand() {
+        this.player.classList.remove('is-collapsed');
+        this.player.querySelector('.audio-back-button').disabled = false;
+        this.player.querySelector('.audio-fwd-button').disabled = false;
+        if (this.node.dataset.sticky) {
+            this.node.classList.add('is-sticky');
+        }
     }
 
     jumpRelative(t) {
-        this.player.classList.remove('is-collapsed');
-        this.audio.currentTime += t;
+        this.expand();
+        const maxTime = Number.isFinite(this.audio.duration) ? this.audio.duration : 0;
+        this.audio.currentTime = Math.min(Math.max(this.audio.currentTime + t, 0), maxTime);
         this.update();
     }
 
     togglePlaying() {
-        this.player.classList.remove('is-collapsed');
-
+        this.expand();
         if (this.audio.paused) {
             for (const player of this.audioPlayers) {
                 player.stopPlaying();
@@ -229,6 +244,9 @@ class AudioPlayer {
     update() {
         const playing = !this.audio.paused;
         this.playPauseButton.dataset.state = playing ? 'playing' : 'paused';
+        this.playPauseButton.setAttribute('aria-label', playing
+            ? locale.magazines.entry_recitation_btn_pause
+            : locale.magazines.entry_recitation_btn_play);
         this.playPauseButton.dataset.waiting = !this.audio.duration || !!this.waiting;
         this.timeline.dataset.waiting = playing && (!this.audio.duration || !!this.waiting);
 
