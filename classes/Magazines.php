@@ -98,6 +98,8 @@ class Magazines {
                 }
 
                 echo base64_decode($chunk['chunk']);
+                ob_flush();
+                flush();
             });
             if (!(isset($res['cached']) && $res['cached'])) {
                 // if the data is cached, there weren't any stream chunks and we need to run
