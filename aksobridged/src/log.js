@@ -24,6 +24,12 @@ function info (msg) {
 }
 exports.info = info;
 
+function warn (msg) {
+    const time = timestamp();
+    process.stderr.write(`\x1b[33m${mkPrefix('WARN')} [${time}] ${msg}\x1b[m\n`);
+}
+exports.warn = warn;
+
 function error (msg) {
     const time = timestamp();
     process.stderr.write(`\x1b[31m${mkPrefix('ERR')} [${time}] ${msg}\x1b[m\n`);

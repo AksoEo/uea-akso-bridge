@@ -4,7 +4,7 @@ const { AppClient, UserClient } = require('@tejo/akso-client');
 const { evaluate, currencies } = require('@tejo/akso-script');
 const { CookieJar } = require('tough-cookie');
 const { encode, decode } = require('@msgpack/msgpack');
-const { setThreadName, info, debug, error } = require('./log');
+const { setThreadName, info, debug, warn, error } = require('./log');
 const path = require('path');
 const { promisify } = require('util');
 const fs = require('fs');
@@ -95,6 +95,7 @@ const cache = {
         } catch (err) {
             if (err.code === 'ENOENT') {
                 // no cache file
+                debug('No cache file: ' + filePath);
                 return null;
             } else throw err;
         }
@@ -103,6 +104,8 @@ const cache = {
         // read the file
         const contents = await fsReadFile(filePath);
         const rootNode = decode(contents);
+
+        debug(`Age: ${age > rootNode.maxAge}`);
 
         // if the file is older than we want, we pretend we don’t have anything
         // cached
@@ -127,6 +130,7 @@ const cache = {
     },
     insert: async (host, method, resPath, query, maxCacheSecs, data, raw = null) => {
         const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
+        debug(`Insert cache for ${method} ${resPath}: ${filePath}`);
 
         const tmpWritePath = path.join(cachePath, '$' + Math.random().toString(36));
 
@@ -185,7 +189,9 @@ class ClientHandler {
         this.connection.setTimeout(1000);
         this.connection.on('data', data => this.onData(data));
         this.connection.on('timeout', () => this.onTimeout());
-        this.connection.on('close', () => this.onClose());
+        this.connection.on('close', () => this.onClose().catch(err => {
+            error('failed to close connection: ' + err);
+        }));
 
         this.didInit = false;
         this.currentMessageLen = null;
@@ -200,6 +206,7 @@ class ClientHandler {
         this.cookies = null;
         this.client = null;
         this.waitTasks = 0;
+        this.rawResourceLocks = new Map();
     }
 
     flushMessage () {
@@ -276,9 +283,14 @@ class ClientHandler {
         this.connection.end(encodeMessage({ t, c, m }));
     }
 
-    onClose () {
+    async onClose () {
         this.flushSendCookies();
         this.didEnd = true;
+        for (const [lock, n] of this.rawResourceLocks) {
+            for (let i = 0; i < n; i++) {
+                await cache.release(this.apiHost, 'GET_RAW', lock, {});
+            }
+        }
     }
 
     onTimeout () {
@@ -300,8 +312,16 @@ class ClientHandler {
             return;
         }
 
+        const onStreamChunk = (streamData) => {
+            this.send({
+                t: '~s',
+                i: message.i,
+                ...streamData,
+            });
+        };
+
         this.waitTasks++;
-        handler(this, message).then(response => {
+        handler(this, message, onStreamChunk).then(response => {
             this.send({
                 t: '~',
                 i: message.i,
@@ -729,52 +749,126 @@ const messageHandlers = {
         const cashify = new Cashify({ base: fc, rates: r });
         return { v: cashify.convert(v, { from: fc, to: tc }) };
     },
-    get_raw: async (conn, { p, o, c }) => {
+    get_raw: async (conn, { p, o, c, sr }, onStreamChunk) => {
         assertType(p, 'string', 'expected p to be a string');
         assertType(c, 'number', 'expected c to be a number');
         if (c < 0) throw new Error('negative cache time');
+        if (Object.keys(o).length) throw new Error('options not supported');
 
-        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, o || {});
+        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, {});
+        debug(`Cache for raw resource ${p} (${c}s): ${!!cachedResponse}`);
         if (cachedResponse !== null) {
-            await cache.acquire(conn.apiHost, 'GET_RAW', p, o || {});
+            await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
             return {
                 ...cachedResponse,
+                cached: true,
                 ref: cachedResponse.ref && path.resolve(path.join(rawCachePath, cachedResponse.ref)),
             };
         }
 
-        const res = await conn.client.get(p, o || {});
-        let body = Buffer.from(res.body);
+        const runCache = async (doAcquire) => {
+            const res = await conn.client.get(p, o || {});
+            let body = Buffer.from(res.body);
 
-        let refName = null;
-        if (res.ok) {
-            const hash = crypto.createHash('sha256');
-            hash.update(body);
-            refName = hash.digest('hex');
-        }
+            let refName = null;
+            if (res.ok) {
+                const hash = crypto.createHash('sha256');
+                hash.update(body);
+                refName = hash.digest('hex');
+            }
 
-        const response = {
-            k: res.ok,
-            sc: res.status,
-            h: collectHeaders(res.res.headers),
-            ref: refName,
+            const response = {
+                k: res.ok,
+                sc: res.status,
+                h: collectHeaders(res.res.headers),
+                ref: refName,
+            };
+
+            if (res.ok) {
+                const filePath = path.join(rawCachePath, refName);
+                await fsWriteFile(filePath, body);
+                await cache.insert(conn.apiHost, 'GET_RAW', p, {}, c, response, refName);
+                if (doAcquire) await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
+            }
+
+            if (doAcquire) conn.rawResourceLocks.set(p, (conn.rawResourceLocks.get(p) | 0) + 1);
+            else return { ...response, ref: null };
+
+            return {
+                ...response,
+                cache: true,
+                ref: response.ref && path.resolve(path.join(rawCachePath, response.ref)),
+            };
         };
 
-        if (res.ok) {
-            const filePath = path.join(rawCachePath, refName);
-            await fsWriteFile(filePath, body);
-            await cache.insert(conn.apiHost, 'GET_RAW', p, {}, c, response, refName);
-            await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
-        }
+        if (sr) {
+            debug(`Start background cache of ${p}`);
+            // FIXME: multiple parallel requests may trigger multiple parallel background caches
+            // -> use a write lock
+            runCache(false).then(() => {
+                debug(`Background cache of ${p} complete`);
+            }).catch(e => {
+                warn(`Error during background cache of ${p}: ${e}`);
+            });
 
-        return {
-            ...response,
-            ref: response.ref && path.resolve(path.join(rawCachePath, response.ref)),
-        };
+            let streamStart = sr[0] || 0;
+            let streamEnd = sr[1] || Infinity;
+            assertType(streamStart, 'number', 'expected stream start offset to be a number');
+            assertType(streamEnd, 'number', 'expected stream end offset to be a number');
+
+            const fetchURL = conn.client.client.createURL(p);
+            const cookie = await promisify(conn.cookies.getCookieString.bind(conn.cookies))(fetchURL);
+            const res = await fetch(fetchURL, {
+                headers: {
+                    range: `bytes=${streamStart}-${Number.isFinite(streamEnd) ? streamEnd : ''}`,
+                    cookie,
+                },
+            });
+            if (!res.ok) {
+                return {
+                    k: false,
+                    sc: res.status,
+                    h: collectHeaders(res.headers),
+                    ref: null,
+                };
+            }
+
+            const h = collectHeaders(res.headers);
+
+            let dataLen = 0;
+            for await (const chunk of res.body) {
+                if (res.size > 0 && dataLen + chunk.length > res.size) {
+                    return { k: false, sc: 500, h: [], ref: null };
+                }
+                const isFirst = dataLen === 0;
+                dataLen += chunk.length;
+                if (isFirst) {
+                    onStreamChunk({
+                        k: true,
+                        sc: res.status,
+                        h,
+                        chunk: Buffer.from(chunk).toString('base64'),
+                    });
+                } else {
+                    onStreamChunk({ chunk: Buffer.from(chunk).toString('base64') });
+                }
+            }
+
+            return {
+                k: true,
+                sc: res.status,
+                h,
+                ref: null,
+            };
+        } else {
+            return await runCache(true);
+        }
     },
     release_raw: async (conn, { p }) => {
         assertType(p, 'string', 'expected p to be a string');
+        conn.rawResourceLocks.set(p, conn.rawResourceLocks.get(p) - 1);
         await cache.release(conn.apiHost, 'GET_RAW', p, {});
+        return {};
     },
     render_md: async (conn, { c, r }) => {
         assertType(c, 'string', 'expected c to be a string');

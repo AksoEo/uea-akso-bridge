@@ -52,26 +52,77 @@ class Magazines {
         $format = isset($_GET[self::DL_FORMAT]) ? $_GET[self::DL_FORMAT] : '?';
 
         $path = null;
+        $tryStream = false;
         if ($entry !== '?') {
             $path = "/magazines/$magazine/editions/$edition/toc/$entry/recitation/$format";
+            $tryStream = true;
         } else {
             $path = "/magazines/$magazine/editions/$edition/files/$format";
         }
 
-        $res = $this->bridge->getRaw($path, 0); // no caching because user auth
-        if ($res['k']) {
-            try {
-                $sendFile = new sendfile();
-                $sendFile->contentType($res['h']['content-type']);
-                $sendFile->send($res['ref'], false);
-            } finally {
-                $this->bridge->releaseRaw($path);
+        $res = null;
+        if ($tryStream) {
+            $srange = [0, null];
+            $useRange = false;
+
+            if (isset($_SERVER['HTTP_RANGE'])) {
+                // copied from diversen/sendfile
+                list($a, $range) = explode("=", $_SERVER['HTTP_RANGE'], 2);
+                list($range) = explode(",", $range, 2);
+                list($range, $range_end) = explode("-", $range);
+                $range = intval($range);
+                if (!$range_end) {
+                    $range_end = null;
+                } else {
+                    $range_end = intval($range_end);
+                }
+                $srange[0] = $range;
+                $srange[1] = $range_end;
+                $useRange = true;
             }
-            die();
+
+            $res = $this->bridge->getRawStream($path, 600, $srange, function ($chunk) use ($useRange) {
+                if (isset($chunk['sc'])) {
+                    $headers = ['content-type', 'content-length', 'accept-ranges', 'cache-control', 'pragma', 'expires'];
+                    if ($useRange) {
+                        header('HTTP/1.1 206 Partial Content');
+                        $headers[] = 'content-range';
+                    } else {
+                        header('HTTP/1.1 200 OK');
+                    }
+                    foreach ($headers as $k) {
+                        if (isset($chunk['h'][$k])) {
+                            header($k . ': ' . $chunk['h'][$k]);
+                        }
+                    }
+                }
+
+                echo base64_decode($chunk['chunk']);
+            });
+            if (!(isset($res['cached']) && $res['cached'])) {
+                // if the data is cached, there weren't any stream chunks and we need to run
+                // sendfile. otherwise, quit now
+                die();
+            }
         } else {
-            header('HTTP/1.1 500 Internal Server Error');
-            // TODO: error?
-            die();
+            $res = $this->bridge->getRaw($path, 0); // no caching because user auth
+        }
+
+        {
+            if ($res['k']) {
+                try {
+                    $sendFile = new sendfile();
+                    $sendFile->contentType($res['h']['content-type']);
+                    $sendFile->send($res['ref'], false);
+                } finally {
+                    $this->bridge->releaseRaw($path);
+                }
+                die();
+            } else {
+                header('HTTP/1.1 500 Internal Server Error');
+                // TODO: error?
+                die();
+            }
         }
     }
 

@@ -87,6 +87,21 @@ Additional fields:
 - `b`: (object|null) body
 - `q`: (object) query
 
+##### type `get_raw`
+Additional fields:
+
+- `p`: (str) path
+- `o`: (object|null) options
+- `c`: (number) cache time
+- `sr`: (null|(number|null)[]) stream range (2 elements, start and end)
+
+If stream range is given, this will not acquire a resource lock and release_raw must not be called.
+
+##### type `release_raw`
+Additional fields:
+
+- `p`: (str) path
+
 ##### type `perms`
 Additional fields:
 
@@ -191,6 +206,17 @@ Additional fields:
 - `sc`: (number) status code
 - `h`: (object) response headers (e.g. x-total-items)
 - `b`: (any?) response body
+
+##### type `get_raw`
+Additional fields: 
+
+- `k`: (bool) response is okay
+- `sc`: (number) status code
+- `h`: (object) response headers (e.g. x-total-items)
+- `ref`: (string) file path to raw resource
+
+##### type `release_raw`
+No additional fields.
 
 ##### type `perms`
 Additional fields:

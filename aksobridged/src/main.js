@@ -61,7 +61,7 @@ function createWorkerInSlot (id) {
     });
     worker.on('error', err => {
         mainPort.close();
-        error(`worker ${id} terminated: ${err}`);
+        error(`worker ${id} terminated: ${err.stack}`);
     });
     worker.on('exit', code => {
         if (!isClosing) {

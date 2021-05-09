@@ -65,7 +65,7 @@ class AksoBridge {
         return $msg;
     }
 
-    public function recvUntilId(string $id) {
+    public function recvUntilId(string $id, $onStreamChunk = null) {
         while (true) {
             $msg = $this->recv();
 
@@ -77,6 +77,11 @@ class AksoBridge {
                 $this->handleSetCookies($msg);
             } else if ($msg['t'] === '❤') {
                 // heartbeat can be ignored
+            } else if ($msg['t'] === '~s') {
+                // stream message
+                if ($msg['i'] === $id && $onStreamChunk) {
+                    $onStreamChunk($msg);
+                }
             } else if ($msg['t'] === '~' || $msg['t'] === '~!') {
                 if ($msg['i'] === $id) {
                     if ($msg['t'] === '~!') {
@@ -102,14 +107,14 @@ class AksoBridge {
         }
     }
 
-    public function request(string $ty, $data) {
+    public function request(string $ty, $data, $onStreamChunk = null) {
         $id = $this->nextId();
         $req = array_merge($data, array(
             't' => $ty,
             'i' => $id
         ));
         $this->send($req);
-        return $this->recvUntilId($id);
+        return $this->recvUntilId($id, $onStreamChunk);
     }
 
     private function openSocket() {
@@ -299,6 +304,15 @@ class AksoBridge {
         return $this->request('release_raw', array(
             'p' => $path,
         ));
+    }
+
+    public function getRawStream(string $path, float $bgCacheTime, array $range, $onStreamChunk) {
+        return $this->request('get_raw', array(
+            'p' => $path,
+            'c' => $bgCacheTime,
+            'sr' => $range,
+            'o' => [],
+        ), $onStreamChunk);
     }
 
     public function renderMarkdown(string $contents, array $rules) {
