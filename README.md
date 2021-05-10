@@ -146,6 +146,26 @@ Anything in the `[[alie]]` clause will be shown only to non-members.
 
 The `[[nurmembroj]]` block construct shows an alert box saying the content is only for members and links to sign-up.
 
+### Big Buttons
+```md
+[[butono /donaci Donaci]]
+[[butono! /donaci Donaci]]
+```
+
+Will display a big centered button that links to the given url.
+Add an exclamation mark to make it a primary button.
+
+### Multiple Columns
+```md
+[[kolumnoj]]
+Kato
+===
+kato
+[[/kolumnoj]]
+```
+
+The `===` indicates a column break.
+
 ### Additional Extensions
 Probably not commonly used; mostly for the home page.
 

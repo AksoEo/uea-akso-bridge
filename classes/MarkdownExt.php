@@ -772,6 +772,129 @@ class MarkdownExt {
             $block['element']['text'] = $block['element']['text']['variants'][$preferredLang];
             return $block;
         };
+
+        $markdown->addBlockType('[', 'AksoBigButton');
+        $markdown->blockAksoBigButton = function($line, $block) use ($self) {
+            if (preg_match('/^\[\[butono(!)?(!)?\s+([^\s]+)\s+(.+?)\]\]/', $line['text'], $matches)) {
+                $emphasis = $matches[1];
+                $emphasis2 = $matches[2];
+                $linkTarget = $matches[3];
+                $label = $matches[4];
+
+                $emphasisClass = '';
+                if ($emphasis) $emphasisClass .= ' is-primary has-emphasis';
+                if ($emphasis2) $emphasisClass .= ' has-big-emphasis';
+
+                return array(
+                    'element' => array(
+                        'name' => 'div',
+                        'attributes' => array(
+                            'class' => 'big-actionable-button-container' . $emphasisClass,
+                        ),
+                        'handler' => 'elements',
+                        'text' => [
+                            array(
+                                'name' => 'a',
+                                'attributes' => array(
+                                    'class' => 'link-button big-actionable-button' . $emphasisClass,
+                                    'href' => $linkTarget,
+                                ),
+                                'handler' => 'elements',
+                                'text' => [
+                                    array(
+                                        'name' => 'span',
+                                        'text' => $label,
+                                    ),
+                                    array(
+                                        'name' => 'span',
+                                        'attributes' => array(
+                                            'class' => 'action-arrow-icon',
+                                        ),
+                                        'text' => '',
+                                    ),
+                                    array(
+                                        'name' => 'span',
+                                        'attributes' => array(
+                                            'class' => 'action-button-shine',
+                                        ),
+                                        'text' => '',
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                );
+            }
+        };
+
+        $markdown->addBlockType('[', 'MultiCol', true, true);
+        $markdown->blockMultiCol = function($line, $block) {
+            if (preg_match('/^\[\[kolumnoj\]\]/', $line['text'], $matches)) {
+                return array(
+                    'char' => $line['text'][0],
+                    'element' => array(
+                        'name' => 'div',
+                        'attributes' => array(
+                            'class' => 'content-multicols',
+                        ),
+                        'handler' => 'elements',
+                        'text' => [['']],
+                    ),
+                );
+            }
+        };
+        $markdown->blockMultiColContinue = function($line, $block) {
+            if (isset($block['complete'])) {
+                return;
+            }
+
+            $lastIndex = count($block['element']['text']) - 1;
+
+            // A blank newline has occurred.
+            if (isset($block['interrupted'])) {
+                $block['element']['text'][$lastIndex][] = "\n";
+                unset($block['interrupted']);
+            }
+
+            if (preg_match('/^===$/', $line['text'], $matches)) {
+                // column break
+                $block['element']['text'][] = [''];
+                return $block;
+            } else if (preg_match('/^\[\[\/kolumnoj\]\]$/', $line['text'])) {
+                // end of the block
+                $block['complete'] = true;
+                return $block;
+            }
+
+            $block['element']['text'][$lastIndex][] = $line['body'];
+
+            return $block;
+        };
+        $markdown->blockMultiColComplete = function($block) use ($self) {
+            $block['element']['attributes']['data-columns'] = count($block['element']['text']);
+            $els = [];
+            foreach ($block['element']['text'] as $lines) {
+                if (count($els)) {
+                    $els[] = array(
+                        'name' => 'hr',
+                        'attributes' => array(
+                            'class' => 'multicol-column-break',
+                        ),
+                        'text' => '',
+                    );
+                }
+                $els[] = array(
+                    'name' => 'div',
+                    'attributes' => array(
+                        'class' => 'multicol-column',
+                    ),
+                    'handler' => 'lines',
+                    'text' => $lines,
+                );
+            }
+            $block['element']['text'] = $els;
+            return $block;
+        };
     }
 
     public function onPageContentProcessed(Event $event) {
