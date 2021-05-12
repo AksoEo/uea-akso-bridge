@@ -62,6 +62,10 @@ Putting an exclamation mark before the three octothorpes creates an h3 that is a
 [[informskatolo]]
 Katido
 [[/informskatolo]]
+
+[[anonceto]]
+Kato
+[[/anonceto]]
 ```
 
 This will create an info box. While they *can* be nested, it is not recommended because it may be too narrow to read comfortably on phones.

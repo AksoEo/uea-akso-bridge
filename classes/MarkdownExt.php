@@ -272,6 +272,51 @@ class MarkdownExt {
             return $block;
         };
 
+        $markdown->addBlockType('[', 'InfoBoxAd', true, true);
+        $markdown->blockInfoBoxAd = function($line, $block) {
+            if (preg_match('/^\[\[anonceto\]\]/', $line['text'], $matches)) {
+                return array(
+                    'char' => $line['text'][0],
+                    'element' => array(
+                        'name' => 'blockquote',
+                        'attributes' => array(
+                            'class' => 'infobox is-ab',
+                            'data-ab-label' => $this->plugin->locale['content']['info_box_ad_label'],
+                        ),
+                        // parse markdown inside
+                        'handler' => 'lines',
+                        // lines handler needs an array of lines
+                        'text' => array(),
+                    ),
+                );
+            }
+        };
+        $markdown->blockInfoBoxAdContinue = function($line, $block) {
+            if (isset($block['complete'])) {
+                return;
+            }
+
+            // A blank newline has occurred.
+            if (isset($block['interrupted'])) {
+                array_push($block['element']['text'], "\n");
+                unset($block['interrupted']);
+            }
+
+            // Check for end of the block.
+            if (preg_match('/\[\[\/anonceto\]\]/', $line['text'])) {
+                $block['complete'] = true;
+                return $block;
+            }
+
+            array_push($block['element']['text'], $line['body']);
+
+            return $block;
+        };
+        $markdown->blockInfoBoxAdComplete = function($block) {
+            return $block;
+        };
+
+
         $markdown->addBlockType('[', 'Expandable', true, true);
         $markdown->blockExpandable = function($line, $block) {
             if (preg_match('/^\[\[etendeblo\]\]/', $line['text'], $matches)) {
