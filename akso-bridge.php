@@ -858,12 +858,19 @@ class AksoBridgePlugin extends Plugin {
         foreach ($nonces['styles'] as $sn) {
             $styleNonces .= " 'nonce-" . $sn . "'";
         }
+        $extraImgSrc = $this->grav['config']->get('plugins.akso-bridge.csp_img');
+        $extraChildSrc = $this->grav['config']->get('plugins.akso-bridge.csp_child');
+        if ($extraImgSrc) $extraImgSrc = implode(' ', $extraImgSrc);
+        else $extraImgSrc = '';
+        if ($extraChildSrc) $extraChildSrc = implode(' ', $extraChildSrc);
+        else $extraChildSrc = '';
 
         $csp = [
             "default-src 'self'",
-            "img-src 'self' data: " . $this->apiHost . " https://maps.wikimedia.org",
+            "img-src 'self' data: " . $this->apiHost . " https://maps.wikimedia.org " . $extraImgSrc,
             "script-src 'self' " . $scriptNonces,
             "style-src 'self' 'unsafe-inline' " . $styleNonces,
+            "child-src 'self' " . $extraChildSrc,
         ];
         header('Content-Security-Policy: ' . implode($csp, ';'), FALSE);
     }

@@ -22,22 +22,38 @@ form:
         type: bool
     login_path:
       type: text
-      label: Login Path
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.LOGIN_PATH
     logout_path:
       type: text
-      label: Logout Path
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.LOGOUT_PATH
     account_path:
       type: text
-      label: Account Path
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.ACCOUNT_PATH
     api_host:
       type: text
-      label: API host
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.API_HOST
     api_key:
       type: text
-      label: API key for markdown rendering
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.API_KEY
     api_secret:
       type: text
-      label: API secret
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.API_SECRET
     payments_host:
       type: text
-      label: Payments host
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.PAYMENTS_HOST
+    csp:
+      type: section
+      title: PLUGIN_AKSO_BRIDGE.SETTINGS.CSP.TITLE
+      fields:
+        csp_img:
+          type: selectize
+          size: large
+          label: PLUGIN_AKSO_BRIDGE.SETTINGS.CSP.IMG
+          validate:
+            type: commalist
+        csp_child:
+          type: selectize
+          size: large
+          label: PLUGIN_AKSO_BRIDGE.SETTINGS.CSP.CHILD
+          validate:
+            type: commalist

@@ -363,9 +363,12 @@
 
                     .item-price {
                         &.is-variable {
+                            border-radius: var(--radius);
+
                             .price-input {
                                 width: 7em;
                                 text-align: right;
+                                margin: 0;
                             }
                         }
                     }
@@ -456,6 +459,13 @@
                     }
 
                     &.not-available {
+                        opacity: 0.5;
+                    }
+                }
+
+                .offer-item-selection:not(:checked) + .offer-item {
+                    .item-price.is-variable {
+                        pointer-events: none;
                         opacity: 0.5;
                     }
                 }

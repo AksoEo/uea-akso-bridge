@@ -1,4 +1,14 @@
 en:
   PLUGIN_AKSO_BRIDGE:
-    LOGIN_PATH: Login Page Path
-    LOGIN_PATH_HELP: Help text goes here
+    SETTINGS:
+      LOGIN_PATH: Login Page Path
+      LOGOUT_PATH: Logout Page Path
+      ACCOUNT_PATH: Account Page Path
+      API_HOST: API host
+      API_KEY: API key
+      API_SECRET: API secret
+      PAYMENTS_HOST: Payments host
+      CSP:
+        TITLE: Content Security Policy
+        IMG: Image Sources
+        CHILD: IFrame Sources

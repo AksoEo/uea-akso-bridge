@@ -105,8 +105,6 @@ const cache = {
         const contents = await fsReadFile(filePath);
         const rootNode = decode(contents);
 
-        debug(`Age: ${age > rootNode.maxAge}`);
-
         // if the file is older than we want, we pretend we don’t have anything
         // cached
         if (age > rootNode.maxAge) return null;
