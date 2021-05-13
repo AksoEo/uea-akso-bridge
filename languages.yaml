@@ -4,6 +4,7 @@ en:
       LOGIN_PATH: Login Page Path
       LOGOUT_PATH: Logout Page Path
       ACCOUNT_PATH: Account Page Path
+      REGISTRATION_PATH: Registration Path
       API_HOST: API host
       API_KEY: API key
       API_SECRET: API secret

@@ -29,6 +29,9 @@ form:
     account_path:
       type: text
       label: PLUGIN_AKSO_BRIDGE.SETTINGS.ACCOUNT_PATH
+    registration_path:
+      type: text
+      label: PLUGIN_AKSO_BRIDGE.SETTINGS.REGISTRATION_PATH
     api_host:
       type: text
       label: PLUGIN_AKSO_BRIDGE.SETTINGS.API_HOST

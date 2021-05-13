@@ -1569,7 +1569,7 @@ class MarkdownExt {
             $signUpLink = new Element('a', $isLoggedIn ? 'Aliĝi kiel membro de UEA' : 'aliĝu kiel membro de UEA');
 
             $loginLink->href = $this->plugin->loginPath;
-            $signUpLink->href = 'TODO'; // TODO: this link
+            $signUpLink->href = $this->plugin->registrationPath;
 
             if ($isLoggedIn) {
                 $signUpLink->class = 'link-button';

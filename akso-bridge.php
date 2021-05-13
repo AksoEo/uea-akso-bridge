@@ -65,6 +65,7 @@ class AksoBridgePlugin extends Plugin {
         // get config variables
         $this->loginPath = $this->grav['config']->get('plugins.akso-bridge.login_path');
         $this->logoutPath = $this->grav['config']->get('plugins.akso-bridge.logout_path');
+        $this->registrationPath = $this->grav['config']->get('plugins.akso-bridge.registration_path');
         $this->accountPath = $this->grav['config']->get('plugins.akso-bridge.account_path');
         $this->apiHost = $this->grav['config']->get('plugins.akso-bridge.api_host');
 
