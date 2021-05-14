@@ -5,8 +5,14 @@
         </div>
         <div class="akso-user-options">
             <input class="user-options-switch" type="checkbox" id="akso-bridge-login-options" />
-            <label tabindex="0" aria-label="Agordoj" class="link-button user-options-button" for="akso-bridge-login-options">
-                <img src="/user/plugins/akso-bridge/assets/settings.svg" draggable="false" />
+            <label
+                tabindex="0"
+                aria-hidden="true"
+                role="presentation"
+                aria-label="{{ akso_locale.login.settings }}"
+                class="link-button user-options-button"
+                for="akso-bridge-login-options">
+                <img role="presentation" aria-hidden="true" src="/user/plugins/akso-bridge/assets/settings.svg" draggable="false" />
             </label>
             <label class="bridge-options-backdrop" for="akso-bridge-login-options"></label>
             <ul class="bridge-options-popup">
