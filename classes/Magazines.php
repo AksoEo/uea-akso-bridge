@@ -10,11 +10,12 @@ class Magazines {
     const EDITION = 'numero';
     const TOC = 'enhavo';
 
-    private $plugin, $bridge;
+    private $plugin, $bridge, $user;
 
     public function __construct($plugin, $bridge) {
         $this->plugin = $plugin;
         $this->bridge = $bridge;
+        $this->user = $plugin->aksoUser ? $plugin->bridge : null;
     }
 
     public const TH_MAGAZINE = 'm';
@@ -50,6 +51,20 @@ class Magazines {
         $edition = isset($_GET[self::DL_EDITION]) ? $_GET[self::DL_EDITION] : '?';
         $entry = isset($_GET[self::DL_ENTRY]) ? $_GET[self::DL_ENTRY] : '?';
         $format = isset($_GET[self::DL_FORMAT]) ? $_GET[self::DL_FORMAT] : '?';
+
+        $magazineInfo = $this->getMagazine($magazine);
+        if (!$magazineInfo) {
+            // TODO: error page
+            die();
+        }
+        $org = $magazineInfo['org'];
+
+        $perm = "magazines.read.$org";
+        $hasPerm = $this->user ? $this->user->hasPerms([$perm])['p'][0] : false;
+        if (!$hasPerm) {
+            // TODO: error page
+            die();
+        }
 
         $path = null;
         $tryStream = false;
@@ -218,7 +233,7 @@ class Magazines {
 
     function getMagazine($id) {
         $res = $this->bridge->get("/magazines/$id", array(
-            'fields' => ['id', 'name', 'description'],
+            'fields' => ['id', 'name', 'description', 'org'],
         ), 240);
         if ($res['k']) {
             $res['b']['description_rendered'] = $this->bridge->renderMarkdown(
@@ -395,7 +410,7 @@ class Magazines {
             'toc' => self::TOC,
         );
 
-        $canDownload = !!$this->plugin->aksoUser;
+        $canRead = !!$this->plugin->aksoUser;
 
         if ($route['type'] === 'list') {
             $magazines = $this->listMagazines();
@@ -428,6 +443,10 @@ class Magazines {
         } else if ($route['type'] === 'edition') {
             $magazine = $this->getMagazine($route['magazine']);
             if (!$magazine) return array('type' => 'error');
+
+            $org = $magazine['org'];
+            $canRead = $this->user ? $this->user->hasPerms(["magazines.read.$org"])['p'][0] : false;
+
             $edition = $this->getMagazineEdition($route['magazine'], $route['edition'], $magazine['name']);
             if (!$edition) return array('type' => 'error');
 
@@ -439,15 +458,19 @@ class Magazines {
                 'toc_entries' => $this->getEditionTocEntries(
                     $route['magazine'], $route['edition'], $magazine['name'], $edition['idHuman']
                 ),
-                'can_download' => $canDownload,
+                'can_read' => $canRead,
             );
         } else if ($route['type'] === 'toc_entry') {
-            if (!$canDownload) {
+            if (!$canRead) {
                 $this->plugin->getGrav()->redirectLangSafe($this->plugin->loginPath, 302);
             }
 
             $magazine = $this->getMagazine($route['magazine']);
             if (!$magazine) return array('type' => 'error');
+
+            $org = $magazine['org'];
+            $canRead = $this->user ? $this->user->hasPerms(["magazines.read.$org"])['p'][0] : false;
+
             $edition = $this->getMagazineEdition($route['magazine'], $route['edition'], $magazine['name']);
             if (!$edition) return array('type' => 'error');
             $entry = $this->getEditionTocEntry(
@@ -461,6 +484,7 @@ class Magazines {
                 'magazine' => $magazine,
                 'edition' => $edition,
                 'entry' => $entry,
+                'can_read' => $canRead,
             );
         } else if ($route['type'] === 'error') {
             // TODO

@@ -125,7 +125,7 @@ class AksoBridgePlugin extends Plugin {
     }
 
     // akso bridge connection
-    private $bridge = null;
+    public $bridge = null;
     // if set, will contain info on the akso user
     // an array with keys 'id', 'uea'
     public $aksoUser = null;
@@ -172,7 +172,8 @@ class AksoBridgePlugin extends Plugin {
             $this->updateAksoState();
             $this->updateFormattedName();
 
-            $this->bridge->close();
+            // FIXME: better state management...
+            // $this->bridge->close();
         }
 
         foreach ($this->bridge->setCookies as $cookie) {

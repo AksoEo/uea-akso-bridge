@@ -603,6 +603,12 @@
             border-radius: var(--radius);
             padding: 1em;
             box-shadow: @shade-both;
+
+            &.requires-perms {
+                background: var(--error-bg);
+                color: var(--error-fg);
+                --accent: var(--error-fg);
+            }
         }
     }
 }
