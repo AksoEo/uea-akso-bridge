@@ -548,9 +548,10 @@ class MarkdownExt {
 
                 return array(
                     'element' => array(
-                        'name' => 'div',
+                        'name' => 'script',
                         'attributes' => array(
                             'class' => 'unhandled-list',
+                            'type' => 'application/json',
                         ),
                         'text' => $text
                     ),
@@ -570,9 +571,10 @@ class MarkdownExt {
 
                 return array(
                     'element' => array(
-                        'name' => 'div',
+                        'name' => 'script',
                         'attributes' => array(
                             'class' => 'news-sidebar',
+                            'type' => 'application/json',
                         ),
                         'text' => json_encode(array(
                             'title' => $title,
@@ -664,9 +666,10 @@ class MarkdownExt {
 
                 return array(
                     'element' => array(
-                        'name' => 'div',
+                        'name' => 'script',
                         'attributes' => array(
                             'class' => 'unhandled-akso-magazines',
+                            'type' => 'application/json',
                         ),
                         'text' => $text,
                     ),
@@ -735,9 +738,10 @@ class MarkdownExt {
 
                 return array(
                     'element' => array(
-                        'name' => 'div',
+                        'name' => 'script',
                         'attributes' => array(
                             'class' => 'akso-congresses unhandled-akso-congress-poster',
+                            'type' => 'application/json',
                         ),
                         'text' => $text,
                     ),
@@ -946,7 +950,7 @@ class MarkdownExt {
         $this->app->close();
     }
 
-    private $nonces = array('scripts' => [], 'styles' => []);
+    public $nonces = array('scripts' => [], 'styles' => []);
 
     public function onOutputGenerated(Event $event) {
         if ($this->plugin->isAdmin()) {

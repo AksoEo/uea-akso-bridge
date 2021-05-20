@@ -113,8 +113,7 @@ class Utils {
         return $binaryString;
     }
 
-    static function escapeFileNameLossy($name) {
-        $s = \Normalizer::normalize($name);
+    static function latinizeEsperanto($s, $useH) {
         $latinizeEsperanto = function ($k) {
             switch ($k) {
                 case 'Ĥ': return 'H';
@@ -122,25 +121,33 @@ class Utils {
                 case 'Ĝ': return 'G';
                 case 'Ĉ': return 'C';
                 case 'Ĵ': return 'J';
+                case 'Ŭ': return 'U';
                 case 'ĥ': return 'h';
                 case 'ŝ': return 's';
                 case 'ĝ': return 'g';
                 case 'ĉ': return 'c';
                 case 'ĵ': return 'j';
+                case 'ŭ': return 'u';
             }
             return $k;
         };
 
-        $replaceHUpper = function (array $matches) use ($latinizeEsperanto) {
-            return $latinizeEsperanto($matches[1]) . 'H';
+        $replaceHUpper = function (array $matches) use ($latinizeEsperanto, $useH) {
+            return $latinizeEsperanto($matches[1]) . ($useH ? 'H' : '');
         };
-        $replaceH = function (array $matches) use ($latinizeEsperanto) {
-            return $latinizeEsperanto($matches[1]) . 'h';
+        $replaceH = function (array $matches) use ($latinizeEsperanto, $useH) {
+            return $latinizeEsperanto($matches[1]) . ($useH ? 'h' : '');
         };
 
-        $s = preg_replace_callback('/([ĤŜĜĈĴ])(?=[A-ZĤŜĜĈĴ])/u', $replaceHUpper, $s);
-        $s = preg_replace_callback('/([ĥŝĝĉĵ])/ui', $replaceH, $s);
+        $s = preg_replace_callback('/([ĤŜĜĈĴŬ])(?=[A-ZĤŜĜĈĴŬ])/u', $replaceHUpper, $s);
+        $s = preg_replace_callback('/([ĥŝĝĉĵŭ])/ui', $replaceH, $s);
 
+        return $s;
+    }
+
+    static function escapeFileNameLossy($name) {
+        $s = \Normalizer::normalize($name);
+        $s = self::latinizeEsperanto($s, true);
         $slugify = new Slugify(['lowercase' => false]);
         return $slugify->slugify($s);
     }

@@ -15,6 +15,9 @@ use Grav\Plugin\AksoBridge\Magazines;
 use Grav\Plugin\AksoBridge\Registration;
 use Grav\Plugin\AksoBridge\UserAccount;
 
+// FIXME: this needs to be required manually for some reason
+require_once('classes/AKSOTNTSearch.php');
+
 // TODO: pass host to bridge as Host header
 
 /**

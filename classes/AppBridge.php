@@ -16,7 +16,11 @@ class AppBridge {
         $apiKey = $grav['config']->get('plugins.akso-bridge.api_key');
         $apiSecret = $grav['config']->get('plugins.akso-bridge.api_secret');
 
-        $this->bridge = new \AksoBridge(__DIR__ . '/../aksobridged/aksobridge');
+        // get ..
+        $dirname = explode('/', __DIR__);
+        array_pop($dirname);
+        $dirname = implode('/', $dirname);
+        $this->bridge = new \AksoBridge($dirname . '/aksobridged/aksobridge');
         $this->bridge->openApp($this->apiHost, $apiKey, $apiSecret);
     }
 
