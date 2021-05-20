@@ -165,7 +165,11 @@ function init (channel) {
     });
 
     const listenAddr = `${workerData.path}/ipc${workerData.id}`;
-    server.listen(listenAddr, () => {
+    server.listen({
+        path: listenAddr,
+        readableAll: true,
+        writeableAll: true
+    }, () => {
         info(`listening on ${listenAddr}`);
     });
 }
