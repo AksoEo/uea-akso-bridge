@@ -170,6 +170,7 @@ function init (channel) {
         readableAll: true,
         writeableAll: true
     }, () => {
+        fs.chmodSync(listenAddr, 0o777);
         info(`listening on ${listenAddr}`);
     });
 }
