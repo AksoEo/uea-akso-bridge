@@ -16,7 +16,7 @@ class AppBridge {
         $apiKey = $grav['config']->get('plugins.akso-bridge.api_key');
         $apiSecret = $grav['config']->get('plugins.akso-bridge.api_secret');
 
-        $this->bridge = new \AksoBridge(realpath(__DIR__ . '/../aksobridged/aksobridge'));
+        $this->bridge = new \AksoBridge(__DIR__ . '/../aksobridged/aksobridge');
         $this->bridge->openApp($this->apiHost, $apiKey, $apiSecret);
     }
 
