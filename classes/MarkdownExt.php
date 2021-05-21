@@ -19,15 +19,19 @@ class MarkdownExt {
         $this->plugin = $plugin;
     }
 
-    public function onMarkdownInitialized(Event $event) {
+    private function initAppIfNeeded() {
+        if (isset($this->app) && $this->app) return;
         $grav = $this->plugin->getGrav();
-
         $this->app = new AppBridge($grav);
         $this->apiHost = $this->app->apiHost;
         $this->app->open();
         $this->bridge = $this->app->bridge;
 
         $this->congressFields = new CongressFields($this->bridge);
+    }
+
+    public function onMarkdownInitialized(Event $event) {
+        $this->initAppIfNeeded();
 
         $markdown = $event['markdown'];
 
@@ -969,6 +973,7 @@ class MarkdownExt {
             return '';
         }
 
+        $this->initAppIfNeeded();
         $document = new Document($content);
         $mains = $document->find('main#main-content');
         if (count($mains) === 0) return $content;
