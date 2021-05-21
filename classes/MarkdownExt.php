@@ -950,10 +950,6 @@ class MarkdownExt {
         };
     }
 
-    public function onPageContentProcessed(Event $event) {
-        $this->app->close();
-    }
-
     public $nonces = array('scripts' => [], 'styles' => []);
 
     public function onOutputGenerated(Event $event) {

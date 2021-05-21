@@ -31,7 +31,6 @@ class AksoBridgePlugin extends Plugin {
             'onTwigTemplatePaths' => ['onTwigTemplatePaths', 0],
             'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
             'onMarkdownInitialized' => ['onMarkdownInitialized', 0],
-            'onPageContentProcessed' => ['onPageContentProcessed', 0],
             'onOutputGenerated' => ['onOutputGenerated', 0],
             'onPageNotFound' => ['onPageNotFound', 0],
         ];
@@ -850,11 +849,6 @@ class AksoBridgePlugin extends Plugin {
         if ($this->isAdmin()) return;
         $markdownExt = $this->loadMarkdownExt();
         $markdownExt->onMarkdownInitialized($event);
-    }
-    public function onPageContentProcessed(Event $event) {
-        if ($this->isAdmin()) return;
-        $markdownExt = $this->loadMarkdownExt();
-        $markdownExt->onPageContentProcessed($event);
     }
     public function onOutputGenerated(Event $event) {
         if ($this->isAdmin()) {
