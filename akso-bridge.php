@@ -175,8 +175,9 @@ class AksoBridgePlugin extends Plugin {
             $this->updateAksoState();
             $this->updateFormattedName();
 
-            // FIXME: better state management...
+            // FIXME: better state management
             // $this->bridge->close();
+            $this->bridge->flushCookies();
         }
 
         foreach ($this->bridge->setCookies as $cookie) {

@@ -893,6 +893,10 @@ const messageHandlers = {
         }
         return { c: true };
     },
+    flush_cookies: async (conn) => {
+        conn.flushSendCookies();
+        return {};
+    },
     x: async (conn) => {
         conn.flushSendCookies();
         return {};

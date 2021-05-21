@@ -147,6 +147,10 @@ class AksoBridge {
         return $this->handshakeApp($apiHost, $key, $secret);
     }
 
+    public function flushCookies() {
+        $this->request('flush_cookies', array());
+    }
+
     public function close() {
         $this->request('x', array());
         fclose($this->conn);
