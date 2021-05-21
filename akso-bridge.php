@@ -33,6 +33,7 @@ class AksoBridgePlugin extends Plugin {
             'onMarkdownInitialized' => ['onMarkdownInitialized', 0],
             'onPageContentProcessed' => ['onPageContentProcessed', 0],
             'onOutputGenerated' => ['onOutputGenerated', 0],
+            'onPageNotFound' => ['onPageNotFound', 0],
         ];
     }
 
@@ -125,6 +126,14 @@ class AksoBridgePlugin extends Plugin {
     public function onGetPageTemplates(Event $event) {
         $types = $event->types;
         $types->scanTemplates('plugin://' . $this->name . '/public_templates');
+    }
+
+    public function onPageNotFound(Event $event) {
+        $page = $this->grav['pages']->dispatch('/error', true);
+        if ($page) {
+            $event->page = $page;
+            $event->stopPropagation();
+        }
     }
 
     // akso bridge connection
