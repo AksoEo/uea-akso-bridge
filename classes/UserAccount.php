@@ -248,6 +248,7 @@ class UserAccount {
         $size = $_GET['s'];
         // TODO: check if this is safe
         $path = "/codeholders/self/profile_picture/$size";
+        // hack: use noop as unique cache key for getRaw
         $res = $this->bridge->getRaw($path, 10, array('noop' => $hash));
         if ($res['k']) {
             header('Content-Type: ' . $res['h']['content-type']);

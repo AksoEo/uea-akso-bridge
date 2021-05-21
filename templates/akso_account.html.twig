@@ -58,7 +58,8 @@
                         <th class="field-label">{{ akso_locale.account.newCode }}</th>
                         <td>
                             {{ account.details.newCode|e }}
-                            {% if account.details.oldCode %}
+                            {# only show oldCode if newCode is not the oldCode (i.e. it has a dash) #}
+                            {% if account.details.oldCode and not '-' in account.details.newCode %}
                                 <span class="old-code-field">
                                     {{ akso_locale.account.oldCode }}: {{ account.details.oldCode|e }}
                                 </span>

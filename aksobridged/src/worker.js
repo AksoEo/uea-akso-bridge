@@ -756,9 +756,8 @@ const messageHandlers = {
         assertType(p, 'string', 'expected p to be a string');
         assertType(c, 'number', 'expected c to be a number');
         if (c < 0) throw new Error('negative cache time');
-        if (Object.keys(o).length) throw new Error('options not supported');
 
-        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, {});
+        const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, o);
         debug(`Cache for raw resource ${p} (${c}s): ${!!cachedResponse}`);
         if (cachedResponse !== null) {
             await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
@@ -790,8 +789,8 @@ const messageHandlers = {
             if (res.ok) {
                 const filePath = path.join(rawCachePath, refName);
                 await fsWriteFile(filePath, body);
-                await cache.insert(conn.apiHost, 'GET_RAW', p, {}, c, response, refName);
-                if (doAcquire) await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
+                await cache.insert(conn.apiHost, 'GET_RAW', p, o, c, response, refName);
+                if (doAcquire) await cache.acquire(conn.apiHost, 'GET_RAW', p, o);
             }
 
             if (doAcquire) conn.rawResourceLocks.set(p, (conn.rawResourceLocks.get(p) | 0) + 1);
