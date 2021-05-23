@@ -116,8 +116,8 @@ async function cacheGC () {
     for (const file of files) {
         if (file.startsWith('$')) continue; // tmp file
         const filePath = path.join(cachePath, file);
-        if (writeLocks.has(filePath)) {
-            debug(`skipping gc for ${filePath} because it’s locked`);
+        if (writeLocks.has(filePath) && writeLocks.get(filePath) > 0) {
+            debug(`skipping gc for ${filePath} because it’s locked (${writeLocks.get(filePath)})`);
             continue;
         }
 

@@ -1,4 +1,4 @@
-<div class="akso-bridge-login-bar {{ akso_auth ? 'is-logged-in' : 'is-logged-out' }}">
+<div class="akso-bridge-login-bar {{ akso_auth ? 'is-logged-in' : 'is-logged-out' }}" role="banner">
     {% if akso_auth %}
         <div class="akso-user">
             {{ akso_user_fmt_name|e }}

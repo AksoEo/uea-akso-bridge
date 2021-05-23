@@ -110,24 +110,24 @@ const cache = {
         if (age > rootNode.maxAge) return null;
         else return rootNode.data; // otherwise return the data
     },
-    acquire: async (host, method, resPath, query) => {
-        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
+    acquire: async (host, method, resPath, key) => {
+        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, key));
         const id = Math.random().toString(36);
         parentPort.postMessage({ type: 'acquire', id, path: filePath });
         await new Promise(r => {
             pendingAcquire.set(id, r);
         });
     },
-    release: async (host, method, resPath, query) => {
-        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
+    release: async (host, method, resPath, key) => {
+        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, key));
         const id = Math.random().toString(36);
         parentPort.postMessage({ type: 'release', id, path: filePath });
         await new Promise(r => {
             pendingRelease.set(id, r);
         });
     },
-    insert: async (host, method, resPath, query, maxCacheSecs, data, raw = null) => {
-        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, query));
+    insert: async (host, method, resPath, key, maxCacheSecs, data, raw = null) => {
+        const filePath = path.join(cachePath, getCacheKey(host, method, resPath, key));
         debug(`Insert cache for ${method} ${resPath}: ${filePath}`);
 
         const tmpWritePath = path.join(cachePath, '$' + Math.random().toString(36));
@@ -289,11 +289,12 @@ class ClientHandler {
     async onClose () {
         this.flushSendCookies();
         this.didEnd = true;
-        for (const [lock, n] of this.rawResourceLocks) {
-            for (let i = 0; i < n; i++) {
-                await cache.release(this.apiHost, 'GET_RAW', lock, {});
+        for (const [key, lock] of this.rawResourceLocks) {
+            for (let i = 0; i < lock.rc; i++) {
+                await cache.release(this.apiHost, lock.method, lock.resPath, lock.key);
             }
         }
+        this.rawResourceLocks.clear();
     }
 
     onTimeout () {
@@ -302,6 +303,19 @@ class ClientHandler {
         } else {
             this.close('TXERR', 103, 'timed out');
         }
+    }
+
+    acquire(method, resPath, key) {
+        const res = cache.acquire(this.apiHost, method, resPath, key);
+        const cacheKey = getCacheKey(this.apiHost, method, resPath, key);
+        let k = this.rawResourceLocks.get(cacheKey)?.rc | 0;
+        this.rawResourceLocks.set(cacheKey, {
+            method,
+            resPath,
+            key,
+            rc: k + 1,
+        });
+        return res;
     }
 
     // -----
@@ -760,7 +774,7 @@ const messageHandlers = {
         const cachedResponse = await cache.get(conn.apiHost, 'GET_RAW', p, o);
         debug(`Cache for raw resource ${p} (${c}s): ${!!cachedResponse}`);
         if (cachedResponse !== null) {
-            await cache.acquire(conn.apiHost, 'GET_RAW', p, {});
+            await conn.acquire('GET_RAW', p, o);
             return {
                 ...cachedResponse,
                 cached: true,
@@ -790,11 +804,12 @@ const messageHandlers = {
                 const filePath = path.join(rawCachePath, refName);
                 await fsWriteFile(filePath, body);
                 await cache.insert(conn.apiHost, 'GET_RAW', p, o, c, response, refName);
-                if (doAcquire) await cache.acquire(conn.apiHost, 'GET_RAW', p, o);
+                if (doAcquire) {
+                    await conn.acquire('GET_RAW', p, o);
+                }
             }
 
-            if (doAcquire) conn.rawResourceLocks.set(p, (conn.rawResourceLocks.get(p) | 0) + 1);
-            else return { ...response, ref: null };
+            if (!doAcquire) return { ...response, ref: null };
 
             return {
                 ...response,
@@ -867,9 +882,7 @@ const messageHandlers = {
         }
     },
     release_raw: async (conn, { p }) => {
-        assertType(p, 'string', 'expected p to be a string');
-        conn.rawResourceLocks.set(p, conn.rawResourceLocks.get(p) - 1);
-        await cache.release(conn.apiHost, 'GET_RAW', p, {});
+        // TODO: deprecate this
         return {};
     },
     render_md: async (conn, { c, r }) => {
