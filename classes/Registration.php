@@ -1189,6 +1189,9 @@ class Registration extends Form {
             // TODO: more granular validation?
             return $this->localize('codeholder_error_invalid_address');
         }
+        if (!$ch['feeCountry']) {
+            return $this->localize('codeholder_error_no_fee_country');
+        }
 
         return null;
     }

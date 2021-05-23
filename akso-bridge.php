@@ -549,6 +549,7 @@ class AksoBridgePlugin extends Plugin {
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.js');
             $twig->twig_vars['akso_login_path'] = $this->loginPath;
+            $twig->twig_vars['akso_account_path'] = $this->accountPath;
 
             $app = new AppBridge($this->grav);
             $app->open();

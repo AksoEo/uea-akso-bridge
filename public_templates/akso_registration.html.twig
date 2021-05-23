@@ -73,18 +73,18 @@
                 </div>
                 <div class="summary-birthdate">
                     {{akso_locale.registration.codeholder_birthdate}}:
-                    {{akso_registration.state.codeholder_derived.birthdate|e}}
+                    {{akso_registration.state.codeholder_derived.birthdate|e|default('—')}}
                 </div>
                 <div class="summary-contact">
                     {{akso_registration.state.codeholder.email|e}}
                     {{akso_registration.state.codeholder.cellphone|e}}
                 </div>
                 <div class="summary-address">
-                    {{akso_registration.state.codeholder_derived.address|e}}
+                    {{akso_registration.state.codeholder_derived.address|e|default(akso_locale.registration.codeholder_no_address)}}
                 </div>
                 <div class="summary-payment">
                     {{akso_locale.registration.codeholder_summary_fee_country}}:
-                    {{akso_registration.state.codeholder_derived.fee_country|e}}
+                    {{akso_registration.state.codeholder_derived.fee_country|e|default('—')}}
                 </div>
                 {% endif %}
             </div>
@@ -190,7 +190,7 @@
         {% endif %}
         {% if akso_registration.state.step == 0 %}
             {% if not akso_auth %}
-            <div class="logged-out-notice">
+            <div class="registration-notice logged-out-notice">
                 <div class="notice-contents">{{akso_locale.registration.codeholder_logged_out_note}}</div>
                 <div class="notice-buttons">
                     <a class="link-button is-primary" href="{{akso_login_path}}">
@@ -199,6 +199,29 @@
                 </div>
             </div>
             {% endif %}
+            {% set codeholder_is_valid = true %}
+            {% if akso_auth %}
+                {% if not akso_registration.state.codeholder.birthdate %}
+                    {% set codeholder_is_valid = false %}
+                {% endif %}
+                {% if not akso_registration.state.codeholder.feeCountry %}
+                    {% set codeholder_is_valid = false %}
+                {% endif %}
+                {% if not akso_registration.state.codeholder.address.country %}
+                    {% set codeholder_is_valid = false %}
+                {% endif %}
+                {% if not codeholder_is_valid %}
+                    <div class="registration-notice missing-data-notice">
+                        <div class="notice-contents">{{akso_locale.registration.codeholder_missing_info_note}}</div>
+                        <div class="notice-buttons">
+                            <a class="link-button is-primary" href="{{akso_account_path}}">
+                                {{akso_locale.registration.codeholder_missing_info_go}}
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+            {% if codeholder_is_valid %}
             <div class="registration-settings">
                 {% if not akso_auth %}
                 <div class="settings-section">
@@ -329,7 +352,6 @@
                     checked
                     {% endif %}
                     id="registration-split-country" />
-                {% endif %}
                 <div class="settings-field">
                     <div class="inner-field">
                         <label for="registration-field-fee-country">
@@ -361,7 +383,6 @@
                     </div>
                     {% endif %}
                 </div>
-                {% if not akso_auth %}
                 <div class="settings-section">
                     {{akso_locale.registration.codeholder_address}}
                 </div>
@@ -440,8 +461,8 @@
                             type="text" />
                     </div>
                 </div>
-                {% endif %}
                 <hr />
+                {% endif %}
                 <div class="settings-field">
                     <div class="inner-field">
                         <label>{{akso_locale.registration.settings_currency}}</label>
@@ -466,6 +487,7 @@
                     {{akso_locale.registration.codeholder_next}}
                 </button>
             </div>
+            {% endif %}
         {% elseif akso_registration.state.step == 1 %}
             <div class="offer-selection">
                 <h2>{{akso_locale.registration.offers_title}}</h2>
