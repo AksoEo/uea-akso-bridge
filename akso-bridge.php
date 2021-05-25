@@ -877,7 +877,7 @@ class AksoBridgePlugin extends Plugin {
 
         $csp = [
             "default-src 'self'",
-            "img-src 'self' data: " . $this->apiHost . " https://maps.wikimedia.org " . $extraImgSrc,
+            "img-src 'self' data: " . $this->apiHost . " https://tile.openstreetmap.org " . $extraImgSrc,
             "script-src 'self' " . $scriptNonces,
             "style-src 'self' 'unsafe-inline' " . $styleNonces,
             "child-src 'self' " . $extraChildSrc,

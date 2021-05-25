@@ -9,7 +9,7 @@ import score from 'string-score';
 import './index.less';
 import 'leaflet/dist/leaflet.css';
 
-const TILE_LAYER_URL = 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png?lang=eo';
+const TILE_LAYER_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_LAYER_ATTRIB = '&copy <a href="https://osm.org/copyright">OpenStreetMap</a> contributors';
 
 function init() {
