@@ -27,7 +27,7 @@ class MarkdownExt {
         $this->app->open();
         $this->bridge = $this->app->bridge;
 
-        $this->congressFields = new CongressFields($this->bridge);
+        $this->congressFields = new CongressFields($this->bridge, $this->plugin);
     }
 
     public function onMarkdownInitialized(Event $event) {
@@ -755,13 +755,18 @@ class MarkdownExt {
 
         $markdown->addInlineType('[', 'AksoCongressField');
         $markdown->inlineAksoCongressField = function($excerpt) use ($self) {
-            if (preg_match('/^\[\[kongreso\s+([\w!]+)\s+(\d+)(?:\/(\d+))?\]\]/', $excerpt['text'], $matches)) {
-                $fieldName = strtolower($matches[1]);
+            if (preg_match('/^\[\[kongreso\s+([\w!]+)\s+(\d+)(?:\/(\d+))?(.*)\]\]/u', $excerpt['text'], $matches)) {
+                $fieldName = mb_strtolower(normalizer_normalize($matches[1]));
                 $congress = intval($matches[2]);
                 $instance = isset($matches[3]) ? intval($matches[3]) : null;
+                $args = [];
+                foreach (preg_split('/\s+/', $matches[4]) as $arg) {
+                    $arg2 = trim($arg);
+                    if (!empty($arg2)) $args[] = $arg2;
+                }
                 $extent = strlen($matches[0]);
 
-                $rendered = $self->congressFields->renderField($extent, $fieldName, $congress, $instance);
+                $rendered = $self->congressFields->renderField($extent, $fieldName, $congress, $instance, $args);
                 if ($rendered != null) return $rendered;
             }
         };

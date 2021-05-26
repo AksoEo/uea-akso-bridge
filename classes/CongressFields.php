@@ -6,10 +6,12 @@ use \DiDom\Element;
 
 // Handles rendering of congress fields in markdown.
 class CongressFields {
+    private $plugin;
     private $bridge;
     private $cache = array();
 
-    public function __construct($bridge) {
+    public function __construct($bridge, $plugin) {
+        $this->plugin = $plugin;
         $this->bridge = $bridge;
     }
 
@@ -49,7 +51,7 @@ class CongressFields {
     }
 
     // Renders an HTML descriptor for the given congress instance field
-    private function getInstanceField($congress, $instance, $field) {
+    private function getInstanceField($congress, $instance, $field, $args) {
         $id = $congress . '/' . $instance;
         if (!isset($this->cache[$id])) {
             $res = $this->bridge->get('/congresses/' . $congress . '/instances/' . $instance, array(
@@ -104,6 +106,8 @@ class CongressFields {
                     'data-timestamp' => $congressStartTime->getTimestamp(),
                 ),
             )];
+        } else if ($field === 'aliĝintoj') {
+            return $this->renderCongressParticipants($congress, $instance, $data, $args);
         }
         return [array(
             'name' => 'span',
@@ -118,14 +122,14 @@ class CongressFields {
 
     // Renders a congress/instance field. (Set instance to null for congress field).
     // Returns an HTML node descriptor.
-    public function renderField($extent, $field, $congress, $instance) {
+    public function renderField($extent, $field, $congress, $instance, $args) {
         $isInstance = $instance !== null;
 
         $contents = null;
         if ($isInstance) {
-            $contents = $this->getInstanceField($congress, $instance, $field);
+            $contents = $this->getInstanceField($congress, $instance, $field, $args);
         } else {
-            $contents = $this->getCongressField($congress, $field);
+            $contents = $this->getCongressField($congress, $field, $args);
         }
 
         return array(
@@ -192,5 +196,185 @@ class CongressFields {
             $contents = new Element('span', $span);
             $dateSpan->appendChild($contents);
         }
+    }
+
+    private function renderCongressParticipants($congressId, $instanceId, $instanceInfo, $args) {
+        if (count($args) < 2) {
+            return [array(
+                'name' => 'span',
+                'attributes' => array('class' => 'akso-congress-field-error'),
+                'text' => '[Eraro]',
+            )];
+        }
+        $show_name_field = $args[0];
+        $first_name_field = $args[1];
+
+        $participants = [];
+        $totalParticipants = 1;
+        $fields = ['codeholderId'];
+        $fields[] = 'data.' . $show_name_field;
+        $fields[] = 'data.' . $first_name_field;
+
+        while (count($participants) < $totalParticipants) {
+            $res = $this->bridge->get("/congresses/$congressId/instances/$instanceId/participants", array(
+                'offset' => count($participants),
+                'limit' => 100,
+                'fields' => $fields,
+                'order' => [['sequenceId', 'asc']],
+            ), 120);
+            if (!$res['k']) {
+                var_dump($res, $args);
+                break;
+            }
+            $totalParticipants = $res['h']['x-total-items'];
+            foreach ($res['b'] as $item) {
+                $item['show_name'] = $item['data'][$show_name_field];
+                $item['first_name'] = $item['data'][$first_name_field];
+                $participants[] = $item;
+            }
+        }
+
+        // fetch last name publicity
+        $codeholders = [];
+
+        {
+            $codeholderIds = [];
+            foreach ($participants as $part) {
+                if ($part['codeholderId']) {
+                    $codeholderIds[] = $part['codeholderId'];
+                }
+            }
+            $off = 0;
+            while ($off < count($codeholderIds)) {
+                $ids = array_slice($codeholderIds, $off, 100);
+                $res = $this->bridge->get("/codeholders", array(
+                    'offset' => $off,
+                    'limit' => count($ids),
+                    'fields' => ['id', 'honorific', 'firstName', 'firstNameLegal', 'lastName', 'lastNameLegal', 'lastNamePublicity'],
+                    'filter' => array('id' => array('$in' => $ids)),
+                ), 120);
+                if (!$res['k']) {
+                    break;
+                }
+                $off += 100;
+                foreach ($res['b'] as $item) {
+                    $codeholders[$item['id']] = $item;
+                }
+            }
+        }
+
+        $plist = [];
+        foreach ($participants as $part) {
+            if (!$part['show_name']) {
+                continue;
+            }
+
+            $codeholder = null;
+            if ($part['codeholderId'] && isset($codeholders[$part['codeholderId']])) {
+                $codeholder = $codeholders[$part['codeholderId']];
+            }
+
+            $name = $part['first_name'];
+            if ($codeholder) {
+                $name = $codeholder['honorific'];
+                if ($name) $name .= ' ';
+                $name .= $codeholder['firstName'] ?? $codeholder['firstNameLegal'];
+                if ($codeholder['lastNamePublicity'] === 'public' || $codeholder['lastNamePublicity'] === 'members') {
+                    // show both 'public' and 'members', because this field is visible to members only!
+                    $name .= ' ' . ($codeholder['lastName'] ?? $codeholder['lastNameLegal']);
+                }
+                $name = trim($name);
+            }
+
+            $plist[] = array(
+                'name' => 'li',
+                'handler' => 'elements',
+                'attributes' => array('class' => 'plist-participant'),
+                'text' => [
+                    array(
+                        'name' => 'div',
+                        'attributes' => array('class' => 'participant-name'),
+                        'text' => $name,
+                    )
+                ],
+            );
+        }
+
+        $title = $this->plugin->locale['content']['congress_participants_title'];
+        $congressName = $instanceInfo['name'];
+        $partCount = $this->plugin->locale['content']['congress_participants_count_0']
+            . $totalParticipants . $this->plugin->locale['content']['congress_participants_count_1'];
+        $participantsEl = array(
+            'name' => 'div',
+            'handler' => 'elements',
+            'attributes' => array(
+                'class' => 'akso-congress-field-participants',
+                'role' => 'group',
+                'aria-label' => $title,
+            ),
+            'text' => [array(
+                'name' => 'div',
+                'attributes' => array('class' => 'participants-header'),
+                'handler' => 'elements',
+                'text' => [array(
+                    'name' => 'div',
+                    'attributes' => array(
+                        'class' => 'participants-title',
+                        'aria-hidden' => true,
+                    ),
+                    'text' => $title,
+                ), array(
+                    'name' => 'div',
+                    'attributes' => array('class' => 'participants-subtitle'),
+                    'handler' => 'elements',
+                    'text' => [array(
+                        'name' => 'div',
+                        'attributes' => array('class' => 'participants-congress-name'),
+                        'text' => $congressName,
+                    ), array(
+                        'name' => 'div',
+                        'attributes' => array('class' => 'participants-count'),
+                        'text' => $partCount,
+                    )],
+                )],
+            ), array(
+                'name' => 'ul',
+                'attributes' => array('class' => 'participants-list'),
+                'handler' => 'elements',
+                'text' => $plist,
+            )],
+        );
+
+        return [array(
+            'name' => 'div',
+            'attributes' => array(
+                'class' => 'akso-members-only-content',
+            ),
+            'handler' => 'elements',
+            'text' => [
+                array(
+                    'name' => 'div',
+                    'attributes' => array(
+                        'class' => 'akso-members-only-content-if-clause',
+                    ),
+                    'handler' => 'elements',
+                    'text' => [$participantsEl],
+                ),
+                array(
+                    'name' => 'div',
+                    'attributes' => array(
+                        'class' => 'akso-members-only-content-else-clause',
+                    ),
+                    'handler' => 'elements',
+                    'text' => [array(
+                        'name' => 'div',
+                        'attributes' => array(
+                            'class' => 'akso-members-only-box',
+                        ),
+                        'text' => '',
+                    )],
+                ),
+            ],
+        )];
     }
 }

@@ -1,0 +1,26 @@
+{% extends "partials/base.html.twig" %}
+
+{% block content %}
+{% if akso_congress_error %}
+    <div class="error-banner">
+        {{ akso_congress_error|e }}
+    </div>
+{% endif %}
+
+{% if akso_congress.auth %}
+<ul class="congress-participants">
+    {% for participant in akso_congress.participants %}
+    {% if participant.show_name %}
+    <li class="congress-participant">
+        {{participant.first_name}}
+    </li>
+    {% endif %}
+    {% endfor %}
+</ul>
+{% else %}
+<br />
+<div class="akso-members-only-box"></div>
+{% endif %}
+
+{{ page.content }}
+{% endblock %}
