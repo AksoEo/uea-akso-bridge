@@ -151,4 +151,20 @@ class Utils {
         $slugify = new Slugify(['lowercase' => false]);
         return $slugify->slugify($s);
     }
+
+    static function formatCurrency($bridge, $value, $currency) {
+        $res = $bridge->evalScript([array(
+            'value' => array('t' => 'n', 'v' => $value),
+            'currency' => array('t' => 's', 'v' => $currency),
+        )], array(), array(
+            't' => 'c',
+            'f' => 'currency_fmt',
+            'a' => ['currency', 'value'],
+        ));
+        if ($res['s']) {
+            return $res['v'] . '';
+        }
+        return null;
+    }
+
 }

@@ -3,6 +3,7 @@ namespace Grav\Plugin\AksoBridge;
 
 use \DiDom\Document;
 use \DiDom\Element;
+use Grav\Plugin\AksoBridge\Utils;
 
 // Handles rendering of congress fields in markdown.
 class CongressFields {
@@ -208,12 +209,34 @@ class CongressFields {
         }
         $show_name_field = $args[0];
         $first_name_field = $args[1];
+        $extra_fields = array_slice($args, 2);
+
+        $formRes = $this->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/registration_form', array(
+            'fields' => ['form'],
+        ), 60);
+        if (!$formRes['k']) {
+            return [array(
+                'name' => 'span',
+                'attributes' => array('class' => 'akso-congress-field-error'),
+                'text' => '[Eraro]',
+            )];
+        }
+        $regForm = $formRes['b']['form'];
+        $regFormInputs = [];
+        foreach ($regForm as $field) {
+            if ($field['el'] === 'input') {
+                $regFormInputs[$field['name']] = $field;
+            }
+        }
 
         $participants = [];
         $totalParticipants = 1;
         $fields = ['codeholderId'];
         $fields[] = 'data.' . $show_name_field;
         $fields[] = 'data.' . $first_name_field;
+        foreach ($extra_fields as $field) {
+            $fields[] = 'data.' . $field;
+        }
 
         while (count($participants) < $totalParticipants) {
             $res = $this->bridge->get("/congresses/$congressId/instances/$instanceId/participants", array(
@@ -223,13 +246,15 @@ class CongressFields {
                 'order' => [['sequenceId', 'asc']],
             ), 120);
             if (!$res['k']) {
-                var_dump($res, $args);
                 break;
             }
             $totalParticipants = $res['h']['x-total-items'];
             foreach ($res['b'] as $item) {
                 $item['show_name'] = $item['data'][$show_name_field];
                 $item['first_name'] = $item['data'][$first_name_field];
+                foreach ($extra_fields as $field) {
+                    $item['extra_fields'][$field] = $item['data'][$field];
+                }
                 $participants[] = $item;
             }
         }
@@ -263,11 +288,28 @@ class CongressFields {
             }
         }
 
+        $hasExtraFields = !empty($extra_fields);
         $plist = [];
+        $ptableHeader = [array(
+            'name' => 'th',
+            'text' => '', // $this->plugin->locale['content']['congress_participants_th_name'],
+        )];
+        $ptable = [];
+
+        foreach ($extra_fields as $field) {
+            if (!isset($regFormInputs[$field])) continue;
+            $spec = $regFormInputs[$field];
+            $ptableHeader[] = array(
+                'name' => 'th',
+                'text' => $spec['label'],
+            );
+        }
+
         foreach ($participants as $part) {
             if (!$part['show_name']) {
                 continue;
             }
+            $tableCells = [];
 
             $codeholder = null;
             if ($part['codeholderId'] && isset($codeholders[$part['codeholderId']])) {
@@ -285,6 +327,118 @@ class CongressFields {
                 }
                 $name = trim($name);
             }
+            $tableCells[] = array('name' => 'th', 'text' => $name);
+
+            $details = [];
+            foreach ($extra_fields as $field) {
+                if (!isset($regFormInputs[$field])) continue;
+                $spec = $regFormInputs[$field];
+                $value = $part['extra_fields'][$field];
+                $fmtValue = $value;
+                $fmtValueHandler = null;
+
+                if ($spec['type'] === 'money') {
+                    $fmtValue = Utils::formatCurrency($this->bridge, $value, $spec['currency']);
+                } else if ($spec['type'] === 'enum') {
+                    $fmtValue = '';
+                    foreach ($spec['options'] as $opt) {
+                        if ($opt['value'] === $value) {
+                            $fmtValue = $opt['name'];
+                            break;
+                        }
+                    }
+                } else if ($spec['type'] === 'country') {
+                    $res = $this->bridge->get('/countries', array(
+                        'limit' => 300,
+                        'fields' => ['code', 'name_eo'],
+                    ), 600);
+                    if ($res['k']) {
+                        foreach ($res['b'] as $item) {
+                            if ($item['code'] === $value) {
+                                $fmtValue = $item['name_eo'];
+                            }
+                        }
+                    }
+                } else if ($spec['type'] === 'date') {
+                    $fmtValue = !empty($value) ? Utils::formatDate($value) : '';
+                } else if ($spec['type'] === 'datetime') {
+                    $dt = new \DateTime("@$value");
+                    if ($dt !== false) {
+                        $fmtValue = Utils::formatDate($dt->format('Y-m-d')) . ' ' . $dt->format('H:i');
+                    }
+                } else if ($spec['type'] === 'boolean_table') {
+                    $fmtValueHandler = 'elements';
+                    $thead = [];
+                    if ($spec['headerTop']) {
+                        $row = [];
+                        if ($spec['headerLeft']) $row[] = array('name' => 'th', 'text' => '');
+                        for ($x = 0; $x < $spec['cols']; $x++) {
+                            $row[] = array(
+                                'name' => 'th',
+                                'text' => $spec['headerTop'][$x] ?? '',
+                            );
+                        }
+                        $thead[] = array(
+                            'name' => 'tr',
+                            'handler' => 'elements',
+                            'text' => $row,
+                        );
+                    }
+                    $rows = [];
+                    for ($y = 0; $y < $spec['rows']; $y++) {
+                        $row = [];
+                        if ($spec['headerLeft']) $row[] = array(
+                            'name' => 'th',
+                            'text' => $spec['headerLeft'][$y] ?? '',
+                        );
+                        for ($x = 0; $x < $spec['cols']; $x++) {
+                            $row[] = array(
+                                'name' => 'td',
+                                'handler' => 'elements',
+                                'text' => [array(
+                                    'name' => 'span',
+                                    'text' => isset($value[$y]) ? ($value[$y][$x] ? '✓' : '') : '',
+                                )],
+                            );
+                        }
+                        $rows[] = array(
+                            'name' => 'tr',
+                            'handler' => 'elements',
+                            'text' => $row,
+                        );
+                    }
+                    $fmtValue = [array(
+                        'name' => 'table',
+                        'attributes' => array('class' => 'detail-item-bool-table'),
+                        'handler' => 'elements',
+                        'text' => [array(
+                            'name' => 'thead',
+                            'handler' => 'elements',
+                            'text' => $thead,
+                        ), array(
+                            'name' => 'tbody',
+                            'handler' => 'elements',
+                            'text' => $rows,
+                        )],
+                    )];
+                }
+
+                $details[] = array(
+                    'name' => 'li',
+                    'handler' => 'elements',
+                    'text' => [array(
+                        'name' => 'div',
+                        'attributes' => array('class' => 'detail-item-label'),
+                        'text' => $spec['label'],
+                    ), array(
+                        'name' => 'div',
+                        'attributes' => array('class' => 'detail-item-value'),
+                        'handler' => $fmtValueHandler,
+                        'text' => $fmtValue,
+                    )],
+                );
+                $tableCells[] = array('name' => 'td', 'handler' => $fmtValueHandler, 'text' => $fmtValue);
+            }
 
             $plist[] = array(
                 'name' => 'li',
@@ -295,9 +449,16 @@ class CongressFields {
                         'name' => 'div',
                         'attributes' => array('class' => 'participant-name'),
                         'text' => $name,
-                    )
+                    ),
+                    array(
+                        'name' => 'ul',
+                        'attributes' => array('class' => 'participant-details' . (empty($details) ? ' is-empty' : '')),
+                        'handler' => 'elements',
+                        'text' => $details,
+                    ),
                 ],
             );
+            $ptable[] = array('name' => 'tr', 'handler' => 'elements', 'text' => $tableCells);
         }
 
         $title = $this->plugin->locale['content']['congress_participants_title'];
@@ -308,7 +469,7 @@ class CongressFields {
             'name' => 'div',
             'handler' => 'elements',
             'attributes' => array(
-                'class' => 'akso-congress-field-participants',
+                'class' => 'akso-congress-field-participants' . ($hasExtraFields ? ' has-extra-fields' : ''),
                 'role' => 'group',
                 'aria-label' => $title,
             ),
@@ -342,6 +503,23 @@ class CongressFields {
                 'attributes' => array('class' => 'participants-list'),
                 'handler' => 'elements',
                 'text' => $plist,
+            ), array(
+                'name' => 'table',
+                'attributes' => array('class' => 'participants-table'),
+                'handler' => 'elements',
+                'text' => [array(
+                    'name' => 'thead',
+                    'handler' => 'elements',
+                    'text' => [array(
+                        'name' => 'tr',
+                        'handler' => 'elements',
+                        'text' => $ptableHeader,
+                    )],
+                ), array(
+                    'name' => 'tbody',
+                    'handler' => 'elements',
+                    'text' => $ptable,
+                )],
             )],
         );
 

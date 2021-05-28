@@ -418,7 +418,7 @@ class MarkdownExt {
                         'handler' => 'elements',
                         'text' => [
                             array(
-                                'name' => 'div',
+                                'name' => 'script',
                                 'attributes' => array(
                                     'class' => 'akso-members-only-content-if-clause',
                                 ),

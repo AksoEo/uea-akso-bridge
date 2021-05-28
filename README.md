@@ -117,11 +117,15 @@ Following inline fields are supported:
 Additionally, following block fields are supported using the same syntax:
 
 ```md
-[[kongreso lokoj 1/2]]
-[[kongreso programaro 1/2]]
+[[kongreso aliĝintoj 1/2 show_name_field first_name_field]]
+[[kongreso aliĝintoj 1/2 show_name_field first_name_field another_field more_fields]]
 ```
 
-These will result in a map with locations or a program view, respectively.
+These will show a list of congress participants.
+
+- `show_name_field` should refer to the name of a bool field. A name will only be shown if this value is true.
+- `first_name_field` should refer to the name of a string field for the first name.
+- Additional fields will be shown in a table
 
 #### Countdown component
 ```md
