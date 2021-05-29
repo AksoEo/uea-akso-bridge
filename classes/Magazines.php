@@ -37,8 +37,7 @@ class Magazines {
             }
             die();
         } else {
-            // TODO: error?
-            die();
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
         }
     }
 
@@ -54,16 +53,16 @@ class Magazines {
 
         $magazineInfo = $this->getMagazine($magazine);
         if (!$magazineInfo) {
-            // TODO: error page
-            die();
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
+            return;
         }
         $org = $magazineInfo['org'];
 
         $perm = "magazines.read.$org";
         $hasPerm = $this->user ? $this->user->hasPerms([$perm])['p'][0] : false;
         if (!$hasPerm) {
-            // TODO: error page
-            die();
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
+            return;
         }
 
         $path = null;
@@ -136,25 +135,9 @@ class Magazines {
                 }
                 die();
             } else {
-                header('HTTP/1.1 500 Internal Server Error');
-                // TODO: error?
-                die();
+                throw new \Exception("Magazine download: file response not ok!\n" . $res['b']);
             }
         }
-    }
-
-    function editionDataAddHasThumbnail($magazine, $edition) {
-        $edition['hasThumbnail'] = false;
-        try {
-            $editionId = $edition['id'];
-            $path = "/magazines/$magazine/editions/$editionId/thumbnail/32px";
-            $res = $this->bridge->getRaw($path, 120);
-            if ($res['k']) {
-                $edition['hasThumbnail'] = true;
-            }
-            $this->bridge->releaseRaw($path);
-        } catch (\Exception $e) {}
-        return $edition;
     }
 
     function addEditionDownloadLinks($magazine, $edition, $magazineName) {
@@ -186,7 +169,8 @@ class Magazines {
 
     function getLatestEditions($magazine, $n) {
         $res = $this->bridge->get("/magazines/$magazine/editions", array(
-            'fields' => ['id', 'idHuman', 'date', 'description'],
+            'fields' => ['id', 'idHuman', 'date', 'description', 'hasThumbnail'],
+            'filter' => ['published' => true],
             'order' => [['date', 'desc']],
             'offset' => 0,
             'limit' => $n,
@@ -195,11 +179,12 @@ class Magazines {
         if ($res['k']) {
             $editions = [];
             foreach ($res['b'] as $edition) {
-                $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
                 $editions[] = $edition;
             }
 
             return $editions;
+        } else {
+            throw new \Exception("Failed to fetch latest editions for magazine $magazine:\n" . $res['b']);
         }
         return null;
     }
@@ -221,6 +206,8 @@ class Magazines {
                     $magazine['previous'] = isset($latest[1]) ? $latest[1] : null;
                     $this->cachedMagazines[$magazine['id']] = $magazine;
                 }
+            } else {
+                throw new \Exception("Failed to fetch magazines:\n" . $res['b']);
             }
             uasort($this->cachedMagazines, function ($a, $b) {
                 if ($a === $b) return 0;
@@ -241,6 +228,11 @@ class Magazines {
                 ['emphasis', 'strikethrough', 'link', 'list', 'table'],
             )['c'];
             return $res['b'];
+        } else if ($res['sc'] === 404) {
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
+            return null;
+        } else {
+            throw new \Exception("Failed to fetch magazine $id:\n" . $res['b']);
         }
         return null;
     }
@@ -249,17 +241,17 @@ class Magazines {
         $allEditions = [];
         while (true) {
             $res = $this->bridge->get("/magazines/$magazine/editions", array(
-                'fields' => ['id', 'idHuman', 'date'],
+                'fields' => ['id', 'idHuman', 'date', 'hasThumbnail'],
+                'filter' => ['published' => true],
                 'order' => [['date', 'desc']],
                 'offset' => count($allEditions),
                 'limit' => 100,
             ), 240);
 
             if (!$res['k']) {
-                return null;
+                throw new \Exception("Failed to fetch magazine editions for $magazine:\n" . $res['b']);
             }
             foreach ($res['b'] as $edition) {
-                $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
                 $allEditions[] = $edition;
             }
 
@@ -278,17 +270,21 @@ class Magazines {
 
     function getMagazineEdition($magazine, $edition, $magazineName) {
         $res = $this->bridge->get("/magazines/$magazine/editions/$edition", array(
-            'fields' => ['id', 'idHuman', 'date', 'description'],
+            'fields' => ['id', 'idHuman', 'date', 'description', 'hasThumbnail', 'published'],
         ), 240);
         if ($res['k']) {
             $edition = $res['b'];
-            $edition = $this->editionDataAddHasThumbnail($magazine, $edition);
             $edition = $this->addEditionDownloadLinks($magazine, $edition, $magazineName);
             $edition['description_rendered'] = $this->bridge->renderMarkdown(
                 $edition['description'] ? $edition['description'] : '',
                 ['emphasis', 'strikethrough', 'link', 'list', 'table'],
             )['c'];
             return $edition;
+        } else if ($res['sc'] === 404) {
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
+            return null;
+        } else {
+            throw new \Exception("Failed to fetch magazine edition $magazine/$edition:\n" . $res['b']);
         }
         return null;
     }
@@ -298,9 +294,6 @@ class Magazines {
             $magazineName . ' - ' . $editionName . ' - ' . $entry['page'] . ' ' . $entry['title'] . '.'
         );
 
-        // TODO: use the actual field
-        $entry['recitationFormats'] = ['mp3', 'flac', 'wav'];
-
         // \Grav\Common\Utils::getMimeByExtension returns incorrect types :(
         $mimeTypes = [
             'mp3' => 'audio/mpeg',
@@ -309,7 +302,7 @@ class Magazines {
         ];
 
         $entry['downloads'] = [];
-        foreach ($entry['recitationFormats'] as $fmt) {
+        foreach ($entry['availableRecitationFormats'] as $fmt) {
             $entry['downloads'][$fmt] = array(
                 'link' => AksoBridgePlugin::MAGAZINE_DOWNLOAD_PATH
                     . '/' . urlencode($fileNamePrefix) . '.' . $fmt
@@ -328,12 +321,12 @@ class Magazines {
         $allEntries = [];
         while (true) {
             $res = $this->bridge->get("/magazines/$magazine/editions/$edition/toc", array(
-                'fields' => ['id', 'title', 'page', 'author', 'recitationAuthor', 'highlighted'],
+                'fields' => ['id', 'title', 'page', 'author', 'recitationAuthor', 'highlighted', 'availableRecitationFormats'],
                 'order' => [['page', 'asc']],
                 'offset' => count($allEntries),
                 'limit' => 100,
             ), 240);
-            if (!$res['k']) return null;
+            if (!$res['k']) throw new \Exception("Failed to fetch toc for $magazine/$edition:\n" . $res['b']);
             $hasHighlighted = false;
             foreach ($res['b'] as $entry) {
                 if ($entry['highlighted']) $hasHighlighted = true;
@@ -354,7 +347,7 @@ class Magazines {
 
     function getEditionTocEntry($magazine, $edition, $entry, $magazineName, $editionName) {
         $res = $this->bridge->get("/magazines/$magazine/editions/$edition/toc/$entry", array(
-            'fields' => ['id', 'title', 'page', 'author', 'recitationAuthor', 'highlighted', 'text'],
+            'fields' => ['id', 'title', 'page', 'author', 'recitationAuthor', 'highlighted', 'text', 'availableRecitationFormats'],
         ), 240);
         if ($res['k']) {
             $entry = $res['b'];
@@ -364,6 +357,8 @@ class Magazines {
             )['c'];
             $entry = $this->addEntryDownloadUrl($magazine, $edition, $entry, $magazineName, $editionName);
             return $entry;
+        } else {
+            throw new \Exception("Failed to fetch toc $magazine/$edition/$entry:\n" . $res['b']);
         }
         return null;
     }
@@ -431,7 +426,7 @@ class Magazines {
             );
         } else if ($route['type'] === 'magazine') {
             $magazine = $this->getMagazine($route['magazine']);
-            if (!$magazine) return array('type' => 'error');
+            if (!$magazine) return $this->plugin->getGrav()->fireEvent('onPageNotFound');
             $editions = $this->getMagazineEditions($route['magazine']);
 
             return array(
@@ -442,13 +437,13 @@ class Magazines {
             );
         } else if ($route['type'] === 'edition') {
             $magazine = $this->getMagazine($route['magazine']);
-            if (!$magazine) return array('type' => 'error');
+            if (!$magazine) return $this->plugin->getGrav()->fireEvent('onPageNotFound');
 
             $org = $magazine['org'];
             $canRead = $this->user ? $this->user->hasPerms(["magazines.read.$org"])['p'][0] : false;
 
             $edition = $this->getMagazineEdition($route['magazine'], $route['edition'], $magazine['name']);
-            if (!$edition) return array('type' => 'error');
+            if (!$edition || !$edition['published']) return $this->plugin->getGrav()->fireEvent('onPageNotFound');
 
             return array(
                 'path_components' => $pathComponents,
@@ -466,17 +461,17 @@ class Magazines {
             }
 
             $magazine = $this->getMagazine($route['magazine']);
-            if (!$magazine) return array('type' => 'error');
+            if (!$magazine) return $this->plugin->getGrav()->fireEvent('onPageNotFound');
 
             $org = $magazine['org'];
             $canRead = $this->user ? $this->user->hasPerms(["magazines.read.$org"])['p'][0] : false;
 
             $edition = $this->getMagazineEdition($route['magazine'], $route['edition'], $magazine['name']);
-            if (!$edition) return array('type' => 'error');
+            if (!$edition || !$edition['published']) return $this->plugin->getGrav()->fireEvent('onPageNotFound');
             $entry = $this->getEditionTocEntry(
                 $route['magazine'], $route['edition'], $route['entry'], $magazine['name'], $edition['idHuman']
             );
-            if (!$edition) return array('type' => 'error');
+            if (!$edition) return $this->plugin->getGrav()->fireEvent('onPageNotFound');
 
             return array(
                 'path_components' => $pathComponents,
@@ -487,8 +482,8 @@ class Magazines {
                 'can_read' => $canRead,
             );
         } else if ($route['type'] === 'error') {
-            // TODO
-            return array('type' => 'error');
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
+            return;
         }
     }
 }

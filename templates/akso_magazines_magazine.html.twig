@@ -132,7 +132,7 @@
             ~ akso_magazines.magazine.id ~ '/' ~ akso_magazines.path_components.edition ~ '/' ~ akso_magazines.edition.id %}
         <ul class="edition-content-list">
             {% for entry in akso_magazines.toc_entries %}
-                {% set hasRecitation = entry.recitationAuthor is not empty %}
+                {% set hasRecitation = entry.availableRecitationFormats is not empty %}
                 {% set showRecitation = akso_magazines.can_read and hasRecitation %}
                 {% if not entry.highlighted %}
                     {% set has_collapsed_entries = true %}
@@ -156,7 +156,7 @@
                         {% if hasRecitation and not showRecitation %}
                             ·
                             {{akso_locale.magazines.entry_recitation_read_by_0}}
-                            {{entry.recitationAuthor}}
+                            {{entry.recitationAuthor|default('?')}}
                             {{akso_locale.magazines.entry_recitation_read_by_1}}
                         {% endif %}
                     </span>
@@ -165,14 +165,14 @@
                 <div class="entry-recitation">
                     <div class="recitation-audio">
                         <audio controls preload="none">
-                            {% for format in entry.recitationFormats %}
+                            {% for format in entry.availableRecitationFormats %}
                                 <source type="{{entry.downloads[format].mime}}" src="{{entry.downloads[format].link}}" />
                             {% endfor %}
                         </audio>
                     </div>
                     <span class="recitation-label">
                         {{akso_locale.magazines.entry_recitation_read_by_0}}
-                        <span class="recitation-author">{{entry.recitationAuthor}}</span>
+                        <span class="recitation-author">{{entry.recitationAuthor|default('?')}}</span>
                         {{akso_locale.magazines.entry_recitation_read_by_1}}
                     </span>
                 </div>
@@ -219,24 +219,24 @@
         {% endif %}
     </div>
     {% if akso_magazines.can_read %}
-        {% if akso_magazines.entry.recitationAuthor %}
+        {% if akso_magazines.entry.availableRecitationFormats is not empty %}
         <div class="toc-sticky-recitation entry-recitation" data-sticky="true">
             <div class="recitation-audio">
                 <audio controls preload="none">
-                    {% for format in akso_magazines.entry.recitationFormats %}
+                    {% for format in akso_magazines.entry.availableRecitationFormats %}
                         <source type="{{akso_magazines.entry.downloads[format].mime}}" src="{{akso_magazines.entry.downloads[format].link}}" />
                     {% endfor %}
                 </audio>
             </div>
             <span class="recitation-label">
                 {{akso_locale.magazines.entry_recitation_read_by_0}}
-                <span class="recitation-author">{{akso_magazines.entry.recitationAuthor}}</span>
+                <span class="recitation-author">{{akso_magazines.entry.recitationAuthor|default('?')}}</span>
                 {{akso_locale.magazines.entry_recitation_read_by_1}}
             </span>
         </div>
         <div class="toc-entry-recitation-meta">
             <div class="recitation-download">
-                {% for format in akso_magazines.entry.recitationFormats %}
+                {% for format in akso_magazines.entry.availableRecitationFormats %}
                     <a class="download-link" download href="{{akso_magazines.entry.downloads[format].link}}">
                         {{akso_locale.magazines.entry_recitation_download_format_0}}
                         {{format}}
@@ -262,7 +262,5 @@
         </div>
     {% endif %}
 </div>
-{% elseif akso_magazines.type == 'error' %}
-todo: error
 {% endif %}
 {% endblock %}

@@ -81,39 +81,9 @@ class AksoBridgePlugin extends Plugin {
             ]);
             return;
         }
-
-        // run AKSO bridge
-        $this->runUserBridge();
-
-        if ($this->path === $this->loginPath) {
-            // path matches; add the login page
-            $this->enable([
-                'onPagesInitialized' => ['addLoginPage', 0],
-            ]);
-            return;
-        } else if ($this->aksoUser && $this->pathStartsWithComponent($this->path, $this->accountPath)) {
-            $this->enable([
-                'onPagesInitialized' => ['addAccountPage', 0],
-            ]);
-            return;
-        } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
-            $app = new AppBridge($this->grav);
-            $app->open();
-            $loc = new CongressLocations($this, $app, null, null);
-            $loc->runThumbnail();
-            $app->close();
-        } else if ($this->path === self::MAGAZINE_COVER_PATH) {
-            $app = new AppBridge($this->grav);
-            $app->open();
-            $mag = new Magazines($this, $app->bridge);
-            $mag->runThumbnail();
-            $app->close();
-        } else if ($this->pathStartsWithComponent($this->path, self::MAGAZINE_DOWNLOAD_PATH)) {
-            $this->grav->redirectLangSafe($this->loginPath, 302);
-        }
-
         $this->enable([
-            'onPagesInitialized' => ['addPages', 0],
+            'onPagesInitialized' => ['onPagesInitialized', 0],
+            'onPageInitialized' => ['onPageInitialized', 0],
         ]);
     }
 
@@ -130,6 +100,7 @@ class AksoBridgePlugin extends Plugin {
     public function onPageNotFound(Event $event) {
         $page = $this->grav['pages']->dispatch('/error', true);
         if ($page) {
+            $this->grav['page']->routable(false); // override existing page if it already exists
             $event->page = $page;
             $event->stopPropagation();
         }
@@ -148,6 +119,207 @@ class AksoBridgePlugin extends Plugin {
 
     // page state for twig variables; see impl for details
     private $pageState = null;
+    // TODO: merge pageState with pageVars
+    private $pageVars = [];
+
+    public function onPagesInitialized(Event $event) {
+        $this->runUserBridge();
+
+        if ($this->path === $this->loginPath) {
+            $this->addLoginPage();
+        } else if ($this->aksoUser && $this->pathStartsWithComponent($this->path, $this->accountPath)) {
+            $this->addAccountPage();
+        } else if ($this->path === self::CONGRESS_LOC_THUMBNAIL_PATH) {
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $loc = new CongressLocations($this, $app, null, null);
+            $loc->runThumbnail();
+            $app->close();
+        } else if ($this->path === self::MAGAZINE_COVER_PATH) {
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $mag = new Magazines($this, $app->bridge);
+            $mag->runThumbnail();
+            $app->close();
+        } else if ($this->pathStartsWithComponent($this->path, self::MAGAZINE_DOWNLOAD_PATH)) {
+            $this->grav->redirectLangSafe($this->loginPath, 302);
+        }
+
+        $this->addPages();
+    }
+
+    public function onPageInitialized(Event $event) {
+        $post = !empty($_POST) ? $_POST : [];
+        $templateId = $this->grav['page']->template();
+        $state = [];
+        if ($templateId === 'akso_congress_instance' || $templateId === 'akso_congress_registration') {
+            $head = $this->grav['page']->header();
+            $congressId = null;
+            $instanceId = null;
+            $paymentOrg = null;
+            if (isset($head->congress_instance)) {
+                $parts = explode("/", $head->congress_instance, 2);
+                $congressId = intval($parts[0], 10);
+                $instanceId = intval($parts[1], 10);
+            }
+            if (isset($head->payment_org)) {
+                $paymentOrg = intval($head->payment_org, 10);
+            }
+            if ($congressId == null || $instanceId == null) {
+                $state['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            } else {
+                $isRegistration = $templateId === 'akso_congress_registration';
+                $state = $this->handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration);
+            }
+        } else if ($templateId === 'akso_congress_locations') {
+            $head = $this->grav['page']->header();
+            $congressId = null;
+            $instanceId = null;
+            if (isset($head->congress_instance)) {
+                $parts = explode("/", $head->congress_instance, 2);
+                $congressId = intval($parts[0], 10);
+                $instanceId = intval($parts[1], 10);
+            }
+            $programsPath = null;
+            if (isset($head->congress_programs_path)) {
+                $programsPath = $head->congress_programs_path;
+            }
+
+            if ($congressId == null || $instanceId == null) {
+                $state['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            } else {
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.js');
+                $app = new AppBridge($this->grav);
+                $app->open();
+                $locations = new CongressLocations($this, $app, $congressId, $instanceId);
+                $locations->programsPath = $programsPath;
+                $state['akso_congress'] = $locations->run();
+                $app->close();
+            }
+        } else if ($templateId === 'akso_congress_programs') {
+            $head = $this->grav['page']->header();
+            $congressId = null;
+            $instanceId = null;
+            if (isset($head->congress_instance)) {
+                $parts = explode("/", $head->congress_instance, 2);
+                $congressId = intval($parts[0], 10);
+                $instanceId = intval($parts[1], 10);
+            }
+            $locationsPath = null;
+            if (isset($head->congress_locations_path)) {
+                $locationsPath = $head->congress_locations_path;
+            }
+
+            if ($congressId == null || $instanceId == null) {
+                $state['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
+            } else {
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-prog.css');
+                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-prog.js');
+                $app = new AppBridge($this->grav);
+                $app->open();
+                $programs = new CongressPrograms($this, $app, $congressId, $instanceId);
+                $programs->locationsPath = $locationsPath;
+                $state['akso_congress'] = $programs->run();
+                $app->close();
+            }
+        } else if (str_starts_with($templateId, 'akso_account')) {
+            $state['account'] = $this->pageState;
+        } else if ($templateId === 'akso_registration') {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.js');
+            $state['akso_login_path'] = $this->loginPath;
+            $state['akso_account_path'] = $this->accountPath;
+
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $registration = new Registration($this, $app);
+            $state['akso_registration'] = $registration->run();
+            $app->close();
+        } else if (str_starts_with($templateId, 'akso_magazines')) {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.js');
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $magazines = new Magazines($this, $app->bridge);
+            $state['akso_magazine_cover_path'] = self::MAGAZINE_COVER_PATH;
+            $state['akso_magazines'] = $magazines->run();
+            $app->close();
+        }
+
+        if ($this->grav['uri']->path() === $this->loginPath) {
+            // add login css
+            $this->grav['assets']->add('plugin://akso-bridge/css/login.css');
+
+            $state['akso_login_path'] = $this->loginPath;
+
+            $resetPasswordPathComponent = $this->locale['login']['forgot_password_path'];
+            $isResettingPassword = isset($_GET[$resetPasswordPathComponent]);
+            $state['akso_login_is_pw_reset'] = $isResettingPassword;
+
+            $forgotLoginPathComponent = $this->locale['login']['forgot_login_path'];
+            $didForgetLogin = isset($_GET[$forgotLoginPathComponent]);
+            $state['akso_login_forgot_login'] = $didForgetLogin;
+
+            $lostCodePathComponent = $this->locale['login']['lost_code_path'];
+            $lostCode = isset($_GET[$lostCodePathComponent]);
+            $state['akso_login_lost_code'] = $lostCode;
+
+            // set return path
+            $rpath = '/';
+            if (isset($post['return'])) {
+                // keep return path if it already exists
+                $rpath = $post['return'];
+            } else {
+                $rpath = $this->getReferrerPath();
+            }
+            $state['akso_login_return_path'] = $rpath;
+
+            $state['akso_login_forgot_password_path'] = $this->loginPath . '?' . $resetPasswordPathComponent;
+            $state['akso_login_forgot_login_path'] = $this->loginPath . '?' . $forgotLoginPathComponent;
+            $state['akso_login_lost_code_path'] = $this->loginPath . '?' . $lostCodePathComponent;
+        }
+
+        $state['akso_auth'] = $this->aksoUser !== null;
+        $state['akso_full_auth'] = $this->aksoUser ? !$this->aksoUser['totp'] : false;
+        if ($this->aksoUser !== null) {
+            $state['akso_user_fmt_name'] = $this->aksoUserFormattedName;
+            $state['akso_uea_code'] = $this->aksoUser['uea'];
+
+            if ($this->aksoUser['totp']) {
+                // user still needs to log in with totp
+                $state['akso_login_totp'] = true;
+            }
+        }
+
+        if (isset($state['state'])) {
+            if ($state['state'] === 'login-error') {
+                $state['akso_login_username'] = $state['username'];
+                if (isset($state['isBad'])) {
+                    $state['akso_login_error'] = 'loginbad';
+                } else if ($state['noPassword']) {
+                    $state['akso_login_error'] = 'nopw';
+                } else if ($state['isEmail']) {
+                    $state['akso_login_error'] = 'authemail';
+                } else {
+                    $state['akso_login_error'] = 'authuea';
+                }
+            } else if ($state['state'] === 'totp-error') {
+                if ($state['nosx']) {
+                    $state['akso_login_error'] = 'totpnosx';
+                } else if ($state['bad']) {
+                    $state['akso_login_error'] = 'totpbad';
+                } else {
+                    $state['akso_login_error'] = 'totpauth';
+                }
+            } else if ($state['state'] === 'reset-error') {
+                $state['akso_login_error'] = 'reset-error';
+            } else if ($state['state'] === 'reset-success') {
+                $state['akso_login_pw_reset_success'] = true;
+            }
+        }
+        $this->pageVars = $state;
+    }
 
     private function runUserBridge() {
         $this->bridge = new \AksoBridge(__DIR__ . '/aksobridged/aksobridge');
@@ -466,180 +638,14 @@ class AksoBridgePlugin extends Plugin {
         }
 
         $twig = $this->grav['twig'];
-        $state = $this->pageState;
-        $post = !empty($_POST) ? $_POST : [];
 
         $twig->twig_vars['akso_locale'] = $this->locale;
-
-        $templateId = $this->grav['page']->template();
-        if ($templateId === 'akso_congress_instance' || $templateId === 'akso_congress_registration') {
-            $head = $this->grav['page']->header();
-            $congressId = null;
-            $instanceId = null;
-            $paymentOrg = null;
-            if (isset($head->congress_instance)) {
-                $parts = explode("/", $head->congress_instance, 2);
-                $congressId = intval($parts[0], 10);
-                $instanceId = intval($parts[1], 10);
-            }
-            if (isset($head->payment_org)) {
-                $paymentOrg = intval($head->payment_org, 10);
-            }
-            if ($congressId == null || $instanceId == null) {
-                $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
-            } else {
-                $isRegistration = $templateId === 'akso_congress_registration';
-                $this->handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration);
-            }
-        } else if ($templateId === 'akso_congress_locations') {
-            $head = $this->grav['page']->header();
-            $congressId = null;
-            $instanceId = null;
-            if (isset($head->congress_instance)) {
-                $parts = explode("/", $head->congress_instance, 2);
-                $congressId = intval($parts[0], 10);
-                $instanceId = intval($parts[1], 10);
-            }
-            $programsPath = null;
-            if (isset($head->congress_programs_path)) {
-                $programsPath = $head->congress_programs_path;
-            }
-
-            if ($congressId == null || $instanceId == null) {
-                $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
-            } else {
-                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.css');
-                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-loc.js');
-                $app = new AppBridge($this->grav);
-                $app->open();
-                $locations = new CongressLocations($this, $app, $congressId, $instanceId);
-                $locations->programsPath = $programsPath;
-                $twig->twig_vars['akso_congress'] = $locations->run();
-                $app->close();
-            }
-        } else if ($templateId === 'akso_congress_programs') {
-            $head = $this->grav['page']->header();
-            $congressId = null;
-            $instanceId = null;
-            if (isset($head->congress_instance)) {
-                $parts = explode("/", $head->congress_instance, 2);
-                $congressId = intval($parts[0], 10);
-                $instanceId = intval($parts[1], 10);
-            }
-            $locationsPath = null;
-            if (isset($head->congress_locations_path)) {
-                $locationsPath = $head->congress_locations_path;
-            }
-
-            if ($congressId == null || $instanceId == null) {
-                $twig->twig_vars['akso_congress_error'] = 'Kongresa okazigo ne ekzistas';
-            } else {
-                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-prog.css');
-                $this->grav['assets']->add('plugin://akso-bridge/js/dist/congress-prog.js');
-                $app = new AppBridge($this->grav);
-                $app->open();
-                $programs = new CongressPrograms($this, $app, $congressId, $instanceId);
-                $programs->locationsPath = $locationsPath;
-                $twig->twig_vars['akso_congress'] = $programs->run();
-                $app->close();
-            }
-        } else if (str_starts_with($templateId, 'akso_account')) {
-            $twig->twig_vars['account'] = $state;
-        } else if ($templateId === 'akso_registration') {
-            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.css');
-            $this->grav['assets']->add('plugin://akso-bridge/js/dist/registration.js');
-            $twig->twig_vars['akso_login_path'] = $this->loginPath;
-            $twig->twig_vars['akso_account_path'] = $this->accountPath;
-
-            $app = new AppBridge($this->grav);
-            $app->open();
-            $registration = new Registration($this, $app);
-            $twig->twig_vars['akso_registration'] = $registration->run();
-            $app->close();
-        } else if (str_starts_with($templateId, 'akso_magazines')) {
-            $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.css');
-            $this->grav['assets']->add('plugin://akso-bridge/js/dist/magazines.js');
-            $app = new AppBridge($this->grav);
-            $app->open();
-            $magazines = new Magazines($this, $app->bridge);
-            $twig->twig_vars['akso_magazine_cover_path'] = self::MAGAZINE_COVER_PATH;
-            $twig->twig_vars['akso_magazines'] = $magazines->run();
-            $app->close();
-        }
-
-        if ($this->grav['uri']->path() === $this->loginPath) {
-            // add login css
-            $this->grav['assets']->add('plugin://akso-bridge/css/login.css');
-
-            $twig->twig_vars['akso_login_path'] = $this->loginPath;
-
-            $resetPasswordPathComponent = $this->locale['login']['forgot_password_path'];
-            $isResettingPassword = isset($_GET[$resetPasswordPathComponent]);
-            $twig->twig_vars['akso_login_is_pw_reset'] = $isResettingPassword;
-
-            $forgotLoginPathComponent = $this->locale['login']['forgot_login_path'];
-            $didForgetLogin = isset($_GET[$forgotLoginPathComponent]);
-            $twig->twig_vars['akso_login_forgot_login'] = $didForgetLogin;
-
-            $lostCodePathComponent = $this->locale['login']['lost_code_path'];
-            $lostCode = isset($_GET[$lostCodePathComponent]);
-            $twig->twig_vars['akso_login_lost_code'] = $lostCode;
-
-            // set return path
-            $rpath = '/';
-            if (isset($post['return'])) {
-                // keep return path if it already exists
-                $rpath = $post['return'];
-            } else {
-                $rpath = $this->getReferrerPath();
-            }
-            $twig->twig_vars['akso_login_return_path'] = $rpath;
-
-            $twig->twig_vars['akso_login_forgot_password_path'] = $this->loginPath . '?' . $resetPasswordPathComponent;
-            $twig->twig_vars['akso_login_forgot_login_path'] = $this->loginPath . '?' . $forgotLoginPathComponent;
-            $twig->twig_vars['akso_login_lost_code_path'] = $this->loginPath . '?' . $lostCodePathComponent;
-        }
-
-        $twig->twig_vars['akso_auth'] = $this->aksoUser !== null;
-        $twig->twig_vars['akso_full_auth'] = $this->aksoUser ? !$this->aksoUser['totp'] : false;
-        if ($this->aksoUser !== null) {
-            $twig->twig_vars['akso_user_fmt_name'] = $this->aksoUserFormattedName;
-            $twig->twig_vars['akso_uea_code'] = $this->aksoUser['uea'];
-
-            if ($this->aksoUser['totp']) {
-                // user still needs to log in with totp
-                $twig->twig_vars['akso_login_totp'] = true;
-            }
-        }
-
-        if (isset($state['state'])) {
-            if ($state['state'] === 'login-error') {
-                $twig->twig_vars['akso_login_username'] = $state['username'];
-                if (isset($state['isBad'])) {
-                    $twig->twig_vars['akso_login_error'] = 'loginbad';
-                } else if ($state['noPassword']) {
-                    $twig->twig_vars['akso_login_error'] = 'nopw';
-                } else if ($state['isEmail']) {
-                    $twig->twig_vars['akso_login_error'] = 'authemail';
-                } else {
-                    $twig->twig_vars['akso_login_error'] = 'authuea';
-                }
-            } else if ($state['state'] === 'totp-error') {
-                if ($state['nosx']) {
-                    $twig->twig_vars['akso_login_error'] = 'totpnosx';
-                } else if ($state['bad']) {
-                    $twig->twig_vars['akso_login_error'] = 'totpbad';
-                } else {
-                    $twig->twig_vars['akso_login_error'] = 'totpauth';
-                }
-            } else if ($state['state'] === 'reset-error') {
-                $twig->twig_vars['akso_login_error'] = 'reset-error';
-            } else if ($state['state'] === 'reset-success') {
-                $twig->twig_vars['akso_login_pw_reset_success'] = true;
-            }
+        foreach($this->pageVars as $key => $value) {
+            $twig->twig_vars[$key] = $value;
         }
     }
 
+    // TODO: move this elsewhere
     private function handleCongressVariables($congressId, $instanceId, $paymentOrg, $isRegistration) {
         $app = new AppBridge($this->grav);
         $app->open();
@@ -656,7 +662,6 @@ class AksoBridgePlugin extends Plugin {
                 'tz',
             ],
         ), 60);
-        $twig = $this->grav['twig'];
 
         $firstEventRes = $app->bridge->get('/congresses/' . $congressId . '/instances/' . $instanceId . '/programs', array(
             'order' => ['timeFrom.asc'],
@@ -667,15 +672,16 @@ class AksoBridgePlugin extends Plugin {
             'limit' => 1,
         ), 60);
 
+        $state = [];
         do {
             if (!$res['k']) {
-                $twig->twig_vars['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
+                $state['akso_congress_error'] = '[internal error while fetching congress: ' . $res['b'] . ']';
                 break;
             }
 
             $congressName = $res['b']['name'];
 
-            $twig->twig_vars['akso_congress_registration_link'] = $this->grav['page']->route() . '/alighilo';
+            $state['akso_congress_registration_link'] = $this->grav['page']->route() . '/alighilo';
 
             $congressStartTime = null;
             if ($firstEventRes['k'] && sizeof($firstEventRes['b']) > 0) {
@@ -689,9 +695,9 @@ class AksoBridgePlugin extends Plugin {
                 $congressStartTime = \DateTime::createFromFormat("Y-m-d H:i:s", $dateStr, $timeZone);
             }
 
-            $twig->twig_vars['akso_congress_start_time'] = $congressStartTime->getTimestamp();
-            $twig->twig_vars['akso_congress_id'] = $congressId;
-            $twig->twig_vars['akso_congress'] = $res['b'];
+            $state['akso_congress_start_time'] = $congressStartTime->getTimestamp();
+            $state['akso_congress_id'] = $congressId;
+            $state['akso_congress'] = $res['b'];
 
             if (isset($head->header_url)) {
                 $processed = Excerpts::processLinkExcerpt(array(
@@ -702,7 +708,7 @@ class AksoBridgePlugin extends Plugin {
                     ),
                 ), $this->grav["page"], 'image');
                 $imageUrl = $processed['element']['attributes']['href'];
-                $twig->twig_vars['akso_congress_header_url'] = $imageUrl;
+                $state['akso_congress_header_url'] = $imageUrl;
             }
             if (isset($head->logo_url)) {
                 $processed = Excerpts::processLinkExcerpt(array(
@@ -713,7 +719,7 @@ class AksoBridgePlugin extends Plugin {
                     ),
                 ), $this->grav["page"], 'image');
                 $imageUrl = $processed['element']['attributes']['href'];
-                $twig->twig_vars['akso_congress_logo_url'] = $imageUrl;
+                $state['akso_congress_logo_url'] = $imageUrl;
             }
         } while (false);
 
@@ -731,17 +737,17 @@ class AksoBridgePlugin extends Plugin {
         ), 60);
         if ($formRes['k']) {
             // registration form exists
-            $twig->twig_vars['akso_congress_user_is_org'] = $this->aksoUser && str_starts_with($this->aksoUser['uea'], 'xx');
-            $twig->twig_vars['akso_congress_registration_enabled'] = true;
-            $twig->twig_vars['akso_congress_registration_allowed'] = $formRes['b']['allowUse'];
-            $twig->twig_vars['akso_congress_registration_guest_not_allowed'] = !$formRes['b']['allowGuests'] && !$this->aksoUser;
+            $state['akso_congress_user_is_org'] = $this->aksoUser && str_starts_with($this->aksoUser['uea'], 'xx');
+            $state['akso_congress_registration_enabled'] = true;
+            $state['akso_congress_registration_allowed'] = $formRes['b']['allowUse'];
+            $state['akso_congress_registration_guest_not_allowed'] = !$formRes['b']['allowGuests'] && !$this->aksoUser;
 
             if (!$isRegistration && $this->aksoUser) {
                 // show "view my registration" instead of "register" if user is logged in & has registered
                 $dataId = CongressRegistration::getDataIdForCodeholder($app, $congressId, $instanceId, $this->aksoUser['id']);
                 if ($dataId) {
-                    $twig->twig_vars['akso_congress_registration_exists'] = true;
-                    $twig->twig_vars['akso_congress_registration_link'] .= '?' . CongressRegistration::DATAID . '=' . urlencode($dataId);
+                    $state['akso_congress_registration_exists'] = true;
+                    $state['akso_congress_registration_link'] .= '?' . CongressRegistration::DATAID . '=' . urlencode($dataId);
                 }
             }
 
@@ -755,14 +761,16 @@ class AksoBridgePlugin extends Plugin {
                 $this->grav['assets']->add('plugin://akso-bridge/js/dist/form.js');
 
                 $registration = new CongressRegistration($this, $app, $congressId, $instanceId, $paymentOrg, $formRes['b'], $congressName);
-                $twig->twig_vars['akso_congress_registration'] = $registration->run();
+                $state['akso_congress_registration'] = $registration->run();
             }
         } else {
             // no registration form
-            $twig->twig_vars['akso_congress_registration_enabled'] = false;
+            $state['akso_congress_registration_enabled'] = false;
         }
 
         $app->close();
+
+        return $state;
     }
 
     /**

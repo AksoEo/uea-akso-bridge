@@ -401,9 +401,9 @@ class Form {
         return round($toCurFloat * $multipliers[$toCur]);
     }
 
-    protected $cachedCountries = null;
+    protected $cachedCountries = [];
     function getCachedCountries() {
-        if (!$this->cachedCountries) {
+        if (empty($this->cachedCountries)) {
             $res = $this->app->bridge->get('/countries', array(
                 'limit' => 300,
                 'fields' => ['name_eo', 'code'],
