@@ -64,6 +64,12 @@
     .hidden-input {
         display: none;
     }
+    .invisible-input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+        left: -10000px;
+    }
 
     .registration-notice {
         border: 1px solid var(--accent);
@@ -209,9 +215,6 @@
             .checkbox();
             vertical-align: -0.2em;
         }
-        #registration-split-country {
-            display: none;
-        }
         #codeholder-split-name:checked ~ .settings-field .field-description #split-name-checkbox,
         #registration-split-country:checked ~ .settings-field .field-description #split-country-checkbox {
             .checkbox-checked();
@@ -241,7 +244,10 @@
             box-shadow: @shade-both;
 
             .year-expansion-switch {
-                display: none;
+                position: absolute;
+                opacity: 0;
+                pointer-events: none;
+                left: -10000px;
             }
 
             .year-title {
@@ -309,7 +315,9 @@
                 }
 
                 .offer-item-selection {
-                    display: none;
+                    position: absolute;
+                    opacity: 0;
+                    pointer-events: none;
                 }
 
                 .offer-item {
