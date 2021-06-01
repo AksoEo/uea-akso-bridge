@@ -16,6 +16,14 @@ class CongressFields {
         $this->bridge = $bridge;
     }
 
+    private function createError() {
+        return array(
+            'name' => 'span',
+            'attributes' => array('class' => 'md-render-error'),
+            'text' => $this->plugin->locale['content']['render_error'],
+        );
+    }
+
     // Renders an HTML descriptor for the given congress field
     private function getCongressField($congress, $field) {
         $id = $congress;
@@ -24,15 +32,7 @@ class CongressFields {
                 'fields' => ['name', 'abbrev'],
             ), 60);
             if (!$res['k']) {
-                return [array(
-                    'name' => 'span',
-                    'attributes' => array(
-                        'class' => 'akso-congress-field-error',
-                        // you would think this would be escaped but it isn't!
-                        'title' => htmlspecialchars('' . $res['b']),
-                    ),
-                    'text' => '[Eraro]',
-                )];
+                return [$this->createError()];
             }
             $this->cache[$id] = $res['b'];
         }
@@ -40,15 +40,7 @@ class CongressFields {
 
         if ($field === 'nomo') return [array('name' => 'span', 'text' => $data['name'])];
         if ($field === 'mallongigo') return [array('name' => 'span', 'text' => $data['abbrev'])];
-        return [array(
-            'name' => 'span',
-            'attributes' => array(
-                'class' => 'akso-congress-field-error',
-                // you would think this would be escaped but it isn't!
-                'title' => htmlspecialchars('nekonata kampo “' . $field . '”'),
-            ),
-            'text' => '[Eraro]',
-        )];
+        return [$this->createError()];
     }
 
     // Renders an HTML descriptor for the given congress instance field
@@ -59,15 +51,7 @@ class CongressFields {
                 'fields' => ['name', 'humanId', 'dateFrom', 'dateTo'],
             ), 60);
             if (!$res['k']) {
-                return [array(
-                    'name' => 'span',
-                    'attributes' => array(
-                        'class' => 'akso-congress-field-error',
-                        // you would think this would be escaped but it isn't!
-                        'title' => htmlspecialchars('' . $res['b']),
-                    ),
-                    'text' => '[Eraro]',
-                )];
+                return [$this->createError()];
             }
             $this->cache[$id] = $res['b'];
         }
@@ -110,15 +94,7 @@ class CongressFields {
         } else if ($field === 'aliĝintoj') {
             return $this->renderCongressParticipants($congress, $instance, $data, $args);
         }
-        return [array(
-            'name' => 'span',
-            'attributes' => array(
-                'class' => 'akso-congress-field-error',
-                // you would think this would be escaped but it isn't!
-                'title' => htmlspecialchars('nekonata kampo “' . $field . '”'),
-            ),
-            'text' => '[Eraro]',
-        )];
+        return [$this->createError()];
     }
 
     // Renders a congress/instance field. (Set instance to null for congress field).

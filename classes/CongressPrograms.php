@@ -231,7 +231,12 @@ class CongressPrograms {
 
     // Renders the day switcher at the top
     function renderDaySwitcher($currentDate) {
-        if (!$this->congress) return null;
+        if (!$this->congress) {
+            $error = $this->doc->createElement('div');
+            $error->setAttribute('class', 'md-render-error');
+            $error->textContent = $this->plugin->locale['content']['render_error'];
+            return $error;
+        }
         $node = $this->doc->createElement('div');
         $node->setAttribute('class', 'program-day-switcher');
 
@@ -512,7 +517,6 @@ class CongressPrograms {
                 $contents .= $this->doc->saveHtml($this->renderWholeAgenda());
             }
         }
-
 
         return array(
             'contents' => $contents,

@@ -1268,8 +1268,8 @@ class MarkdownExt {
         foreach ($unhandledLists as $list) {
             $textContent = $list->text();
             if (strncmp($textContent, '!', 1) === 0) {
-                // this is an error; set class and skip
-                $list->class = 'codeholder-list is-error';
+                // this is an error; skip
+                $list->replace($this->createError($doc));
                 continue;
             }
 
@@ -1396,8 +1396,8 @@ class MarkdownExt {
         foreach ($unhandledNews as $news) {
             $textContent = $news->text();
             if (strncmp($textContent, '!', 1) === 0) {
-                // this is an error; set class and skip
-                $news->class = 'news-sidebar is-error';
+                // this is an error; skip
+                $news->replace($this->createError($doc));
                 continue;
             }
 
@@ -1483,8 +1483,8 @@ class MarkdownExt {
         foreach ($unhandledMagazines as $magazines) {
             $textContent = $magazines->text();
             if (strncmp($textContent, '!', 1) === 0) {
-                // this is an error; set class and skip
-                $magazines->class = 'akso-magazine-posters is-error';
+                // this is an error; skip
+                $magazines->replace($this->createError($doc));
                 continue;
             }
 
@@ -1598,8 +1598,8 @@ class MarkdownExt {
         foreach ($unhandledPosters as $poster) {
             $textContent = $poster->text();
             if (strncmp($textContent, '!', 1) === 0) {
-                // this is an error; set class and skip
-                $poster->class = 'akso-congresses is-error';
+                // this is an error; skip
+                $poster->replace($this->createError($doc));
                 continue;
             }
 
@@ -1653,6 +1653,12 @@ class MarkdownExt {
         }
     }
 
+    private function createError($doc) {
+        $el = $doc->createElement('div', $this->plugin->locale['content']['render_error']);
+        $el->class = 'md-render-error';
+        return $el;
+    }
+
     /** Handles XSS and returns a list of nonces. */
     protected function removeXSS($doc) {
         // apparently, Grav allows script tags in the document body
@@ -1676,12 +1682,12 @@ class MarkdownExt {
         }
 
         // styles, too
-        $styles = $doc->find('.page-container style');
+        /* $styles = $doc->find('.page-container style');
         foreach ($styles as $style) {
             $replacement = new Element('div', '<style>' . $style->text() . '</style>');
             $replacement->class = 'illegal-style-tag';
             $style->replace($replacement);
-        }
+        } */
 
         $styles = $doc->find('style');
         $cnonces = [];
