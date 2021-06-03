@@ -198,7 +198,7 @@
                                     </label>
                                     <select name="currency">
                                         {% for currency in method.currencies %}
-                                            <option value="{{currency}}">{{currency}}</option>
+                                            <option value="{{currency}}">{{akso_locale.currencies[currency]}}</option>
                                         {% endfor %}
                                     </select>
                                 {% else %}

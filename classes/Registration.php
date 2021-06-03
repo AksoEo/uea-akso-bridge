@@ -487,9 +487,16 @@ class Registration extends Form {
         }
     }
     private function updateCurrencyState() {
+        $serializedState = $this->state['unsafe_deserialized'];
         $currencies = $this->getCachedCurrencies();
         if (!isset($this->state['currency'])) {
             $this->state['currency'] = array_keys($currencies)[0]; // default
+
+            if (isset($this->state['codeholder']['feeCountry'])) {
+                // default to fee country
+                $this->state['currency'] = $this->getDefaultFeeCountryCurrency($this->state['codeholder']['feeCountry']);
+            }
+
             if (isset($_POST['currency'])
                 && gettype($_POST['currency']) === 'string'
                 && isset($currencies[$_POST['currency']])) {
@@ -1127,8 +1134,8 @@ class Registration extends Form {
             $this->state['locked_offers'] = $res['offers'];
         }
 
-        $this->updateCurrencyState();
         $this->updateCodeholderState();
+        $this->updateCurrencyState();
         $this->updateOffersState();
 
         if ($this->state['step'] > 0) {
@@ -1288,5 +1295,10 @@ class Registration extends Form {
             return floatval(str_replace(',', '.', $n));
         }
         return 0.0;
+    }
+
+    private function getDefaultFeeCountryCurrency($country) {
+        $currencies = $this->getCachedCurrencies();
+        return array_keys($currencies)[0]; // TODO
     }
 }

@@ -448,7 +448,10 @@ class CongressRegistration {
         }
 
         $isSubmission = !$this->isCancellation && ($_SERVER['REQUEST_METHOD'] === 'POST');
-        $isConfirmation = false;
+        $isConfirmation = $_SESSION['aksoCRegIsConfirmation'] ?? false;
+        if ($isConfirmation) {
+            unset($_SESSION['aksoCRegIsConfirmation']);
+        }
 
         if (!$this->canceledTime) {
             if ($this->isActualCancellation) {
@@ -480,15 +483,10 @@ class CongressRegistration {
         if ($form->confirmDataId !== null) {
             // the form was submitted successfully
             $this->dataId = $form->confirmDataId;
-            $isConfirmation = true;
-
-            $res = $this->app->bridge->get('/congresses/' . $this->congressId . '/instances/' . $this->instanceId . '/participants/' . $this->dataId, array(
-                'fields' => ['price', 'amountPaid', 'hasPaidMinimum', 'codeholderId']
-            ));
-            if ($res['k']) {
-                $this->participant = $res['b'];
-                $form->setParticipant($this->dataId, $this->participant);
-            }
+            $_SESSION['aksoCRegIsConfirmation'] = true;
+            $redirectUrl = $this->plugin->getGrav()['uri']->path() . '?' . self::DATAID . '=' . $this->dataId;
+            $this->plugin->getGrav()->redirectLangSafe($redirectUrl, 302);
+            die();
         }
 
         $payment = $this->participantPaymentInfo();

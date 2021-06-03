@@ -490,7 +490,7 @@
                                     {% if akso_registration.state.currency == currency %}
                                     selected
                                     {% endif %}
-                                    >{{currency|e}}</option>
+                                    >{{akso_locale.currencies[currency]|e}}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -723,7 +723,7 @@
                                                     selected
                                                     {% endif %}
                                                     value="{{currency|e('html_attr')}}">
-                                                    {{currency|e}}
+                                                    {{akso_locale.currencies[currency]|e}}
                                                 </option>
                                             {% endfor %}
                                         </select>
