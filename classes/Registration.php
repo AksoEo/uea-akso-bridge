@@ -1298,7 +1298,11 @@ class Registration extends Form {
     }
 
     private function getDefaultFeeCountryCurrency($country) {
+        $country = strtolower($country);
         $currencies = $this->getCachedCurrencies();
-        return array_keys($currencies)[0]; // TODO
+        if ($country == 'no') $country = 'no_';
+        $currency = $this->plugin->country_currencies[$country];
+        if (isset($currencies[$currency])) return $currency;
+        return 'EUR'; // hard-coded default
     }
 }
