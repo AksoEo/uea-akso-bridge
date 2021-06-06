@@ -306,6 +306,7 @@ class Registration extends Form {
             for ($i = 0; true; $i += 100) {
                 $res = $this->app->bridge->get("/aksopay/payment_orgs/$orgId/methods", array(
                     'fields' => ['id', 'type', 'name', 'description', 'currencies'],
+                    'filter' => array('internal' => false),
                     'limit' => 100,
                     'offset' => $i,
                 ), 120);
@@ -966,7 +967,7 @@ class Registration extends Form {
         }
         $org = &$this->paymentOrgs[$paymentOrg];
 
-        // TODO: validate method id and currency maybe?
+        // TODO: validate method id (esp. internal) and currency, maybe?
 
         if (!$this->createEntries($org['years'])) {
             return;
@@ -1301,7 +1302,7 @@ class Registration extends Form {
         $country = strtolower($country);
         $currencies = $this->getCachedCurrencies();
         if ($country == 'no') $country = 'no_';
-        $currency = $this->plugin->country_currencies[$country];
+        $currency = $this->plugin->country_currencies[$country] ?? '';
         if (isset($currencies[$currency])) return $currency;
         return 'EUR'; // hard-coded default
     }

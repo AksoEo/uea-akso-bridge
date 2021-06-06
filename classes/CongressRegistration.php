@@ -131,6 +131,7 @@ class CongressRegistration {
 
             if ($res['k'] && $currency !== null) {
                 $method = $res['b'];
+                if ($method['internal']) throw new \Exception('Cannot use internal method');
 
                 $currencies = $this->app->bridge->currencies();
                 $multiplier = $currencies[$currency];
@@ -332,6 +333,7 @@ class CongressRegistration {
                 $res = $this->app->bridge->get('/aksopay/payment_orgs/' . $this->paymentOrg . '/methods', array(
                     'fields' => ['id', 'type', 'stripeMethods', 'name', 'description', 'currencies',
                         'feePercent', 'feeFixed.val', 'feeFixed.cur', 'isRecommended'],
+                    'filter' => array('internal' => false),
                     'limit' => 100,
                     'order' => [['name', 'asc']],
                 ), 60);
