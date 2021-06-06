@@ -727,6 +727,9 @@ class AksoBridgePlugin extends Plugin {
 
         $regFormFields = ['allowUse', 'allowGuests'];
         if ($isRegistration) {
+            $regFormFields []= 'identifierName';
+            $regFormFields []= 'identifierEmail';
+            $regFormFields []= 'identifierCountryCode';
             $regFormFields []= 'editable';
             $regFormFields []= 'cancellable';
             $regFormFields []= 'price.currency';

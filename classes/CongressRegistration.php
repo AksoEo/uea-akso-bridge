@@ -120,7 +120,7 @@ class CongressRegistration {
         if ($this->paymentMethod) {
             $res = $this->app->bridge->get('/aksopay/payment_orgs/' . $this->paymentOrg . '/methods/' . $this->paymentMethod, array(
                 'fields' => ['id', 'type', 'stripeMethods', 'name', 'description', 'currencies',
-                    'feePercent', 'feeFixed.val', 'feeFixed.cur'],
+                    'feePercent', 'feeFixed.val', 'feeFixed.cur', 'internal'],
             ), 60);
 
             $currency = $this->paymentCurrency;
@@ -150,8 +150,11 @@ class CongressRegistration {
                 $step = 1 / $multiplier;
                 $value = $max;
 
-                $customerName = 'John Doe';
-                $customerEmail = 'test@akso.org';
+                $identity = $this->getParticipantIdentity();
+                $customerName = $identity['name'];
+                $customerEmail = $identity['email'];
+                if (!$customerName) $customerName = '';
+                if (!$customerEmail) $customerEmail = '';
 
                 $isSubmission = $_SERVER['REQUEST_METHOD'] === 'POST';
                 $error = null;
@@ -396,6 +399,40 @@ class CongressRegistration {
             return $res['v'] . '';
         }
         return null;
+    }
+
+    private function getParticipantIdentity() {
+        $idName = $this->form['identifierName'];
+        $idEmail = $this->form['identifierEmail'];
+        $idCountryCode = $this->form['identifierCountryCode'];
+
+        $out = array(
+            'name' => null,
+            'email' => null,
+            'countryCode' => null,
+        );
+
+        $stack = [];
+        foreach ($this->form['form'] as $item) {
+            if ($item['el'] === 'script') $stack[] = $item['script'];
+        }
+        $fvars = $this->participant['data'];
+        $res = $this->app->bridge->evalScript($stack, $fvars, array('t' => 'c', 'f' => 'id', 'a' => [$idName]));
+        if ($res['s']) {
+            $out['name'] = $res['v'] . '';
+        }
+        $res = $this->app->bridge->evalScript($stack, $fvars, array('t' => 'c', 'f' => 'id', 'a' => [$idEmail]));
+        if ($res['s']) {
+            $out['email'] = $res['v'] . '';
+        }
+        if ($idCountryCode) {
+            $res = $this->app->bridge->evalScript($stack, $fvars, array('t' => 'c', 'f' => 'id', 'a' => [$idCountryCode]));
+            if ($res['s']) {
+                $out['countryCode'] = $res['v'] . '';
+            }
+        }
+
+        return $out;
     }
 
     private function participantPaymentInfo() {
