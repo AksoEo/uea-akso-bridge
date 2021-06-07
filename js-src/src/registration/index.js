@@ -1,5 +1,8 @@
 import './index.less';
 import '../form';
+import countryCurrencies from '../../../country_currencies.ini';
+
+window.addEventListener('DOMContentLoaded', init);
 
 function init() {
     const selectionBoxes = document.querySelectorAll('.selection-box');
@@ -16,6 +19,27 @@ function init() {
             });
         }
     }
+
+    initAutoCurrency();
 }
 
-window.addEventListener('DOMContentLoaded', init);
+function initAutoCurrency() {
+    const feeCountrySelector = document.querySelector('#registration-field-fee-country');
+    const currencySelector = document.querySelector('#registration-settings-currency');
+    if (feeCountrySelector && currencySelector) {
+        const availableCurrencies = [];
+        const options = currencySelector.querySelectorAll('option');
+        for (let i = 0; i < options.length; i++) {
+            availableCurrencies.push(options[i].value);
+        }
+
+        const updateCurrency = () => {
+            const currency = countryCurrencies[feeCountrySelector.value];
+            if (currency && availableCurrencies.includes(currency)) {
+                currencySelector.value = currency;
+            }
+        };
+        updateCurrency();
+        feeCountrySelector.addEventListener('change', updateCurrency);
+    }
+}

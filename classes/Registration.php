@@ -491,7 +491,7 @@ class Registration extends Form {
         $serializedState = $this->state['unsafe_deserialized'];
         $currencies = $this->getCachedCurrencies();
         if (!isset($this->state['currency'])) {
-            $this->state['currency'] = array_keys($currencies)[0]; // default
+            $this->state['currency'] = 'EUR'; // default
 
             if (isset($this->state['codeholder']['feeCountry'])) {
                 // default to fee country
