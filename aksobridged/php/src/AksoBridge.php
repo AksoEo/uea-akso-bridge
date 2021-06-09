@@ -333,4 +333,8 @@ class AksoBridge {
     public function validateAddress(array $fields) {
         return $this->request('validate_addr', array('f' => $fields))['c'];
     }
+
+    public function parsePhoneLocal(string $number, string $code) {
+        return $this->request('parse_phone_local', array('n' => $number, 'c' => $code));
+    }
 }

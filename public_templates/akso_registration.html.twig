@@ -77,7 +77,10 @@
                 </div>
                 <div class="summary-contact">
                     {{akso_registration.state.codeholder.email|e}}
-                    {{akso_registration.state.codeholder.cellphone|e}}
+                    {% if akso_registration.state.codeholder_derived.cellphone is not empty %}
+                        &nbsp;
+                        {{akso_registration.state.codeholder_derived.cellphone|e}}
+                    {% endif %}
                 </div>
                 <div class="summary-address">
                     {{akso_registration.state.codeholder_derived.address|e|default(akso_locale.registration.codeholder_no_address)}}
@@ -350,7 +353,12 @@
                             name="codeholder[cellphone]"
                             type="text"
                             inputmode="numeric"
+                            pattern="[+]?[a-z0-9\s]{1,49}"
+                            title="{{akso_locale.registration.codeholder_cellphone_pattern_desc}}"
                             value="{{akso_registration.state.codeholder.cellphone|e('html_attr')}}" />
+                    </div>
+                    <div class="field-description">
+                        {{akso_locale.registration.codeholder_cellphone_desc}}
                     </div>
                 </div>
                 <hr />

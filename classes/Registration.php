@@ -551,6 +551,11 @@ class Registration extends Form {
                 $ch['splitName'] = true;
             }
 
+            $cellphone = $this->readSafe('string', $ch, 'cellphone');
+            if ($cellphone) {
+                $cellphone = preg_replace('/[^+0-9]/u', '', $cellphone);
+            }
+
             $this->state['codeholder'] = array(
                 'firstName' => (isset($ch['splitName']) && $ch['splitName'])
                     ? $this->readSafe('string', $ch, 'firstName')
@@ -567,7 +572,7 @@ class Registration extends Form {
                 'honorific' => $this->readSafe('string', $ch, 'honorific'),
                 'birthdate' => $this->readSafe('string', $ch, 'birthdate'),
                 'email' => $this->readSafe('string', $ch, 'email'),
-                'cellphone' => $this->readSafe('string', $ch, 'cellphone'),
+                'cellphone' => $cellphone,
                 'feeCountry' => $this->readSafe('string', $ch, 'feeCountry'),
                 'address' => array(
                     'country' => (isset($ch['splitCountry']) && $ch['splitCountry'])
@@ -581,6 +586,13 @@ class Registration extends Form {
                     'streetAddress' => $this->readSafe('string', $ch, 'address.streetAddress'),
                 ),
             );
+        }
+
+        // phone number post-processing: if the number does not start with a +, try to parse it as a
+        // local number
+        if ($this->state['codeholder']['cellphone'] && !str_starts_with($this->state['codeholder']['cellphone'], '+')) {
+            $res = $this->app->bridge->parsePhoneLocal($cellphone, $this->state['codeholder']['address']['country']);
+            if ($res['s']) $this->state['codeholder']['cellphone'] = $res['n'];
         }
 
         $addressFmt = '';
@@ -614,10 +626,19 @@ class Registration extends Form {
                 break;
             }
         }
+
+        $cellphoneFmt = $this->app->bridge->evalScript([array(
+            'number' => array('t' => 's', 'v' => $this->state['codeholder']['cellphone']),
+        )], [], array('t' => 'c', 'f' => 'phone_fmt', 'a' => ['number']));
+        if ($cellphoneFmt['s']) $cellphoneFmt = $cellphoneFmt['v'];
+        else $cellphoneFmt = null;
+        if ($cellphoneFmt === null) $cellphoneFmt = $this->state['codeholder']['cellphone'];
+
         $this->state['codeholder_derived'] = array(
             'birthdate' => Utils::formatDate($this->state['codeholder']['birthdate']),
             'address' => $addressFmt,
             'fee_country' => $feeCountryName,
+            'cellphone' => $cellphoneFmt,
         );
     }
 
@@ -1190,7 +1211,16 @@ class Registration extends Form {
         }
         // HTML will take care of validating email
         // no need to check if countries are in the country set because it's a <select>
-        // TODO: validate phone number
+
+        // validate phone number
+        $phone = $ch['cellphone'];
+        if ($phone) {
+            if (!preg_match('/^\+[a-z0-9]{1,49}$/u', $phone)) {
+                return $this->localize('codeholder_error_invalid_phone_format');
+            }
+        }
+
+        // validate address
         $addr = $ch['address'];
         $addr['countryCode'] = $ch['address']['country'];
         if (!$this->app->bridge->validateAddress($addr)) {

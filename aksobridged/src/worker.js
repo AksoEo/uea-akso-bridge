@@ -2,6 +2,9 @@ const { Server } = require('net');
 const { workerData, parentPort } = require('worker_threads');
 const { AppClient, UserClient } = require('@tejo/akso-client');
 const { evaluate, currencies } = require('@tejo/akso-script');
+require('@tejo/akso-script/country_fmt');
+require('@tejo/akso-script/phone_fmt');
+const { PhoneNumberUtil, PhoneNumberFormat } = require('google-libphonenumber');
 const { CookieJar } = require('tough-cookie');
 const { encode, decode } = require('@msgpack/msgpack');
 const { setThreadName, info, debug, warn, error } = require('./log');
@@ -904,6 +907,15 @@ const messageHandlers = {
             return { c: false };
         }
         return { c: true };
+    },
+    parse_phone_local: async (conn, { n, c }) => {
+        try {
+            const phoneUtil = PhoneNumberUtil.getInstance();
+            const number = phoneUtil.parse(n, c.toUpperCase());
+            return { s: true, n: phoneUtil.format(number, PhoneNumberFormat.E164) };
+        } catch (err) {
+            return { s: false, e: err.toString() };
+        }
     },
     flush_cookies: async (conn) => {
         conn.flushSendCookies();
