@@ -1220,15 +1220,16 @@ class Registration extends Form {
             }
         }
 
+        if (!$ch['feeCountry']) {
+            return $this->localize('codeholder_error_no_fee_country');
+        }
+
         // validate address
         $addr = $ch['address'];
         $addr['countryCode'] = $ch['address']['country'];
         if (!$this->app->bridge->validateAddress($addr)) {
             // TODO: more granular validation?
             return $this->localize('codeholder_error_invalid_address');
-        }
-        if (!$ch['feeCountry']) {
-            return $this->localize('codeholder_error_no_fee_country');
         }
 
         return null;

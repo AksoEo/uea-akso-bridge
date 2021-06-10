@@ -412,7 +412,6 @@
                     <div class="inner-field">
                         <label for="codeholder-address-country">
                             {{akso_locale.registration.codeholder_country}}
-                            <span class="required-star" title="{{akso_locale.registration.required_field|e('html_attr')}}"> *</span>
                         </label>
                         <select id="codeholder-address-country" name="codeholder[address][country]">
                             <option value="">—</option>
@@ -429,7 +428,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="settings-field">
+                <div class="settings-field is-address-field" data-address-field="countryArea">
                     <div class="inner-field">
                         <label for="codeholder-address-countryarea">{{akso_locale.registration.codeholder_country_area}}</label>
                         <input
@@ -439,7 +438,7 @@
                             type="text" />
                     </div>
                 </div>
-                <div class="settings-field">
+                <div class="settings-field is-address-field" data-address-field="city">
                     <div class="inner-field">
                         <label for="codeholder-address-city">{{akso_locale.registration.codeholder_city}}</label>
                         <input
@@ -449,7 +448,7 @@
                             type="text" />
                     </div>
                 </div>
-                <div class="settings-field">
+                <div class="settings-field is-address-field" data-address-field="cityArea">
                     <div class="inner-field">
                         <label for="codeholder-address-cityarea">{{akso_locale.registration.codeholder_city_area}}</label>
                         <input
@@ -459,7 +458,7 @@
                             type="text" />
                     </div>
                 </div>
-                <div class="settings-field">
+                <div class="settings-field is-address-field" data-address-field="postalCode">
                     <div class="inner-field">
                         <label for="codeholder-address-postalcode">{{akso_locale.registration.codeholder_postal_code}}</label>
                         <input
@@ -469,7 +468,7 @@
                             type="text" />
                     </div>
                 </div>
-                <div class="settings-field">
+                <div class="settings-field is-address-field" data-address-field="streetAddress">
                     <div class="inner-field">
                         <label for="codeholder-address-streetaddress">{{akso_locale.registration.codeholder_street_address}}</label>
                         <input
@@ -479,7 +478,7 @@
                             type="text" />
                     </div>
                 </div>
-                <div class="settings-field">
+                <div class="settings-field is-address-field" data-address-field="sortingCode">
                     <div class="inner-field">
                         <label for="codeholder-address-sortingcode">{{akso_locale.registration.codeholder_sorting_code}}</label>
                         <input

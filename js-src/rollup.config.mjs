@@ -10,11 +10,13 @@ import lessModules from 'rollup-plugin-less-modules';
 import { terser } from 'rollup-plugin-terser';
 import ini from 'ini';
 import { dataToEsm } from '@rollup/pluginutils';
+import evalPlugin from './eval-plugin.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 
 const plugins = lessOut => [
+    evalPlugin(),
     iniPlugin(),
     svgPlugin(),
     lessModules({
