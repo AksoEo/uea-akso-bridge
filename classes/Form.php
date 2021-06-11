@@ -388,6 +388,7 @@ class Form {
     protected $cachedCurrencyRates = null;
     protected function convertCurrency($fromCur, $toCur, $value) {
         if ($fromCur == $toCur) return $value;
+        if (!$fromCur || !$toCur) return $value;
         if (!$this->cachedCurrencyRates) {
             $res = $this->app->bridge->get('/aksopay/exchange_rates', array(
                 'base' => $fromCur,

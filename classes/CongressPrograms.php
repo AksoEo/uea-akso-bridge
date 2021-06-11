@@ -215,7 +215,7 @@ class CongressPrograms {
         $root->setAttribute('class', 'whole-program');
 
         $cursor = \DateTime::createFromFormat('Y-m-d', $this->congress['dateFrom']);
-        for ($i = 0; $i < 255; $i++) {
+        for ($i = 0; $i < 64; $i++) {
             $date = $cursor->format('Y-m-d');
 
             $root->appendChild($this->renderDayAgenda($date, true));
@@ -247,7 +247,7 @@ class CongressPrograms {
         $node->appendChild($button);
 
         $cursor = \DateTime::createFromFormat('Y-m-d', $this->congress['dateFrom']);
-        for ($i = 0; $i < 255; $i++) {
+        for ($i = 0; $i < 64; $i++) {
             $date = $cursor->format('Y-m-d');
 
             $isCurrent = $date == $currentDate;
@@ -275,6 +275,7 @@ class CongressPrograms {
             'fields' => ['id', 'timeFrom', 'timeTo', 'title', 'location', 'description', 'owner'],
         ), 60);
         if (!$res['k']) {
+            $this->plugin->getGrav()->fireEvent('onPageNotFound');
             return null;
         }
         $program = $res['b'];

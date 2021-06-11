@@ -177,11 +177,7 @@ class CongressFields {
 
     private function renderCongressParticipants($congressId, $instanceId, $instanceInfo, $args) {
         if (count($args) < 2) {
-            return [array(
-                'name' => 'span',
-                'attributes' => array('class' => 'akso-congress-field-error'),
-                'text' => '[Eraro]',
-            )];
+            return [$this->createError()];
         }
         $show_name_field = $args[0];
         $first_name_field = $args[1];
@@ -191,11 +187,7 @@ class CongressFields {
             'fields' => ['form'],
         ), 60);
         if (!$formRes['k']) {
-            return [array(
-                'name' => 'span',
-                'attributes' => array('class' => 'akso-congress-field-error'),
-                'text' => '[Eraro]',
-            )];
+            return [$this->createError()];
         }
         $regForm = $formRes['b']['form'];
         $regFormInputs = [];
@@ -435,6 +427,24 @@ class CongressFields {
                 ],
             );
             $ptable[] = array('name' => 'tr', 'handler' => 'elements', 'text' => $tableCells);
+        }
+
+        if (empty($plist)) {
+            $plist[] = array(
+                'name' => 'li',
+                'attributes' => array('class' => 'plist-empty'),
+                'text' => $this->plugin->locale['content']['congress_participants_empty'],
+            );
+            $ptable[] = array(
+                'name' => 'tr',
+                'attributes' => array('class' => 'ptable-empty'),
+                'handler' => 'elements',
+                'text' => [array(
+                    'name' => 'td',
+                    'attributes' => array('colspan' => count($ptableHeader)),
+                    'text' => $this->plugin->locale['content']['congress_participants_empty'],
+                )],
+            );
         }
 
         $title = $this->plugin->locale['content']['congress_participants_title'];

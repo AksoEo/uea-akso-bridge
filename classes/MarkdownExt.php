@@ -1419,8 +1419,10 @@ class MarkdownExt {
 
                 $newsPages = [];
                 for ($i = 0; $i < min($newsCount, $newsPostCollection->count()); $i++) {
-                    $newsPages[] = $newsPostCollection->current();
                     $newsPostCollection->next();
+                    // for some reason, calling next() after current() causes the first item
+                    // to duplicate
+                    $newsPages[] = $newsPostCollection->current();
                 }
                 $hasMore = count($newsPages) < $newsPostCollection->count();
 

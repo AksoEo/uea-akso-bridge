@@ -346,6 +346,7 @@ class Registration extends Form {
         $scriptCtx = new FormScriptExecCtx($this->app);
 
         foreach ($dataIds as $id) {
+            if (!$id) continue;
             $res = $this->app->bridge->get("/registration/entries/$id", array(
                 'fields' => ['year', 'currency', 'codeholderData', 'offers', 'status'],
             ));
@@ -397,6 +398,8 @@ class Registration extends Form {
                 $offersByYear[$res['b']['year']] = $selectedItems;
                 $yearDataIds[$res['b']['year']] = $id;
                 $yearStatuses[$res['b']['year']] = $res['b']['status'];
+            } else {
+                $this->plugin->getGrav()->fireEvent('onPageNotFound');
             }
         }
 
@@ -513,7 +516,8 @@ class Registration extends Form {
         {
             // kinda hacky but it works
             $this->state['currency_placeholder'] = '0';
-            $mult = $currencies[$this->state['currency']];
+            $mult = 0;
+            if (isset($currencies[$this->state['currency']])) $mult = $currencies[$this->state['currency']];
             if ($mult > 1) $this->state['currency_placeholder'] .= ',';
             while ($mult > 1) {
                 $mult /= 10;
@@ -521,7 +525,7 @@ class Registration extends Form {
             }
         }
 
-        $this->state['currency_mult'] = $currencies[$this->state['currency']];
+        $this->state['currency_mult'] = isset($currencies[$this->state['currency']]) ? $currencies[$this->state['currency']] : 1;
     }
 
     private function updateCodeholderState() {

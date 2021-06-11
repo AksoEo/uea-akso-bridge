@@ -222,7 +222,7 @@ class ClientHandler {
             decoded = decode(this.currentMessageBuffer);
             if (typeof decoded !== 'object') throw new Error('expected object as root');
             if (typeof decoded.t !== 'string') throw new Error('expected t: string');
-            if (typeof decoded.i !== 'string') throw new Error('expected i: string');
+            if (typeof decoded.i !== 'string' && !(decoded.i instanceof Buffer)) throw new Error('expected i: string or Buffer');
         } catch (err) {
             this.close('TXERR', 402, `failed to decode input: ${err}`);
             return;
@@ -304,6 +304,7 @@ class ClientHandler {
         if (this.waitTasks > 0) {
             this.send({ t: '❤' });
         } else {
+            debug('Connection timed out');
             this.close('TXERR', 103, 'timed out');
         }
     }

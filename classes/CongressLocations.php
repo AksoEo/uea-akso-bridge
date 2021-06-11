@@ -470,6 +470,8 @@ class CongressLocations {
 
                 $root->setAttribute('data-is-loc', 'true');
                 $root->setAttribute('data-loc-id', $this->locationId);
+            } else {
+                $this->plugin->getGrav()->fireEvent('onPageNotFound');
             }
         }
         $this->didRenderLocation = $renderedLoc;
