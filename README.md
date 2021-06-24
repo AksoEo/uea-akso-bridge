@@ -53,9 +53,11 @@ Any text below an image will be displayed as a caption for that page.
 ### Section Markers
 ```md
 !### Katido
+!###[some-id] Katido
 ```
 
 Putting an exclamation mark before the three octothorpes creates an h3 that is a section marker and will look different.
+You can add an optional id anchor.
 
 ### Info Boxes
 ```md

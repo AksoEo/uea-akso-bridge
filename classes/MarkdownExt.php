@@ -37,14 +37,18 @@ class MarkdownExt {
 
         $markdown->addBlockType('!', 'SectionMarker');
         $markdown->blockSectionMarker = function($line) {
-            if (preg_match('/^!###\s+(.*)/', $line['text'], $matches)) {
-                $text = trim($matches[1], ' ');
+            if (preg_match('/^!###(?:\[([\w\-_]+)\])?\s+(.*)/', $line['text'], $matches)) {
+                $attrs = array('class' => 'section-marker');
+                if (isset($matches[1]) && !empty($matches[1])) {
+                    $attrs['id'] = $matches[1];
+                } else {
+                    $attrs['id'] = Utils::escapeFileNameLossy($matches[2]); // close enough
+                }
+                $text = trim($matches[2], ' ');
                 return array(
                     'element' => array(
                         'name' => 'h3',
-                        'attributes' => array(
-                            'class' => 'section-marker',
-                        ),
+                        'attributes' => $attrs,
                         'text' => $text,
                     ),
                 );
