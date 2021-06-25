@@ -239,13 +239,23 @@ class MarkdownExt {
         $markdown->addBlockType('[', 'InfoBox', true, true);
 
         $markdown->blockInfoBox = function($line, $block) {
-            if (preg_match('/^\[\[informskatolo\]\]/', $line['text'], $matches)) {
+            if (preg_match('/^\[\[(\w+)skatolo\]\]/', $line['text'], $matches)) {
+                $boxTypes = array(
+                    'inform' => 'infobox',
+                    'atentigo' => 'infobox is-warning',
+                    'averto' => 'infobox is-error',
+                );
+                $tag = $matches[1];
+                if (!isset($boxTypes[$tag])) return;
+                $type = $boxTypes[$tag];
+
                 return array(
                     'char' => $line['text'][0],
                     'element' => array(
                         'name' => 'blockquote',
                         'attributes' => array(
-                            'class' => 'infobox',
+                            'class' => $type,
+                            'data-tag' => $tag,
                         ),
                         // parse markdown inside
                         'handler' => 'lines',
@@ -267,7 +277,7 @@ class MarkdownExt {
             }
 
             // Check for end of the block.
-            if (preg_match('/\[\[\/informskatolo\]\]/', $line['text'])) {
+            if (preg_match('/\[\[\/' . $block['element']['attributes']['data-tag'] . 'skatolo\]\]/', $line['text'])) {
                 $block['complete'] = true;
                 return $block;
             }
@@ -277,6 +287,7 @@ class MarkdownExt {
             return $block;
         };
         $markdown->blockInfoBoxComplete = function($block) {
+            unset($block['element']['attributes']['data-tag']);
             return $block;
         };
 
