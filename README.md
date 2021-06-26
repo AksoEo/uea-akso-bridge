@@ -176,6 +176,12 @@ kato
 
 The `===` indicates a column break.
 
+### Flags
+```md
+[[flago:nl]] NL flag
+[[flago:epo]] Esperanto flag
+```
+
 ### Additional Extensions
 Probably not commonly used; mostly for the home page.
 

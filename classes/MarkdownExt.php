@@ -968,6 +968,40 @@ class MarkdownExt {
             $block['element']['text'] = $els;
             return $block;
         };
+
+        $markdown->addInlineType('[', 'AksoFlag');
+        $markdown->inlineAksoFlag = function($excerpt) use ($self) {
+            if (preg_match('/^\[\[flago:(\w+)\]\]/u', $excerpt['text'], $matches)) {
+                $code = mb_strtolower($matches[1]);
+
+                $altText = '';
+                $emojiName = '';
+                if (strlen($code) === 2) {
+                    $ri1 = 0x1f1e6 - 0x61 + ord($code[0]);
+                    $ri2 = 0x1f1e6 - 0x61 + ord($code[1]);
+                    $altText = mb_chr($ri1) . mb_chr($ri2);
+                    $emojiName = 'twemoji/' . dechex($ri1) . '-' . dechex($ri2);
+                } else {
+                    $altText = $code;
+                    $emojiName = 'extra/' . $code;
+                }
+                $imgSrc = "/user/plugins/akso-bridge/emoji/$emojiName.png";
+
+                return array(
+                    'extent' => strlen($matches[0]),
+                    'element' => array(
+                        'name' => 'img',
+                        'attributes' => array(
+                            'class' => 'inline-flag-icon',
+                            'alt' => $altText,
+                            'src' => $imgSrc,
+                        ),
+                        'text' => '',
+                    ),
+                );
+            }
+        };
+
     }
 
     public $nonces = array('scripts' => [], 'styles' => []);
