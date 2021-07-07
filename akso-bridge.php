@@ -11,6 +11,7 @@ use Grav\Plugin\AksoBridge\AppBridge;
 use Grav\Plugin\AksoBridge\CongressLocations;
 use Grav\Plugin\AksoBridge\CongressPrograms;
 use Grav\Plugin\AksoBridge\CongressRegistration;
+use Grav\Plugin\AksoBridge\CountryLists;
 use Grav\Plugin\AksoBridge\Magazines;
 use Grav\Plugin\AksoBridge\Registration;
 use Grav\Plugin\AksoBridge\UserAccount;
@@ -247,6 +248,14 @@ class AksoBridgePlugin extends Plugin {
             $state['akso_magazine_cover_path'] = self::MAGAZINE_COVER_PATH;
             $state['akso_magazines'] = $magazines->run();
             $app->close();
+        } else if ($templateId === 'akso_country_org_list') {
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $countryLists = new CountryLists($this, $app->bridge);
+            $state['akso_login_path'] = $this->loginPath;
+            $state['akso_registration_path'] = $this->registrationPath;
+            $state['akso_clist'] = $countryLists->run();
+            $app->close();
         }
 
         if ($this->grav['uri']->path() === $this->loginPath) {
@@ -284,6 +293,7 @@ class AksoBridgePlugin extends Plugin {
 
         $state['akso_auth'] = $this->aksoUser !== null;
         $state['akso_full_auth'] = $this->aksoUser ? !$this->aksoUser['totp'] : false;
+        $state['akso_user_is_member'] = $this->aksoUser ? $this->aksoUser['member'] : false;
         if ($this->aksoUser !== null) {
             $state['akso_user_fmt_name'] = $this->aksoUserFormattedName;
             $state['akso_uea_code'] = $this->aksoUser['uea'];

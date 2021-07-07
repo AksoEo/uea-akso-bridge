@@ -1,6 +1,8 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 use Cocur\Slugify\Slugify;
+use \DiDom\Document;
+use \DiDom\Element;
 
 class Utils {
     static function setInnerHTML($node, $html) {
@@ -165,6 +167,49 @@ class Utils {
             return $res['v'] . '';
         }
         return null;
+    }
+
+    static function obfuscateEmail($email) {
+        $emailLink = new Element('a');
+        $emailLink->class = 'non-interactive-address';
+        $emailLink->href = 'javascript:void(0)';
+
+        // obfuscated email
+        $parts = preg_split('/(?=[@\.])/', $email);
+        for ($i = 0; $i < count($parts); $i++) {
+            $text = $parts[$i];
+            $after = '';
+            $delim = '';
+            if ($i !== 0) {
+                // split off delimiter
+                $delim = substr($text, 0, 1);
+                $mid = ceil(strlen($text) * 2 / 3);
+                $after = substr($text, $mid);
+                $text = substr($text, 1, $mid - 1);
+            } else {
+                $mid = ceil(strlen($text) * 2 / 3);
+                $after = substr($text, $mid);
+                $text = substr($text, 0, $mid);
+            }
+            $emailPart = new Element('span', $text);
+            $emailPart->class = 'epart';
+            $emailPart->setAttribute('data-at-sign', '@');
+            $emailPart->setAttribute('data-after', $after);
+
+            if ($delim === '@') {
+                $emailPart->setAttribute('data-show-at', 'true');
+            } else if ($delim === '.') {
+                $emailPart->setAttribute('data-show-dot', 'true');
+            }
+
+            $emailLink->appendChild($emailPart);
+        }
+
+        $invisible = new Element('span', ' (uzu retumilon kun CSS por vidi retpoŝtadreson)');
+        $invisible->class = 'fpart';
+        $emailLink->appendChild($invisible);
+
+        return $emailLink;
     }
 
 }

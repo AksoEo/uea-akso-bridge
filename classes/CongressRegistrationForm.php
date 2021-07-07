@@ -472,7 +472,7 @@ class CongressRegistrationForm extends Form {
                 $input->appendChild($node);
             }
 
-            $countries = $this->getCountries();
+            $countries = $this->getCachedCountries();
             foreach ($countries as $country) {
                 if (in_array($country['code'], $item['exclude'])) {
                     // excluded

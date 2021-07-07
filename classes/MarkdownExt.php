@@ -974,18 +974,9 @@ class MarkdownExt {
             if (preg_match('/^\[\[flago:(\w+)\]\]/u', $excerpt['text'], $matches)) {
                 $code = mb_strtolower($matches[1]);
 
-                $altText = '';
-                $emojiName = '';
-                if (strlen($code) === 2) {
-                    $ri1 = 0x1f1e6 - 0x61 + ord($code[0]);
-                    $ri2 = 0x1f1e6 - 0x61 + ord($code[1]);
-                    $altText = mb_chr($ri1) . mb_chr($ri2);
-                    $emojiName = 'twemoji/' . dechex($ri1) . '-' . dechex($ri2);
-                } else {
-                    $altText = $code;
-                    $emojiName = 'extra/' . $code;
-                }
-                $imgSrc = "/user/plugins/akso-bridge/emoji/$emojiName.png";
+                $emoji = $this->getEmojiForFlag($code);
+                $imgSrc = $emoji['src'];
+                $altText = $emoji['alt'];
 
                 return array(
                     'extent' => strlen($matches[0]),
@@ -993,6 +984,7 @@ class MarkdownExt {
                         'name' => 'img',
                         'attributes' => array(
                             'class' => 'inline-flag-icon',
+                            'draggable' => 'false',
                             'alt' => $altText,
                             'src' => $imgSrc,
                         ),
@@ -1068,6 +1060,24 @@ class MarkdownExt {
             )];
             return $block;
         };
+    }
+
+    public static function getEmojiForFlag($code) {
+        $altText = '';
+        $emojiName = '';
+        if (strlen($code) === 2) {
+            $ri1 = 0x1f1e6 - 0x61 + ord($code[0]);
+            $ri2 = 0x1f1e6 - 0x61 + ord($code[1]);
+            $altText = mb_chr($ri1) . mb_chr($ri2);
+            $emojiName = 'twemoji/' . dechex($ri1) . '-' . dechex($ri2);
+        } else {
+            $altText = $code;
+            $emojiName = 'extra/' . $code;
+        }
+        return array(
+            'src' => "/user/plugins/akso-bridge/emoji/$emojiName.png",
+            'alt' => $altText,
+        );
     }
 
     public $nonces = array('scripts' => [], 'styles' => []);
@@ -1431,45 +1441,7 @@ class MarkdownExt {
                     if ($canSeeEmail && $codeholder->email) {
                         $emailContainer = new Element('div');
                         $emailContainer->class = 'item-email';
-                        $emailLink = new Element('a');
-                        $emailLink->class = 'non-interactive-address';
-                        $emailLink->href = 'javascript:void(0)';
-
-                        // obfuscated email
-                        $parts = preg_split('/(?=[@\.])/', $codeholder->email);
-                        for ($i = 0; $i < count($parts); $i++) {
-                            $text = $parts[$i];
-                            $after = '';
-                            $delim = '';
-                            if ($i !== 0) {
-                                // split off delimiter
-                                $delim = substr($text, 0, 1);
-                                $mid = ceil(strlen($text) * 2 / 3);
-                                $after = substr($text, $mid);
-                                $text = substr($text, 1, $mid - 1);
-                            } else {
-                                $mid = ceil(strlen($text) * 2 / 3);
-                                $after = substr($text, $mid);
-                                $text = substr($text, 0, $mid);
-                            }
-                            $emailPart = new Element('span', $text);
-                            $emailPart->class = 'epart';
-                            $emailPart->setAttribute('data-at-sign', '@');
-                            $emailPart->setAttribute('data-after', $after);
-
-                            if ($delim === '@') {
-                                $emailPart->setAttribute('data-show-at', 'true');
-                            } else if ($delim === '.') {
-                                $emailPart->setAttribute('data-show-dot', 'true');
-                            }
-
-                            $emailLink->appendChild($emailPart);
-                        }
-
-                        $invisible = new Element('span', ' (uzu retumilon kun CSS por vidi retpoŝtadreson)');
-                        $invisible->class = 'fpart';
-                        $emailLink->appendChild($invisible);
-
+                        $emailLink = Utils::obfuscateEmail($codeholder->email);
                         $emailContainer->appendChild($emailLink);
                         $right->appendChild($emailContainer);
                     }
@@ -1690,10 +1662,10 @@ class MarkdownExt {
                 continue;
             }
 
-            $membersOnlyBox->appendChild(new Element('div', 'Tiu ĉi enhavo estas nur videbla por membroj.'));
-
-            $loginLink = new Element('a', 'Ensalutu');
-            $signUpLink = new Element('a', $isLoggedIn ? 'Aliĝi kiel membro de UEA' : 'aliĝu kiel membro de UEA');
+            $loginLink = new Element('a', $this->plugin->locale['content']['members_only_login_0']);
+            $signUpLink = new Element('a', $isLoggedIn
+                ? $this->plugin->locale['content']['members_only_sign_up_0']
+                : $this->plugin->locale['content']['members_only_login_2']);
 
             $loginLink->href = $this->plugin->loginPath;
             $signUpLink->href = $this->plugin->registrationPath;
@@ -1703,9 +1675,36 @@ class MarkdownExt {
                 $membersOnlyBox->appendChild($signUpLink);
             } else {
                 $membersOnlyBox->appendChild($loginLink);
-                $membersOnlyBox->appendChild(new Element('span', ' se vi jam havas konton ĉe UEA. Alie, '));
+                $membersOnlyBox->appendChild(new Element('span', $this->plugin->locale['content']['members_only_login_1']));
                 $membersOnlyBox->appendChild($signUpLink);
-                $membersOnlyBox->appendChild(new Element('span', '.'));
+                $membersOnlyBox->appendChild(new Element('span', $this->plugin->locale['content']['members_only_login_3']));
+            }
+        }
+
+        $membersOnlyNotices = $doc->find('.akso-members-only-notice-inline');
+        foreach ($membersOnlyNotices as $membersOnlyNotice) {
+            if ($isMember) {
+                $membersOnlyNotice->class .= ' user-is-member';
+                continue;
+            }
+
+            $loginLink = new Element('a', $this->plugin->locale['content']['members_only_inline_login_0']);
+            $signUpLink = new Element('a', $isLoggedIn
+                ? $this->plugin->locale['content']['members_only_inline_sign_up_0']
+                : $this->plugin->locale['content']['members_only_inline_login_2']);
+
+            $loginLink->href = $this->plugin->loginPath;
+            $signUpLink->href = $this->plugin->registrationPath;
+
+            if ($isLoggedIn) {
+                $signUpLink->class = 'link-button';
+                $membersOnlyNotice->appendChild($signUpLink);
+                $membersOnlyBox->appendChild(new Element('span', $this->plugin->locale['content']['members_only_inline_sign_up_0']));
+            } else {
+                $membersOnlyNotice->appendChild($loginLink);
+                $membersOnlyNotice->appendChild(new Element('span', $this->plugin->locale['content']['members_only_inline_login_1']));
+                $membersOnlyNotice->appendChild($signUpLink);
+                $membersOnlyNotice->appendChild(new Element('span', $this->plugin->locale['content']['members_only_inline_login_3']));
             }
         }
     }
