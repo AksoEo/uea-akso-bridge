@@ -101,6 +101,16 @@ export default [
             format: 'amd',
         },
     },
+    {
+        input: 'src/country-org-lists.js',
+        preserveEntrySignatures: false,
+        plugins: plugins(path.join(__dirname, '../js/dist/country-org-lists.css')),
+        output: {
+            dir: path.join(__dirname, '../js/dist/'),
+            chunkFileNames: 'col_[name].js',
+            format: 'amd',
+        },
+    },
 ];
 
 function iniPlugin() {

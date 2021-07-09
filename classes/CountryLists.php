@@ -67,10 +67,11 @@ class CountryLists {
         $countryNames = $this->getCountryNames();
         $countryList = $res['b']['list'];
         $countryCodes = array_keys($countryList);
-        usort($countryCodes, function ($a, $b) use ($countryNames) {
+        $collator = new \Collator('fr_FR');
+        usort($countryCodes, function ($a, $b) use ($countryNames, $collator) {
             $ca = $countryNames[$a];
             $cb = $countryNames[$b];
-            return $ca > $cb ? 1 : -1;
+            return $collator->compare($ca, $cb);
         });
 
         $view = isset($_GET[self::COUNTRY_NAME])

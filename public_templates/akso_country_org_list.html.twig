@@ -1,11 +1,20 @@
 {% extends 'partials/base.html.twig' %}
 {% block content %}
     {{page.content}}
-    <div class="country-org-list-overview">
-        <ul aria-label="{{akso_locale.country_org_lists.country_list_all_label}}">
+    {% set should_collapse = '' %}
+    {% if not akso_clist.view_all %}
+        {% set should_collapse = 'init-collapsed' %}
+    {% endif %}
+    <div class="country-org-list-overview {{should_collapse}}">
+        <h3 class="overview-title">{{akso_locale.country_org_lists.overview_title}}</h3>
+        <ul class="overview-items" aria-label="{{akso_locale.country_org_lists.country_list_all_label}}">
             {% for code in akso_clist.list_country_codes %}
-            <li class="country-item" data-code="{{code}}">
-                <a href="{{akso_clist.list_country_links[code]}}">
+            {% set is_current = '' %}
+            {% if akso_clist.view == code %}
+                {% set is_current = 'is-current' %}
+            {% endif %}
+            <li class="country-item {{is_current}}" data-code="{{code}}" data-name="{{akso_clist.country_names[code]|e('html_attr')}}">
+                <a class="inner-item" href="{{akso_clist.list_country_links[code]|e('html_attr')}}">
                     <img
                         class="inline-flag-icon"
                         draggable="false"
@@ -20,7 +29,7 @@
     {% if not akso_clist.view_all %}
         <div class="country-org-list">
             {% set code = akso_clist.view %}
-            <h1>
+            <h1 class="country-title">
                 <img
                     class="inline-flag-icon"
                     draggable="false"
@@ -28,21 +37,28 @@
                     alt="{{akso_clist.country_emoji[code].alt|e('html_attr')}}" />
                 {{akso_clist.country_names[code]}}
             </h1>
-            <ul aria-label="{{akso_locale.country_org_lists.country_list_label_0}}{{code}}{{akso_locale.country_org_lists.country_list_label_1}}">
+            <ul class="inner-org-list" aria-label="{{akso_locale.country_org_lists.country_list_label_0}}{{code}}{{akso_locale.country_org_lists.country_list_label_1}}">
                 {% for orgId in akso_clist.list_countries[code] %}
                 {% set org = akso_clist.orgs[orgId] %}
                 <li class="inner-org-card">
-                    <h4>{{org.fullName|e}}</h4>
-                    <div class="org-descriptor">
-                        <h5>{{org.mainDescriptor|e}}</h5>
+                    <div class="org-header">
+                        <h4 class="org-name">
+                            {% if org.website %}
+                            <a
+                                class="inner-org-name"
+                                target="_blank"
+                                rel="noreferrer"
+                                href="{{org.website|e('html_attr')}}">{{org.fullName|e}}</a>
+                            {% else %}
+                            <span class="inner-org-name">{{org.fullName|e}}</span>
+                            {% endif %}
+                        </h4>
+                        <div class="org-descriptor">{{org.mainDescriptor|e}}</div>
                     </div>
-                    <details>
+                    <details class="org-details">
                         <summary>
                             {{akso_locale.country_org_lists.country_item_summary_title}}
                         </summary>
-                        {% if org.fullNameLocal %}
-                        <h5 class="org-local-name">{{org.fullNameLocal|e}}</h5>
-                        {% endif %}
                         <table class="org-factoids">
                             <tbody>
                                 {% for factKey, fact in org.factoids|merge(org.data_factoids) %}
@@ -92,16 +108,21 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                        <div class="org-biography">
-                            {% set is_first = true %}
-                            {% for line in org.biography|split('\n') %}
-                                {% if is_first %}
-                                    {% set is_first = false %}
-                                {% else %}
-                                <br />
-                                {% endif %}
-                                {{line|e}}
-                            {% endfor %}
+                        <div class="org-post-info">
+                            {% if org.fullNameLocal %}
+                            <h5 class="org-local-name">{{org.fullNameLocal|e}}</h5>
+                            {% endif %}
+                            <div class="org-biography">
+                                {% set is_first = true %}
+                                {% for line in org.biography|split('\n') %}
+                                    {% if is_first %}
+                                        {% set is_first = false %}
+                                    {% else %}
+                                    <br />
+                                    {% endif %}
+                                    {{line|e}}
+                                {% endfor %}
+                            </div>
                         </div>
                     </details>
                 </li>

@@ -249,6 +249,8 @@ class AksoBridgePlugin extends Plugin {
             $state['akso_magazines'] = $magazines->run();
             $app->close();
         } else if ($templateId === 'akso_country_org_list') {
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/country-org-lists.css');
+            $this->grav['assets']->add('plugin://akso-bridge/js/dist/country-org-lists.js');
             $app = new AppBridge($this->grav);
             $app->open();
             $countryLists = new CountryLists($this, $app->bridge);
