@@ -10,11 +10,12 @@ class UserAccount {
     const QUERY_PROFILE_PICTURE = 'profile_picture';
     const QUERY_EDIT = 'redakti';
 
-    private $plugin, $bridge, $page;
+    private $plugin, $app, $bridge, $page;
     private $editing = false;
 
-    public function __construct($plugin, $bridge, $path) {
+    public function __construct($plugin, $app, $bridge, $path) {
         $this->plugin = $plugin;
+        $this->app = $app;
         $this->bridge = $bridge;
 
         $this->loginsPath = $this->plugin->accountPath . $this->plugin->getGrav()['config']->get('plugins.akso-bridge.account_logins_path');
@@ -32,8 +33,119 @@ class UserAccount {
         $this->doc = new \DOMDocument();
     }
 
+    private $cPendingRequest = null;
+    private function getPendingRequest() {
+        if ($this->cPendingRequest) return $this->cPendingRequest;
+        $res = $this->app->bridge->get('codeholders/change_requests', array(
+            'filter' => array(
+                'codeholderId' => $this->plugin->aksoUser['id'],
+                'status' => 'pending',
+            ),
+            'fields' => ['time', 'codeholderDescription', 'data'],
+            'order' => [['time', 'desc']],
+            'limit' => 1,
+        ));
+
+        if ($res['k'] && count($res['b'])) {
+            $item = $res['b'][0];
+            $this->cPendingRequest = $item;
+            return $item;
+        }
+        return null;
+    }
+
+    // gets data from pending change requests
+    private function getPendingDetails() {
+        $req = $this->getPendingRequest();
+        if ($req) return $req['data'];
+        return null;
+    }
+
+    private function renderCodeholderFields(&$details) {
+        if ($details['profilePictureHash']) {
+            $path = $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_PROFILE_PICTURE
+                . '=1&s=';
+            $details['profilePicturePath'] = $path . '128px';
+            $details['profilePictureSizes'] = $path . '32px 32w,' . $path . '64px 64w,'
+                . $path . '128px 128w,' . $path . '256px 256w,' . $path . '512px 512w';
+        }
+
+        if ($details['codeholderType'] === 'human') {
+            $details['fmtName'] = $this->plugin->aksoUserFormattedName;
+            if ($details['firstName'] || $details['lastName']) {
+                $details['fmtLegalName'] = $details['firstNameLegal'] . ' ' . $details['lastNameLegal'];
+            }
+
+            $details['fmtBirthdate'] = '—';
+            if ($details['birthdate']) {
+                $details['fmtBirthdate'] = Utils::formatDate($details['birthdate']);
+            }
+        } else {
+            $details['fmtName'] = $details['fullName'];
+            if ($details['nameAbbrev']) {
+                $details['fmtName'] .= ' (' . $details['nameAbbrev'] . ')';
+            }
+            $details['fmtLocalName'] = $details['fullNameLocal'];
+        }
+
+        $phoneNumbers = [];
+        if ($details['codeholderType'] === 'human' && $details['cellphoneFormatted']) {
+            $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberCell'], $details['cellphoneFormatted']];
+        }
+        if ($details['codeholderType'] === 'human' && $details['landlinePhoneFormatted']) {
+            $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberLandline'], $details['landlinePhoneFormatted']];
+        }
+        if ($details['officePhoneFormatted']) {
+            $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberOffice'], $details['officePhoneFormatted']];
+        }
+        if (!empty($phoneNumbers)) {
+            $phoneNumbersList = $this->doc->createElement('ul');
+            $phoneNumbersList->setAttribute('class', 'phone-numbers-list');
+            foreach ($phoneNumbers as $entry) {
+                $li = $this->doc->createElement('li');
+                $label = $this->doc->createElement('span');
+                $label->setAttribute('class', 'number-label');
+                $label->textContent = $entry[0] . ': ';
+                $li->appendChild($label);
+                $value = $this->doc->createElement('span');
+                $value->setAttribute('class', 'number-value');
+                $value->textContent = $entry[1];
+                $li->appendChild($value);
+                $phoneNumbersList->appendChild($li);
+            }
+            $details['phoneNumbersFormatted'] = $this->doc->saveHtml($phoneNumbersList);
+        } else $details['phoneNumbersFormatted'] = '—';
+
+        $details['fmtAddress'] = '—';
+        if ($details['address']) {
+            $addr = $details['address'];
+            $fmtAddress = $this->doc->createElement('div');
+            $countryName = $this->formatCountry($addr['country']);
+            $formatted = $this->bridge->renderAddress(array(
+                'countryCode' => $addr['country'],
+                'countryArea' => $addr['countryArea'],
+                'city' => $addr['city'],
+                'cityArea' => $addr['cityArea'],
+                'streetAddress' => $addr['streetAddress'],
+                'postalCode' => $addr['postalCode'],
+                'sortingCode' => $addr['sortingCode'],
+            ), $countryName)['c'];
+            foreach (explode("\n", $formatted) as $line) {
+                $ln = $this->doc->createElement('div');
+                $ln->textContent = $line;
+                $fmtAddress->appendChild($ln);
+            }
+            $details['fmtAddress'] = $this->doc->saveHtml($fmtAddress);
+        }
+
+        $details['fmtFeeCountry'] = '—';
+        if ($details['feeCountry']) {
+            $details['fmtFeeCountry'] = $this->formatCountry($details['feeCountry']);
+        }
+    }
+
     // Renders the codeholders/self details section
-    private function renderDetails() {
+    private function renderDetails($includePending = false) {
         $res = $this->bridge->get('codeholders/self', array(
             'fields' => [
                 'codeholderType',
@@ -72,86 +184,11 @@ class UserAccount {
             $this->plugin->updateFormattedName();
             $details = $res['b'];
 
-            if ($details['profilePictureHash']) {
-                $path = $this->plugin->getGrav()['uri']->path() . '?' . self::QUERY_PROFILE_PICTURE
-                    . '=1&s=';
-                $details['profilePicturePath'] = $path . '128px';
-                $details['profilePictureSizes'] = $path . '32px 32w,' . $path . '64px 64w,'
-                    . $path . '128px 128w,' . $path . '256px 256w,' . $path . '512px 512w';
+            if ($includePending) {
+                $details = array_merge($details, $this->getPendingDetails());
             }
 
-            if ($details['codeholderType'] === 'human') {
-                $details['fmtName'] = $this->plugin->aksoUserFormattedName;
-                if ($details['firstName'] || $details['lastName']) {
-                    $details['fmtLegalName'] = $details['firstNameLegal'] . ' ' . $details['lastNameLegal'];
-                }
-
-                $details['fmtBirthdate'] = '—';
-                if ($details['birthdate']) {
-                    $details['fmtBirthdate'] = Utils::formatDate($details['birthdate']);
-                }
-            } else {
-                $details['fmtName'] = $details['fullName'];
-                if ($details['nameAbbrev']) {
-                    $details['fmtName'] .= ' (' . $details['nameAbbrev'] . ')';
-                }
-                $details['fmtLocalName'] = $details['fullNameLocal'];
-            }
-
-            $phoneNumbers = [];
-            if ($details['codeholderType'] === 'human' && $details['cellphoneFormatted']) {
-                $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberCell'], $details['cellphoneFormatted']];
-            }
-            if ($details['codeholderType'] === 'human' && $details['landlinePhoneFormatted']) {
-                $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberLandline'], $details['landlinePhoneFormatted']];
-            }
-            if ($details['officePhoneFormatted']) {
-                $phoneNumbers[] = [$this->plugin->locale['account']['phoneNumberOffice'], $details['officePhoneFormatted']];
-            }
-            if (!empty($phoneNumbers)) {
-                $phoneNumbersList = $this->doc->createElement('ul');
-                $phoneNumbersList->setAttribute('class', 'phone-numbers-list');
-                foreach ($phoneNumbers as $entry) {
-                    $li = $this->doc->createElement('li');
-                    $label = $this->doc->createElement('span');
-                    $label->setAttribute('class', 'number-label');
-                    $label->textContent = $entry[0] . ': ';
-                    $li->appendChild($label);
-                    $value = $this->doc->createElement('span');
-                    $value->setAttribute('class', 'number-value');
-                    $value->textContent = $entry[1];
-                    $li->appendChild($value);
-                    $phoneNumbersList->appendChild($li);
-                }
-                $details['phoneNumbersFormatted'] = $this->doc->saveHtml($phoneNumbersList);
-            } else $details['phoneNumbersFormatted'] = '—';
-
-            $details['fmtAddress'] = '—';
-            if ($details['address']) {
-                $addr = $details['address'];
-                $fmtAddress = $this->doc->createElement('div');
-                $countryName = $this->formatCountry($addr['country']);
-                $formatted = $this->bridge->renderAddress(array(
-                    'countryCode' => $addr['country'],
-                    'countryArea' => $addr['countryArea'],
-                    'city' => $addr['city'],
-                    'cityArea' => $addr['cityArea'],
-                    'streetAddress' => $addr['streetAddress'],
-                    'postalCode' => $addr['postalCode'],
-                    'sortingCode' => $addr['sortingCode'],
-                ), $countryName)['c'];
-                foreach (explode("\n", $formatted) as $line) {
-                    $ln = $this->doc->createElement('div');
-                    $ln->textContent = $line;
-                    $fmtAddress->appendChild($ln);
-                }
-                $details['fmtAddress'] = $this->doc->saveHtml($fmtAddress);
-            }
-
-            $details['fmtFeeCountry'] = '—';
-            if ($details['feeCountry']) {
-                $details['fmtFeeCountry'] = $this->formatCountry($details['feeCountry']);
-            }
+            $this->renderCodeholderFields($details);
 
             return $details;
         }
@@ -334,9 +371,13 @@ class UserAccount {
             die();
         }
 
-        $error = '?? todo error message: ' . $res['b'];
+        $error = $res['sc'] == 400
+            ? $this->plugin->locale['account']['edit_error_bad_request']
+            : $this->plugin->locale['account']['edit_error_unknown'];
 
         return array(
+            'pending_request' => $this->getPendingRequest(),
+            'account_link' => $this->plugin->accountPath,
             'codeholder' => $codeholder,
             'countries' => $this->getCountries(),
             'editing' => true,
@@ -359,20 +400,36 @@ class UserAccount {
         }
 
         if ($this->page === 'account') {
-            $details = $this->renderDetails();
-
             if ($this->editing) {
                 return array(
-                    'codeholder' => $details,
+                    'pending_request' => $this->getPendingRequest(),
+                    'account_link' => $this->plugin->accountPath,
+                    'codeholder' => $this->renderDetails(true),
                     'countries' => $this->getCountries(),
                     'editing' => $this->editing,
                 );
             }
 
+            $details = $this->renderDetails();
             $membership = $this->renderMembership();
             $resetPassword = $this->renderResetPassword();
+            $pendingReq = $this->getPendingRequest();
+            $pendingDetails = null;
+            if ($pendingReq) {
+                $newDetails = array_merge([], $details, $pendingReq['data']);
+                $this->renderCodeholderFields($newDetails);
+                // TODO: proper diff array according to the actual changed fields instead of this heuristic
+                $pendingDetails = [];
+                foreach ($newDetails as $key => $value) {
+                    if ($newDetails[$key] != $details[$key]) {
+                        $pendingDetails[$key] = $newDetails[$key];
+                    }
+                }
+            }
 
             return array(
+                'pending_request' => $pendingReq,
+                'pending_details' => $pendingDetails,
                 'details' => $details,
                 'membership' => $membership,
                 'reset_password' => $resetPassword,

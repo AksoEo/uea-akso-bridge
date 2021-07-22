@@ -81,6 +81,29 @@
             }
         }
     }
+
+    .account-pending {
+        --accent: var(--warning);
+        color: var(--warning);
+
+        .pending-mark {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            border: 1px solid currentColor;
+            border-radius: var(--radius);
+            padding: 0.1em 0.2em;
+            font-weight: 600;
+            vertical-align: 0.1em;
+        }
+    }
+
+    .biography-pending {
+        white-space: normal;
+
+        .pending-value {
+            white-space: pre-wrap;
+        }
+    }
 }
 
 .account-memberships {
@@ -150,5 +173,41 @@
 
     .form-aux {
         display: none;
+    }
+}
+
+.account-pending-request-banner {
+    --accent: var(--warning);
+    background: var(--bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--accent);
+    padding: 1em;
+    margin: 1em 0;
+
+    .banner-title, .banner-subtitle {
+        margin: 0;
+        margin-bottom: 0.3em;
+    }
+    .banner-subtitle {
+        font-weight: normal;
+        opacity: 0.9;
+    }
+
+    .pending-changes {
+        font-size: smaller;
+
+        .changes-title {
+            font-weight: bold;
+        }
+
+        .changed-fields {
+            margin: 0;
+        }
+    }
+
+    .cancel-button {
+        font-size: smaller;
+        background: var(--button);
+        float: right;
     }
 }

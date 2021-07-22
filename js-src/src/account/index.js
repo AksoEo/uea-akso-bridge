@@ -1,5 +1,6 @@
 import { account } from '../../../locale.ini';
 import './index.less';
+import initAddressFields from '../registration/address-fields';
 
 const locale = { account };
 
@@ -97,6 +98,8 @@ function init() {
 
         showMore.addEventListener('click', showMoreItems);
     }
+
+    initAddressFields();
 }
 
 if (document.readyState === 'complete') init();

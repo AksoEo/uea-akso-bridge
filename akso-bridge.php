@@ -491,8 +491,11 @@ class AksoBridgePlugin extends Plugin {
         } else if ($this->pathStartsWithComponent($this->path, $this->accountPath)) {
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/account.js');
             $this->grav['assets']->add('plugin://akso-bridge/js/dist/account.css');
-            $acc = new UserAccount($this, $this->bridge, $this->path);
+            $app = new AppBridge($this->grav);
+            $app->open();
+            $acc = new UserAccount($this, $app, $this->bridge, $this->path);
             $this->pageState = $acc->run();
+            $app->close();
         } else if ($this->pathStartsWithComponent($this->path, self::MAGAZINE_DOWNLOAD_PATH)) {
             $magazines = new Magazines($this, $this->bridge);
             $magazines->runDownload();
