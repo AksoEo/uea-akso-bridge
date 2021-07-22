@@ -1,22 +1,30 @@
 <?php
 namespace Grav\Plugin\AksoBridge;
 
+use Grav\Plugin\AksoBridge\Registration;
 use Grav\Plugin\AksoBridge\Utils;
 
 // Handles the user’s “my account” page.
 class UserAccount {
     // query parameter used for loading the profile picture
     const QUERY_PROFILE_PICTURE = 'profile_picture';
+    const QUERY_EDIT = 'redakti';
 
     private $plugin, $bridge, $page;
+    private $editing = false;
 
     public function __construct($plugin, $bridge, $path) {
         $this->plugin = $plugin;
         $this->bridge = $bridge;
 
         $this->loginsPath = $this->plugin->accountPath . $this->plugin->getGrav()['config']->get('plugins.akso-bridge.account_logins_path');
+        $this->editPath = $this->plugin->accountPath . '?' . self::QUERY_EDIT;
         if ($path === $this->plugin->accountPath) {
             $this->page = 'account';
+
+            if (isset($_GET[self::QUERY_EDIT])) {
+                $this->editing = true;
+            }
         } else if ($path === $this->loginsPath) {
             $this->page = 'logins';
         }
@@ -226,16 +234,19 @@ class UserAccount {
         return null;
     }
 
-    // Formats a country code
-    function formatCountry($code) {
+    function getCountries() {
         $res = $this->bridge->get('/countries', array(
             'limit' => 300,
             'fields' => ['code', 'name_eo'],
         ), 600);
-        if ($res['k']) {
-            foreach ($res['b'] as $item) {
-                if ($item['code'] === $code) return $item['name_eo'];
-            }
+        if (!$res['k']) return null;
+        return $res['b'];
+    }
+
+    // Formats a country code
+    function formatCountry($code) {
+        foreach ($this->getCountries() as $country) {
+            if ($country['code'] === $code) return $country['name_eo'];
         }
         return null;
     }
@@ -309,7 +320,35 @@ class UserAccount {
         return null;
     }
 
+    function applyProfileEdits($input) {
+        if (!isset($input['codeholder'])) throw new \Exception('No codeholder data in input');
+        $ch = $input['codeholder'];
+        $codeholder = Registration::readCodeholderStateSafe($this->bridge, $ch);
+        if (isset($ch['profession']) && gettype($ch['profession']) === 'string') $codeholder['profession'] = $ch['profession'] ?: null;
+        if (isset($ch['website']) && gettype($ch['website']) === 'string') $codeholder['website'] = $ch['website'] ?: null;
+        if (isset($ch['biography']) && gettype($ch['biography']) === 'string') $codeholder['biography'] = $ch['biography'] ?: null;
+
+        $res = $this->bridge->patch('/codeholders/self', $codeholder, [], []);
+        if ($res['k']) {
+            $this->plugin->getGrav()->redirectLangSafe($this->plugin->accountPath, 303);
+            die();
+        }
+
+        $error = '?? todo error message: ' . $res['b'];
+
+        return array(
+            'codeholder' => $codeholder,
+            'countries' => $this->getCountries(),
+            'editing' => true,
+            'error' => $error,
+        );
+    }
+
     public function run() {
+        if ($this->editing && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            return $this->applyProfileEdits($_POST);
+        }
+
         if (isset($_GET[self::QUERY_PROFILE_PICTURE])) {
             $this->runProfilePicture();
         }
@@ -321,6 +360,15 @@ class UserAccount {
 
         if ($this->page === 'account') {
             $details = $this->renderDetails();
+
+            if ($this->editing) {
+                return array(
+                    'codeholder' => $details,
+                    'countries' => $this->getCountries(),
+                    'editing' => $this->editing,
+                );
+            }
+
             $membership = $this->renderMembership();
             $resetPassword = $this->renderResetPassword();
 
@@ -329,6 +377,8 @@ class UserAccount {
                 'membership' => $membership,
                 'reset_password' => $resetPassword,
                 'logins_link' => $this->loginsPath,
+                'editing' => $this->editing,
+                'edit_link' => $this->editPath,
             );
         } else if ($this->page === 'logins') {
             return array(

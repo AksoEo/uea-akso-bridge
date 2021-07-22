@@ -51,13 +51,13 @@ class Registration extends Form {
     private $state;
 
     // Reads a key string like 'a.b.c' inside $obj and checks for its type.
-    private function readSafe($typechk, $obj, $key) {
+    public static function readSafe($typechk, $obj, $key) {
         $keyParts = explode('.', $key);
         $keyPart = $keyParts[0];
         if (!isset($obj[$keyPart])) return null;
         if (count($keyParts) > 1) {
             if (gettype($obj[$keyPart]) !== 'array') return null;
-            return $this->readSafe($typechk, $obj[$keyPart], implode('.', array_slice($keyParts, 1)));
+            return self::readSafe($typechk, $obj[$keyPart], implode('.', array_slice($keyParts, 1)));
         }
         if (gettype($obj[$keyPart]) !== $typechk) return null;
         return $obj[$keyPart];
@@ -528,6 +528,53 @@ class Registration extends Form {
         $this->state['currency_mult'] = isset($currencies[$this->state['currency']]) ? $currencies[$this->state['currency']] : 1;
     }
 
+    public static function readCodeholderStateSafe($bridge, $ch) {
+        $cellphone = self::readSafe('string', $ch, 'cellphone');
+        if ($cellphone) {
+            $cellphone = preg_replace('/[^+0-9]/u', '', $cellphone);
+        }
+
+        $codeholder = array(
+            'firstName' => ((isset($ch['splitName']) && $ch['splitName'])
+                ? self::readSafe('string', $ch, 'firstName')
+                : null) ?: null,
+            'lastName' => ((isset($ch['splitName']) && $ch['splitName'])
+                ? self::readSafe('string', $ch, 'lastName')
+                : null) ?: null,
+            'firstNameLegal' => ((isset($ch['splitName']) && $ch['splitName'])
+                ? self::readSafe('string', $ch, 'firstNameLegal')
+                : self::readSafe('string', $ch, 'firstName')) ?: null,
+            'lastNameLegal' => (isset($ch['splitName']) && $ch['splitName']
+                ? self::readSafe('string', $ch, 'lastNameLegal')
+                : self::readSafe('string', $ch, 'lastName')) ?: null,
+            'honorific' => self::readSafe('string', $ch, 'honorific') ?: null,
+            'birthdate' => self::readSafe('string', $ch, 'birthdate') ?: null,
+            'email' => self::readSafe('string', $ch, 'email') ?: null,
+            'cellphone' => $cellphone ?: null,
+            'feeCountry' => self::readSafe('string', $ch, 'feeCountry'),
+            'address' => array(
+                'country' => (isset($ch['splitCountry']) && $ch['splitCountry'])
+                    ? self::readSafe('string', $ch, 'address.country')
+                    : self::readSafe('string', $ch, 'feeCountry'),
+                'countryArea' => self::readSafe('string', $ch, 'address.countryArea') ?: null,
+                'city' => self::readSafe('string', $ch, 'address.city') ?: null,
+                'cityArea' => self::readSafe('string', $ch, 'address.cityArea') ?: null,
+                'postalCode' => self::readSafe('string', $ch, 'address.postalCode') ?: null,
+                'sortingCode' => self::readSafe('string', $ch, 'address.sortingCode') ?: null,
+                'streetAddress' => self::readSafe('string', $ch, 'address.streetAddress') ?: null,
+            ),
+        );
+
+        // phone number post-processing: if the number does not start with a +, try to parse it as a
+        // local number
+        if ($codeholder['cellphone'] && !str_starts_with($codeholder['cellphone'], '+')) {
+            $res = $bridge->parsePhoneLocal($cellphone, $codeholder['address']['country']);
+            if ($res['s']) $codeholder['cellphone'] = $res['n'];
+        }
+
+        return $codeholder;
+    }
+
     private function updateCodeholderState() {
         if ($this->state['needs_login']) return;
 
@@ -555,48 +602,7 @@ class Registration extends Form {
                 $ch['splitName'] = true;
             }
 
-            $cellphone = $this->readSafe('string', $ch, 'cellphone');
-            if ($cellphone) {
-                $cellphone = preg_replace('/[^+0-9]/u', '', $cellphone);
-            }
-
-            $this->state['codeholder'] = array(
-                'firstName' => (isset($ch['splitName']) && $ch['splitName'])
-                    ? $this->readSafe('string', $ch, 'firstName')
-                    : null,
-                'lastName' => (isset($ch['splitName']) && $ch['splitName'])
-                    ? $this->readSafe('string', $ch, 'lastName')
-                    : null,
-                'firstNameLegal' => (isset($ch['splitName']) && $ch['splitName'])
-                    ? $this->readSafe('string', $ch, 'firstNameLegal')
-                    : $this->readSafe('string', $ch, 'firstName'),
-                'lastNameLegal' => isset($ch['splitName']) && $ch['splitName']
-                    ? $this->readSafe('string', $ch, 'lastNameLegal')
-                    : $this->readSafe('string', $ch, 'lastName'),
-                'honorific' => $this->readSafe('string', $ch, 'honorific'),
-                'birthdate' => $this->readSafe('string', $ch, 'birthdate'),
-                'email' => $this->readSafe('string', $ch, 'email'),
-                'cellphone' => $cellphone,
-                'feeCountry' => $this->readSafe('string', $ch, 'feeCountry'),
-                'address' => array(
-                    'country' => (isset($ch['splitCountry']) && $ch['splitCountry'])
-                        ? $this->readSafe('string', $ch, 'address.country')
-                        : $this->readSafe('string', $ch, 'feeCountry'),
-                    'countryArea' => $this->readSafe('string', $ch, 'address.countryArea'),
-                    'city' => $this->readSafe('string', $ch, 'address.city'),
-                    'cityArea' => $this->readSafe('string', $ch, 'address.cityArea'),
-                    'postalCode' => $this->readSafe('string', $ch, 'address.postalCode'),
-                    'sortingCode' => $this->readSafe('string', $ch, 'address.sortingCode'),
-                    'streetAddress' => $this->readSafe('string', $ch, 'address.streetAddress'),
-                ),
-            );
-        }
-
-        // phone number post-processing: if the number does not start with a +, try to parse it as a
-        // local number
-        if ($this->state['codeholder']['cellphone'] && !str_starts_with($this->state['codeholder']['cellphone'], '+')) {
-            $res = $this->app->bridge->parsePhoneLocal($cellphone, $this->state['codeholder']['address']['country']);
-            if ($res['s']) $this->state['codeholder']['cellphone'] = $res['n'];
+            $this->state['codeholder'] = self::readCodeholderStateSafe($this->app->bridge, $ch);
         }
 
         $addressFmt = '';

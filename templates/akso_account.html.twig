@@ -28,6 +28,49 @@
             {% endif %}
         </form>
     {% elseif account.editing %}
+        <div class="akso-registration-page">
+            <h1>{{ akso_locale.account.title }}</h1>
+            {% if account.error %}
+                <div class="error-banner">
+                    {{account.error}}
+                </div>
+            {% endif %}
+            <form class="account-details registration-settings" method="POST" action="{{ account.edit_path }}">
+                {% set akso_registration = { state: account, countries: account.countries } %}
+                {% include 'partials/akso_user_profile_form.html.twig' %}
+                <hr />
+                <div class="settings-field" data-el="input" data-type="text">
+                    <div class="inner-field">
+                        <label for="codeholder-profession">{{akso_locale.account.profession}}</label>
+                        <input
+                            id="codeholder-profession"
+                            name="codeholder[profession]"
+                            type="text"
+                            value="{{account.codeholder.profession|e('html_attr')}}" />
+                    </div>
+                </div>
+                <div class="settings-field" data-el="input" data-type="text">
+                    <div class="inner-field">
+                        <label for="codeholder-website">{{akso_locale.account.website}}</label>
+                        <input
+                            id="codeholder-website"
+                            name="codeholder[website]"
+                            type="url"
+                            placeholder="{{akso_locale.account.website_placeholder|e('html_attr')}}"
+                            value="{{account.codeholder.website|e('html_attr')}}" />
+                    </div>
+                </div>
+                <div class="settings-field" data-el="input" data-type="text">
+                    <div class="inner-field">
+                        <label for="codeholder-biography">{{akso_locale.account.biography}}</label>
+                        <textarea
+                            id="codeholder-biography"
+                            name="codeholder[biography]">{{account.codeholder.biography|e}}</textarea>
+                    </div>
+                </div>
+                <button type="submit">submit button</button>
+            </form>
+        </div>
     {% else %}
         <h1>{{ akso_locale.account.title }}</h1>
         <div class="account-details">
@@ -108,9 +151,9 @@
             </table>
         </div>
         <div class="account-management">
-            <button>
-                [[req. chg]]
-            </button>
+            <a class="link-button" href="{{ account.edit_link }}">
+                {{ akso_locale.account.begin_edit }}
+            </a>
             <a class="link-button" href="{{ account.reset_password.link }}">
                 {{ akso_locale.account.reset_password }}
             </a>
